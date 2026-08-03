@@ -1,0 +1,189 @@
+/* Design System Tokens for Light, Dark, and Nord themes */
+:root {
+  --font-family: 'Inter', 'Noto Sans SC', system-ui, -apple-system, sans-serif;
+  
+  /* Light Theme Default */
+  --bg-app: #F7FAFC;
+  --bg-surface: #FFFFFF;
+  --bg-card: #FFFFFF;
+  --bg-card-hover: #F8FAFC;
+  --border-color: #E2E8F0;
+  --border-color-focus: #3182CE;
+  --text-main: #1A202C;
+  --text-muted: #718096;
+  
+  --primary: #3182CE;
+  --primary-hover: #2B6CB0;
+  --ai-purple: #805AD5;
+  --ai-purple-hover: #6B46C1;
+  
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.05);
+  --shadow-md: 0 4px 12px rgba(0,0,0,0.08);
+  --shadow-lg: 0 10px 25px rgba(0,0,0,0.12);
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+}
+
+[data-theme="dark"] {
+  --bg-app: #1A1B26;
+  --bg-surface: #24283B;
+  --bg-card: #24283B;
+  --bg-card-hover: #1F2335;
+  --border-color: #414868;
+  --border-color-focus: #7AA2F7;
+  --text-main: #C0CAF5;
+  --text-muted: #A9B1D6;
+  
+  --primary: #7AA2F7;
+  --primary-hover: #89DDFF;
+  --ai-purple: #BB9AF7;
+  --ai-purple-hover: #C0CAF5;
+  
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.3);
+  --shadow-md: 0 4px 14px rgba(0,0,0,0.4);
+  --shadow-lg: 0 10px 30px rgba(0,0,0,0.5);
+}
+
+[data-theme="nord"] {
+  --bg-app: #2E3440;
+  --bg-surface: #3B4252;
+  --bg-card: #3B4252;
+  --bg-card-hover: #434C5E;
+  --border-color: #4C566A;
+  --border-color-focus: #88C0D0;
+  --text-main: #E5E9F0;
+  --text-muted: #D8DEE9;
+  
+  --primary: #88C0D0;
+  --primary-hover: #8FBCBB;
+  --ai-purple: #B48EAD;
+  --ai-purple-hover: #D8DEE9;
+  
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.25);
+  --shadow-md: 0 4px 14px rgba(0,0,0,0.35);
+  --shadow-lg: 0 10px 30px rgba(0,0,0,0.45);
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: var(--font-family);
+  background-color: var(--bg-app);
+  color: var(--text-main);
+  transition: background-color 0.3s ease, color 0.3s ease;
+  user-select: none;
+  overflow: hidden;
+  height: 100vh;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
+}
+
+/* Form Controls Styling */
+input[type="text"],
+input[type="password"],
+input[type="datetime-local"],
+select,
+textarea {
+  font-family: inherit;
+  font-size: 13px;
+  background-color: var(--bg-card);
+  color: var(--text-main);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  padding: 8px 12px;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+input:focus, select:focus, textarea:focus {
+  border-color: var(--border-color-focus);
+}
+
+/* Custom Select Dropdown with 4-corner rounded borders */
+select {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  padding-right: 32px;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23718096' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'></polyline></svg>");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  border-radius: var(--radius-sm);
+}
+
+select:focus {
+  outline: none;
+}
+
+/* Buttons */
+.btn {
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  padding: 8px 16px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-color);
+  background-color: var(--bg-surface);
+  color: var(--text-main);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.2s ease;
+}
+
+.btn:hover {
+  background-color: var(--bg-card-hover);
+  border-color: var(--border-color-focus);
+}
+
+.btn-primary {
+  background-color: var(--primary);
+  color: #FFFFFF;
+  border: none;
+  font-weight: 600;
+}
+
+.btn-primary:hover {
+  background-color: var(--primary-hover);
+}
+
+.btn-ai {
+  background-color: var(--ai-purple);
+  color: #FFFFFF;
+  border: none;
+  font-weight: 600;
+}
+
+.btn-ai:hover {
+  background-color: var(--ai-purple-hover);
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}

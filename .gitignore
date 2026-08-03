@@ -12,6 +12,14 @@ ENV/
 .pytest_cache/
 .coverage
 
+# Node.js & Vue
+node_modules/
+dist/
+
+# Rust & Tauri
+src-tauri/target/
+src-tauri/gen/
+
 # Build & Eggs
 build/
 dist/
