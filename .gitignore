@@ -1,0 +1,26 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Environments
+.venv/
+venv/
+ENV/
+
+# Testing & Caches
+.pytest_cache/
+.coverage
+
+# Build & Eggs
+build/
+dist/
+*.egg-info/
+
+# Local data & configs
+todos.db
+agent_config.json
+
+# IDE
+.vscode/
+.idea/
