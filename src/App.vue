@@ -1,127 +1,212 @@
 <template>
   <div class="app-layout" :data-theme="theme">
-    <!-- 1. Header Bar -->
+    <!-- 1. Header Bar with Navigation Tabs -->
     <header class="header">
       <div class="header-left">
         <h1 class="app-title">📝 Todo Agent</h1>
         <span class="sub-badge">Rust + Vue 3</span>
       </div>
 
-      <div class="header-center">
+      <!-- Center Navbar Navigation Tabs -->
+      <nav class="navbar-tabs">
+        <button
+          class="nav-tab-btn"
+          :class="{ active: currentTab === 'todos' }"
+          @click="currentTab = 'todos'"
+          title="待办事项"
+        >
+          <CheckSquare :size="15" /> <span>待办事项</span>
+        </button>
+
+        <button
+          class="nav-tab-btn"
+          :class="{ active: currentTab === 'ai' }"
+          @click="currentTab = 'ai'"
+          title="AI 智能体"
+        >
+          <Bot :size="15" /> <span>AI 智能体</span>
+        </button>
+
+        <button
+          class="nav-tab-btn"
+          :class="{ active: currentTab === 'calendar' }"
+          @click="currentTab = 'calendar'"
+          title="任务日历"
+        >
+          <Calendar :size="15" /> <span>任务日历</span>
+        </button>
+
+        <button
+          class="nav-tab-btn"
+          :class="{ active: currentTab === 'local-clock' }"
+          @click="currentTab = 'local-clock'"
+          title="本地时钟"
+        >
+          <Clock :size="15" /> <span>本地时钟</span>
+        </button>
+
+        <button
+          class="nav-tab-btn"
+          :class="{ active: currentTab === 'clock' }"
+          @click="currentTab = 'clock'"
+          title="专注时钟"
+        >
+          <Flame :size="15" /> <span>专注时钟</span>
+        </button>
+
+        <button
+          class="nav-tab-btn"
+          :class="{ active: currentTab === 'settings' }"
+          @click="currentTab = 'settings'"
+          title="系统设置"
+        >
+          <Settings :size="15" /> <span>系统设置</span>
+        </button>
+      </nav>
+
+      <div class="header-right">
         <button class="model-badge-btn" @click="showModelModal = true" title="点击配置大语言模型">
           🧠 {{ llmConfig.model }} ⚙️
         </button>
-      </div>
 
-      <div class="header-right">
-        <div class="theme-select-group">
-          <label class="label-sm">主题:</label>
-          <select v-model="theme" class="theme-select">
-            <option value="light">☀️ 浅色明亮</option>
-            <option value="dark">🌙 赛博暗黑</option>
-            <option value="nord">❄️ 极光冰蓝</option>
-          </select>
-        </div>
-
-        <button class="btn btn-primary" @click="openAddModal">
+        <button v-if="currentTab === 'todos'" class="btn btn-primary" @click="openAddModal">
           + 新建任务
         </button>
       </div>
     </header>
 
-    <!-- 2. Main Content -->
+    <!-- 2. Main Content Area -->
     <main class="main-content">
-      <!-- Filter & Search Toolbar -->
-      <div class="toolbar">
-        <div class="filter-group">
-          <span class="label-sm">筛选:</span>
-          <button
-            class="filter-btn"
-            :class="{ active: currentFilter === 'all' }"
-            @click="setFilter('all')"
-          >
-            全部
-          </button>
-          <button
-            class="filter-btn"
-            :class="{ active: currentFilter === 'pending' }"
-            @click="setFilter('pending')"
-          >
-            未完成
-          </button>
-          <button
-            class="filter-btn"
-            :class="{ active: currentFilter === 'completed' }"
-            @click="setFilter('completed')"
-          >
-            已完成
-          </button>
+      <!-- Tab 1: Todos List View -->
+      <template v-if="currentTab === 'todos'">
+        <!-- Filter & Search Toolbar -->
+        <div class="toolbar">
+          <div class="filter-group">
+            <span class="label-sm">筛选:</span>
+            <button
+              class="filter-btn"
+              :class="{ active: currentFilter === 'all' }"
+              @click="setFilter('all')"
+            >
+              全部
+            </button>
+            <button
+              class="filter-btn"
+              :class="{ active: currentFilter === 'pending' }"
+              @click="setFilter('pending')"
+            >
+              未完成
+            </button>
+            <button
+              class="filter-btn"
+              :class="{ active: currentFilter === 'completed' }"
+              @click="setFilter('completed')"
+            >
+              已完成
+            </button>
+          </div>
+
+          <div class="search-box">
+            <input
+              type="text"
+              v-model="searchKeyword"
+              placeholder="🔍 搜索待办事项..."
+              @input="loadTodos"
+            />
+          </div>
         </div>
 
-        <div class="search-box">
-          <input
-            type="text"
-            v-model="searchKeyword"
-            placeholder="🔍 搜索待办事项..."
-            @input="loadTodos"
-          />
-        </div>
-      </div>
+        <!-- Todo List Grid / Card View -->
+        <div class="todo-scroll-area">
+          <div v-if="loading" class="empty-state">
+            <div class="spinner"></div>
+            <p>加载中...</p>
+          </div>
 
-      <!-- Todo List Grid / Card View -->
-      <div class="todo-scroll-area">
-        <div v-if="loading" class="empty-state">
-          <div class="spinner"></div>
-          <p>加载中...</p>
-        </div>
+          <div v-else-if="todos.length === 0" class="empty-state">
+            <p class="empty-icon">📌</p>
+            <p class="empty-text">暂无待办事项，点击右上角 "+ 新建任务" 或使用 AI 创建吧！</p>
+          </div>
 
-        <div v-else-if="todos.length === 0" class="empty-state">
-          <p class="empty-icon">📌</p>
-          <p class="empty-text">暂无待办事项，点击右上角 "+ 新建任务" 或使用 AI 创建吧！</p>
-        </div>
-
-        <div v-else class="todo-grid">
-          <div
-            v-for="todo in todos"
-            :key="todo.id"
-            class="todo-card animate-fade-in"
-            :class="{ completed: todo.completed }"
-          >
-            <div class="card-left">
-              <input
-                type="checkbox"
-                class="todo-checkbox"
-                :checked="todo.completed"
-                @change="toggleStatus(todo)"
-              />
-            </div>
-
-            <div class="card-body">
-              <div class="card-title" :class="{ strike: todo.completed }">
-                {{ todo.title }}
+          <div v-else class="todo-grid">
+            <div
+              v-for="todo in todos"
+              :key="todo.id"
+              class="todo-card animate-fade-in"
+              :class="{ completed: todo.completed }"
+            >
+              <div class="card-left">
+                <input
+                  type="checkbox"
+                  class="todo-checkbox"
+                  :checked="todo.completed"
+                  @change="toggleStatus(todo)"
+                />
               </div>
-              <div class="card-meta">
-                <span class="tag tag-category">📁 {{ todo.category }}</span>
-                <span class="tag" :class="'tag-prio-' + todo.priority">
-                  {{ priorityLabel(todo.priority) }}
-                </span>
-                <span v-if="todo.remind_at" class="tag tag-reminder">
-                  ⏰ {{ todo.remind_at }}
-                </span>
-              </div>
-            </div>
 
-            <div class="card-actions">
-              <button class="icon-btn edit-btn" @click="openEditModal(todo)" title="编辑任务">
-                ✏️
-              </button>
-              <button class="icon-btn delete-btn" @click="deleteTodo(todo.id)" title="删除任务">
-                🗑️
-              </button>
+              <div class="card-body">
+                <div class="card-title" :class="{ strike: todo.completed }">
+                  {{ todo.title }}
+                </div>
+                <div class="card-meta">
+                  <span class="tag tag-category">📁 {{ todo.category }}</span>
+                  <span class="tag" :class="'tag-prio-' + todo.priority">
+                    {{ priorityLabel(todo.priority) }}
+                  </span>
+                  <span v-if="todo.remind_at" class="tag tag-reminder">
+                    ⏰ {{ todo.remind_at }}
+                  </span>
+                </div>
+              </div>
+
+              <div class="card-actions">
+                <button class="icon-btn edit-btn" @click="openEditModal(todo)" title="编辑任务">
+                  ✏️
+                </button>
+                <button class="icon-btn delete-btn" @click="deleteTodo(todo.id)" title="删除任务">
+                  🗑️
+                </button>
+              </div>
             </div>
           </div>
         </div>
-      </div>
+      </template>
+
+      <!-- Tab 2: AI Agent Workspace View -->
+      <template v-else-if="currentTab === 'ai'">
+        <AiAssistantPage
+          :config="llmConfig"
+          :is-processing="aiProcessing"
+          @send="handleAiPageSend"
+          @update:config="onLlmConfigUpdate"
+        />
+      </template>
+
+      <!-- Tab 3: Calendar View -->
+      <template v-else-if="currentTab === 'calendar'">
+        <CalendarView
+          :todos="todos"
+          @delete-todo="deleteTodo"
+        />
+      </template>
+
+      <!-- Tab 4: Local Clock View -->
+      <template v-else-if="currentTab === 'local-clock'">
+        <LocalClockPage />
+      </template>
+
+      <!-- Tab 5: Pomodoro Focus Clock View -->
+      <template v-else-if="currentTab === 'clock'">
+        <ClockPage />
+      </template>
+
+      <!-- Tab 5: Settings View -->
+      <template v-else-if="currentTab === 'settings'">
+        <SettingsPage
+          v-model:theme="theme"
+          v-model:config="llmConfig"
+        />
+      </template>
     </main>
 
     <!-- 3. AI Command Input Bar -->
@@ -242,7 +327,28 @@
 
 <script setup lang="ts">
 import { ref, onMounted, watch } from 'vue'
+import { CheckSquare, Bot, Calendar, Clock, Flame, Settings } from 'lucide-vue-next'
 import type { Todo, LlmConfig, FilterType, ThemeType } from './types'
+import { showConfirm } from './utils/confirmState'
+import LocalClockPage from './components/productivity/LocalClockPage.vue'
+import CalendarView from './components/productivity/CalendarView.vue'
+import ClockPage from './components/productivity/ClockPage.vue'
+import SettingsPage from './components/common/SettingsPage.vue'
+import AiAssistantPage from './components/ai/AiAssistantPage.vue'
+
+// Navigation Tab State
+type TabType = 'todos' | 'ai' | 'calendar' | 'local-clock' | 'clock' | 'settings'
+const currentTab = ref<TabType>('todos')
+
+function handleAiPageSend(text: string) {
+  aiInput.value = text
+  sendAiCommand()
+}
+
+function onLlmConfigUpdate(newConfig: LlmConfig) {
+  llmConfig.value = { ...newConfig }
+  localStorage.setItem('siliconflow_api_key', newConfig.api_key)
+}
 
 // Theme State
 const theme = ref<ThemeType>((localStorage.getItem('todo_theme') as ThemeType) || 'light')
@@ -293,6 +399,14 @@ async function tauriInvoke<T>(cmd: string, args: Record<string, any> = {}): Prom
     console.warn(`[Tauri Web Fallback] ${cmd}`, args, e)
     // Web fallback mock implementation
     if (cmd === 'get_todos') {
+      if (!localStorage.getItem('web_todos')) {
+        const defaultData: Todo[] = [
+          { id: 1, title: '完成项目整体架构设计', category: '工作', priority: 'high', completed: true, created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
+          { id: 2, title: '完成 Tauri Rust SQLite 数据库集成', category: '工作', priority: 'high', completed: true, created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
+          { id: 3, title: '集成大语言模型配置与语义解析', category: 'AI', priority: 'medium', completed: false, created_at: new Date().toISOString(), updated_at: new Date().toISOString() }
+        ]
+        localStorage.setItem('web_todos', JSON.stringify(defaultData))
+      }
       const stored = JSON.parse(localStorage.getItem('web_todos') || '[]') as Todo[]
       return stored as T
     }
@@ -316,6 +430,19 @@ async function tauriInvoke<T>(cmd: string, args: Record<string, any> = {}): Prom
       const stored = JSON.parse(localStorage.getItem('web_todos') || '[]') as Todo[]
       const idx = stored.findIndex(t => t.id === args.id)
       if (idx >= 0) stored[idx].completed = args.completed
+      localStorage.setItem('web_todos', JSON.stringify(stored))
+      return true as T
+    }
+    if (cmd === 'update_todo') {
+      const stored = JSON.parse(localStorage.getItem('web_todos') || '[]') as Todo[]
+      const idx = stored.findIndex(t => t.id === args.id)
+      if (idx >= 0) {
+        stored[idx].title = args.title
+        stored[idx].category = args.category
+        stored[idx].priority = args.priority
+        stored[idx].remind_at = args.remind_at
+        stored[idx].updated_at = new Date().toISOString()
+      }
       localStorage.setItem('web_todos', JSON.stringify(stored))
       return true as T
     }
@@ -430,8 +557,15 @@ async function saveTodoForm() {
 }
 
 // Delete Todo
-async function deleteTodo(id: number) {
-  if (!confirm('确定要彻底删除该待办事项吗？')) return
+async function deleteTodo(id: number, skipConfirm = false) {
+  if (!skipConfirm) {
+    const confirmed = await showConfirm({
+      title: '彻底删除任务',
+      message: '确定要彻底删除该待办事项吗？删除后不可恢复。',
+      type: 'danger'
+    })
+    if (!confirmed) return
+  }
   try {
     await tauriInvoke('delete_todo', { id })
     statusMessage.value = `🗑️ 任务已成功删除`
@@ -502,18 +636,62 @@ onMounted(() => {
   padding: 12px 20px;
   background-color: var(--bg-surface);
   border-bottom: 1px solid var(--border-color);
+  gap: 12px;
+  flex-wrap: nowrap;
+}
+
+.navbar-tabs {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background-color: var(--bg-app);
+  padding: 4px;
+  border-radius: 10px;
+  border: 1px solid var(--border-color);
+  flex-shrink: 1;
+}
+
+.nav-tab-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: 8px;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.nav-tab-btn:hover {
+  color: var(--text-main);
+  background-color: rgba(255, 255, 255, 0.08);
+}
+
+.nav-tab-btn.active {
+  color: var(--primary);
+  background-color: var(--bg-surface);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
 .header-left {
   display: flex;
   align-items: center;
   gap: 10px;
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 
 .app-title {
   font-size: 18px;
   font-weight: 700;
   color: var(--primary);
+  white-space: nowrap;
 }
 
 .sub-badge {
@@ -523,6 +701,7 @@ onMounted(() => {
   color: var(--text-muted);
   padding: 2px 8px;
   border-radius: 12px;
+  white-space: nowrap;
 }
 
 .model-badge-btn {
@@ -534,6 +713,7 @@ onMounted(() => {
   font-size: 12px;
   font-weight: 600;
   cursor: pointer;
+  white-space: nowrap;
   transition: all 0.2s;
 }
 
@@ -545,7 +725,56 @@ onMounted(() => {
 .header-right {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 12px;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+/* Responsive Header Styles */
+@media (max-width: 1024px) {
+  .header {
+    padding: 10px 14px;
+    gap: 8px;
+  }
+
+  .sub-badge {
+    display: none;
+  }
+
+  .nav-tab-btn {
+    padding: 5px 10px;
+    font-size: 12px;
+  }
+}
+
+@media (max-width: 820px) {
+  .nav-tab-btn {
+    padding: 5px 8px;
+    gap: 4px;
+  }
+
+  .header-right {
+    gap: 8px;
+  }
+}
+
+@media (max-width: 680px) {
+  .nav-tab-btn span {
+    display: none;
+  }
+
+  .nav-tab-btn {
+    padding: 6px 10px;
+  }
+
+  .app-title {
+    font-size: 15px;
+  }
+
+  .header-right .btn-primary {
+    padding: 6px 10px;
+    font-size: 12px;
+  }
 }
 
 .theme-select-group {
@@ -816,5 +1045,70 @@ onMounted(() => {
   justify-content: flex-end;
   gap: 10px;
   margin-top: 20px;
+}
+
+/* User Dropdown Menu */
+.user-dropdown {
+  position: relative;
+  display: inline-block;
+}
+
+.user-avatar-btn {
+  background-color: var(--bg-app);
+  border: 1px solid var(--border-color);
+  color: var(--text-main);
+  border-radius: 16px;
+  padding: 5px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.user-avatar-btn:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.dropdown-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  min-width: 130px;
+  display: none;
+  flex-direction: column;
+  padding: 4px;
+  z-index: 1000;
+}
+
+.user-dropdown:hover .dropdown-menu {
+  display: flex;
+}
+
+.dropdown-item {
+  padding: 8px 12px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-main);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.dropdown-item:hover {
+  background-color: var(--bg-card-hover);
+  color: var(--primary);
+}
+
+.dropdown-item.danger {
+  color: #E53E3E;
+}
+
+.dropdown-item.danger:hover {
+  background-color: rgba(229, 62, 62, 0.1);
 }
 </style>

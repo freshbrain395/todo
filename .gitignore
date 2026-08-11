@@ -32,3 +32,5 @@ agent_config.json
 # IDE
 .vscode/
 .idea/
+
+scratch/

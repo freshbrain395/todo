@@ -1,32 +1,44 @@
-# Todo Agent
+# Todo Agent (Tauri 2.0 + Vue 3 + Rust)
 
-这是一个基于 Python 的 TODO 智能体项目。
+这是一个基于 Rust (Tauri 2.0) 与 Vue 3 + TypeScript 开发的现代化 TODO 智能体桌面应用。
 
-## 开发与管理
+## 架构说明
 
-本项目使用 [uv](https://github.com/astral-sh/uv) 进行项目和依赖管理。
+- **前端 UI**：Vue 3 + Vite + TypeScript + Lucide Icons
+- **后端 / 原生逻辑**：Rust (Tauri 2.0)
+- **数据持久化**：SQLite 数据库
+- **智能体引擎**：基于 Rust 实现的多 LLM 意图解析与工具调用
 
-### 安装依赖
+## 开发与运行
+
+本项目使用 [pnpm](https://pnpm.io/) 进行 JavaScript/TypeScript 依赖管理。
+
+### 1. 安装前端依赖
 
 ```bash
-uv pip install -r requirements.txt
+pnpm install
 ```
 
-或者使用 uv 虚拟环境：
+### 2. 运行前端开发服务器 (Web 预览)
 
 ```bash
-uv venv
-source .venv/Scripts/activate  # Windows (CMD/PowerShell 使用对应的激活脚本)
+pnpm run dev
 ```
 
-### 运行项目
+### 3. 构建前端产物
 
-- **运行 Rich 命令行版 (CLI)**：
-  ```bash
-  uv run main.py
-  ```
+```bash
+pnpm run build
+```
 
-- **运行 PyQt6 现代化图形界面 (GUI)**：
-  ```bash
-  uv run main_gui.py
-  ```
+### 4. 运行 Tauri 桌面客户端 (开发模式)
+
+```bash
+pnpm run tauri dev
+```
+
+### 5. 构建 Tauri 桌面安装包 (Release)
+
+```bash
+pnpm run tauri build
+```

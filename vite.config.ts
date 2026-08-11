@@ -10,11 +10,22 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src')
     }
   },
-  // Vite options tailored for Tauri development
+  // @ts-ignore
+  test: {
+    environment: 'happy-dom',
+    globals: true
+  },
+  // Vite options tailored for Tauri development & HMR
   clearScreen: false,
   server: {
     port: 1420,
     strictPort: true,
+    host: true,
+    hmr: {
+      protocol: 'ws',
+      host: 'localhost',
+      port: 1420
+    },
     watch: {
       ignored: ['**/src-tauri/**']
     }

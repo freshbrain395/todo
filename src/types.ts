@@ -10,7 +10,7 @@ export interface Todo {
 }
 
 export interface LlmConfig {
-  provider: 'siliconflow' | 'ollama';
+  provider: string;
   base_url: string;
   api_key: string;
   model: string;
@@ -25,4 +25,12 @@ export interface AiActionResult {
   data: any;
   message: string;
   should_refresh: boolean;
+}
+
+export interface ChatMessage {
+  id: string;
+  sender: 'user' | 'ai' | 'system';
+  text: string;
+  timestamp: string;
+  actionResult?: AiActionResult;
 }

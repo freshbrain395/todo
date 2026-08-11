@@ -38,7 +38,7 @@ pub async fn parse_intent_and_execute(
     db: &super::db::DbState,
 ) -> Result<AiActionResult, String> {
     let client = Client::builder()
-        .timeout(Duration::from_secs(30))
+        .timeout(Duration::from_secs(15))
         .build()
         .map_err(|e| e.to_string())?;
 
@@ -53,7 +53,7 @@ JSON 格式标准：
     "remind_at": "YYYY-MM-DD HH:MM:SS" (可选),
     "id": 123 (如果 action 是 complete 或 delete)
   },
-  "raw_response": "给用户的回复文本"
+  "raw_response": "给用户的亲切回复文本"
 }"#;
 
     let url = if config.provider == "siliconflow" {
@@ -82,49 +82,51 @@ JSON 格式标准：
         })
     };
 
+    // 尝试请求大模型，若失败或未配置 Key 则自动使用本地智能降级解析引擎
     let mut request = client.post(&url);
     if config.provider == "siliconflow" && !config.api_key.is_empty() {
         request = request.header("Authorization", format!("Bearer {}", config.api_key));
     }
 
-    let response = request
-        .json(&body)
-        .send()
-        .await
-        .map_err(|e| format!("请求 AI 接口失败: {}", e))?;
-
-    let res_json: Value = response
-        .json()
-        .await
-        .map_err(|e| format!("解析 AI 响应 JSON 失败: {}", e))?;
-
-    let content_text = if config.provider == "siliconflow" {
-        res_json["choices"][0]["message"]["content"]
-            .as_str()
-            .unwrap_or("")
-            .to_string()
-    } else {
-        res_json["response"].as_str().unwrap_or("").to_string()
+    let parsed_result = match request.json(&body).send().await {
+        Ok(response) => {
+            if response.status().is_success() {
+                match response.json::<Value>().await {
+                    Ok(res_json) => {
+                        let content_text = if config.provider == "siliconflow" {
+                            res_json["choices"][0]["message"]["content"]
+                                .as_str()
+                                .unwrap_or("")
+                                .to_string()
+                        } else {
+                            res_json["response"].as_str().unwrap_or("").to_string()
+                        };
+                        let clean_json = content_text
+                            .trim()
+                            .trim_start_matches("```json")
+                            .trim_start_matches("```")
+                            .trim_end_matches("```")
+                            .trim();
+                        serde_json::from_str::<Value>(clean_json).unwrap_or_else(|_| {
+                            json!({
+                                "action": "chat",
+                                "data": {},
+                                "raw_response": content_text
+                            })
+                        })
+                    }
+                    Err(e) => fallback_intent_parse(user_input, &format!("解析响应失败: {}", e)),
+                }
+            } else {
+                let err_text = response.text().await.unwrap_or_default();
+                fallback_intent_parse(user_input, &format!("API 返回错误: {}", err_text))
+            }
+        }
+        Err(e) => fallback_intent_parse(user_input, &format!("网络请求失败或未配置Key: {}", e)),
     };
 
-    // Clean JSON content if wrapped in markdown fenced code blocks
-    let clean_json = content_text
-        .trim()
-        .trim_start_matches("```json")
-        .trim_start_matches("```")
-        .trim_end_matches("```")
-        .trim();
-
-    let parsed: Value = serde_json::from_str(clean_json).unwrap_or_else(|_| {
-        json!({
-            "action": "chat",
-            "data": {},
-            "raw_response": content_text
-        })
-    });
-
-    let action = parsed["action"].as_str().unwrap_or("chat");
-    let data = &parsed["data"];
+    let action = parsed_result["action"].as_str().unwrap_or("chat");
+    let data = &parsed_result["data"];
 
     match action {
         "add" => {
@@ -137,10 +139,14 @@ JSON 格式标准：
                 .add_todo(title, priority, category, remind_at)
                 .map_err(|e| format!("写入数据库失败: {}", e))?;
 
+            let reply = parsed_result["raw_response"]
+                .as_str()
+                .unwrap_or("已为您智能创建待办事项！");
+
             Ok(AiActionResult {
                 action: "add".to_string(),
-                data: json!({"id": todo_id, "title": title}),
-                message: format!("✨ 已为您智能创建待办：[{}] (分类: {}, 优先级: {})", title, category, priority),
+                data: json!({"id": todo_id, "title": title, "priority": priority, "category": category}),
+                message: format!("🤖 {} \n\n✨ 任务详情：[{}] (分类: {}, 优先级: {})", reply, title, category, priority),
                 should_refresh: true,
             })
         }
@@ -151,14 +157,15 @@ JSON 格式标准：
                 Ok(AiActionResult {
                     action: "complete".to_string(),
                     data: json!({"id": id}),
-                    message: format!("✅ 已为您完成待办事项 ID [{}]", id),
+                    message: format!("✅ 已成功标记任务 ID [{}] 为已完成！", id),
                     should_refresh: true,
                 })
             } else {
+                let reply = parsed_result["raw_response"].as_str().unwrap_or("收到指令，请提供具体的任务 ID 或明确说明要完成哪一项。");
                 Ok(AiActionResult {
                     action: "chat".to_string(),
                     data: json!({}),
-                    message: parsed["raw_response"].as_str().unwrap_or("未找到匹配的任务 ID").to_string(),
+                    message: format!("🤖 {}", reply),
                     should_refresh: false,
                 })
             }
@@ -170,28 +177,65 @@ JSON 格式标准：
                 Ok(AiActionResult {
                     action: "delete".to_string(),
                     data: json!({"id": id}),
-                    message: format!("🗑️ 已为您删除待办事项 ID [{}]", id),
+                    message: format!("🗑️ 已成功彻底删除任务 ID [{}]", id),
                     should_refresh: true,
                 })
             } else {
+                let reply = parsed_result["raw_response"].as_str().unwrap_or("未能删除，请说明要删除的具体任务 ID。");
                 Ok(AiActionResult {
                     action: "chat".to_string(),
                     data: json!({}),
-                    message: parsed["raw_response"].as_str().unwrap_or("删除失败，未提供合法任务 ID").to_string(),
+                    message: format!("🤖 {}", reply),
                     should_refresh: false,
                 })
             }
         }
         _ => {
-            let reply = parsed["raw_response"]
+            let reply = parsed_result["raw_response"]
                 .as_str()
-                .unwrap_or("收到指令，但未能识别出明确的待办新增/修改操作。");
+                .unwrap_or("收到！我是您的 Todo Agent 助手，随时为您服务。");
             Ok(AiActionResult {
                 action: "chat".to_string(),
                 data: json!({}),
-                message: format!("🤖 AI 回复：{}", reply),
+                message: format!("🤖 {}", reply),
                 should_refresh: false,
             })
         }
+    }
+}
+
+// 本地智能降级解析函数
+fn fallback_intent_parse(user_input: &str, _reason: &str) -> Value {
+    let lower = user_input.to_lowercase();
+    if lower.contains("创建") || lower.contains("新建") || lower.contains("添加") || lower.contains("提醒") || lower.contains("开会") || lower.contains("待办") {
+        let clean_title = user_input
+            .replace("帮我", "")
+            .replace("新建", "")
+            .replace("创建", "")
+            .replace("添加", "")
+            .replace("一个", "")
+            .replace("待办", "")
+            .replace("任务", "")
+            .trim()
+            .to_string();
+        let title = if clean_title.is_empty() { "新待办事项".to_string() } else { clean_title };
+        let priority = if lower.contains("紧急") || lower.contains("高") || lower.contains("重要") { "high" } else { "medium" };
+        let category = if lower.contains("学习") { "学习" } else if lower.contains("生活") { "生活" } else { "工作" };
+
+        json!({
+            "action": "add",
+            "data": {
+                "title": title,
+                "priority": priority,
+                "category": category
+            },
+            "raw_response": "已识别到您的待办指令，已自动完成分析与录入！"
+        })
+    } else {
+        json!({
+            "action": "chat",
+            "data": {},
+            "raw_response": format!("您好！我收到了您的消息：\"{}\"。我可以帮您创建、管理和记录待办事项，随时告诉我您的任务需求吧！", user_input)
+        })
     }
 }

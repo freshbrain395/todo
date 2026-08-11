@@ -44,6 +44,14 @@ impl DbState {
             )",
             [],
         )?;
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS app_config (
+                key TEXT PRIMARY KEY,
+                value TEXT NOT NULL,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )",
+            [],
+        )?;
         Ok(())
     }
 
@@ -122,5 +130,54 @@ impl DbState {
         let conn = self.conn.lock().unwrap();
         let count = conn.execute("DELETE FROM todos WHERE id = ?1", params![id])?;
         Ok(count > 0)
+    }
+
+    pub fn get_config(&self, key: &str) -> Result<Option<String>> {
+        let conn = self.conn.lock().unwrap();
+        let mut stmt = conn.prepare("SELECT value FROM app_config WHERE key = ?1")?;
+        let mut rows = stmt.query(params![key])?;
+        if let Some(row) = rows.next()? {
+            let val: String = row.get(0)?;
+            Ok(Some(val))
+        } else {
+            Ok(None)
+        }
+    }
+
+    pub fn save_config(&self, key: &str, value: &str) -> Result<()> {
+        let conn = self.conn.lock().unwrap();
+        conn.execute(
+            "INSERT INTO app_config (key, value) VALUES (?1, ?2)
+             ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = CURRENT_TIMESTAMP",
+            params![key, value],
+        )?;
+        Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_sqlite_crud_operations() {
+        let db_state = DbState::new(PathBuf::from(":memory:")).expect("Failed to create in-memory db");
+        
+        // 1. Add
+        let id = db_state.add_todo("测试物理删除", "high", "工作", None).expect("Add failed");
+        assert!(id > 0);
+
+        // 2. Get
+        let todos = db_state.get_todos("all", "").expect("Get failed");
+        assert_eq!(todos.len(), 1);
+        assert_eq!(todos[0].id, id);
+
+        // 3. Delete
+        let deleted = db_state.delete_todo(id).expect("Delete failed");
+        assert!(deleted);
+
+        // 4. Verify Deleted
+        let todos_after = db_state.get_todos("all", "").expect("Get failed");
+        assert_eq!(todos_after.len(), 0);
     }
 }

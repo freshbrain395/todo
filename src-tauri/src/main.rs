@@ -19,6 +19,7 @@ fn main() {
 
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .manage(db_state)
         .invoke_handler(tauri::generate_handler![
             commands::get_todos,
@@ -26,7 +27,10 @@ fn main() {
             commands::update_todo_status,
             commands::update_todo,
             commands::delete_todo,
-            commands::execute_ai_command
+            commands::fetch_models,
+            commands::execute_ai_command,
+            commands::get_clock_config,
+            commands::save_clock_config
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
