@@ -218,20 +218,7 @@
       </template>
     </main>
 
-    <!-- 3. AI Command Input Bar -->
-    <div class="ai-input-bar">
-      <input
-        type="text"
-        v-model="aiInput"
-        placeholder="✨ 输入 AI 智能体指令（例：'帮我安排明天上午10点和团队开会'）..."
-        @keyup.enter="sendAiCommand"
-        :disabled="aiProcessing"
-      />
-      <button class="btn btn-ai" @click="sendAiCommand" :disabled="aiProcessing || !aiInput.trim()">
-        <span v-if="aiProcessing" class="spinner-sm"></span>
-        <span v-else>🤖 AI 执行</span>
-      </button>
-    </div>
+
 
     <!-- 4. Status Bar -->
     <footer class="status-bar">
