@@ -4,7 +4,6 @@
     <header class="header">
       <div class="header-left">
         <h1 class="app-title">📝 Todo Agent</h1>
-        <span class="sub-badge">Rust + Vue 3</span>
       </div>
 
       <!-- Center Navbar Navigation Tabs -->
@@ -20,11 +19,11 @@
 
         <button
           class="nav-tab-btn"
-          :class="{ active: currentTab === 'ai' }"
-          @click="currentTab = 'ai'"
-          title="AI 智能体"
+          :class="{ active: currentTab === 'ai-chat' }"
+          @click="currentTab = 'ai-chat'"
+          title="AI 聊天"
         >
-          <Bot :size="15" /> <span>AI 智能体</span>
+          <MessageSquare :size="15" /> <span>AI 聊天</span>
         </button>
 
         <button
@@ -65,12 +64,13 @@
       </nav>
 
       <div class="header-right">
-        <button class="model-badge-btn" @click="showModelModal = true" title="点击配置大语言模型">
-          🧠 {{ llmConfig.model }} ⚙️
-        </button>
-
-        <button v-if="currentTab === 'todos'" class="btn btn-primary" @click="openAddModal">
-          + 新建任务
+        <button
+          class="nav-tab-btn"
+          :class="{ active: showAiSidebar }"
+          @click="showAiSidebar = !showAiSidebar"
+          title="打开/收起 AI 聊天侧边栏"
+        >
+          <MessageSquare :size="15" /> <span>AI 助手</span>
         </button>
       </div>
     </header>
@@ -106,13 +106,19 @@
             </button>
           </div>
 
-          <div class="search-box">
-            <input
-              type="text"
-              v-model="searchKeyword"
-              placeholder="🔍 搜索待办事项..."
-              @input="loadTodos"
-            />
+          <div class="toolbar-right">
+            <div class="search-box">
+              <input
+                type="text"
+                v-model="searchKeyword"
+                placeholder="🔍 搜索待办事项..."
+                @input="loadTodos"
+              />
+            </div>
+
+            <button class="btn btn-primary" @click="openAddModal">
+              + 新建任务
+            </button>
           </div>
         </div>
 
@@ -172,14 +178,17 @@
         </div>
       </template>
 
-      <!-- Tab 2: AI Agent Workspace View -->
-      <template v-else-if="currentTab === 'ai'">
-        <AiAssistantPage
-          :config="llmConfig"
-          :is-processing="aiProcessing"
-          @send="handleAiPageSend"
-          @update:config="onLlmConfigUpdate"
-        />
+      <!-- Tab 3: AI Chat View -->
+      <template v-else-if="currentTab === 'ai-chat'">
+        <div class="ai-chat-page-wrapper">
+          <AiChatSidebar
+            :config="llmConfig"
+            :is-processing="aiProcessing"
+            :hide-toggle-btn="true"
+            @send="handleAiPageSend"
+            @update:config="onLlmConfigUpdate"
+          />
+        </div>
       </template>
 
       <!-- Tab 3: Calendar View -->
@@ -228,6 +237,21 @@
     <footer class="status-bar">
       <span class="status-text">{{ statusMessage }}</span>
     </footer>
+
+    <!-- Floating AI Chat Sidebar Drawer Overlay -->
+    <div v-if="showAiSidebar && currentTab !== 'ai-chat'" class="ai-drawer-overlay">
+      <div class="drawer-backdrop" @click="showAiSidebar = false"></div>
+      <div class="drawer-content">
+        <AiChatSidebar
+          :config="llmConfig"
+          :is-processing="aiProcessing"
+          :hide-toggle-btn="true"
+          @send="handleAiPageSend"
+          @update:config="onLlmConfigUpdate"
+          @close="showAiSidebar = false"
+        />
+      </div>
+    </div>
 
     <!-- Modals -->
     <!-- Add / Edit Modal -->
@@ -327,18 +351,19 @@
 
 <script setup lang="ts">
 import { ref, onMounted, watch } from 'vue'
-import { CheckSquare, Bot, Calendar, Clock, Flame, Settings } from 'lucide-vue-next'
+import { CheckSquare, Calendar, Clock, Flame, Settings, MessageSquare } from 'lucide-vue-next'
 import type { Todo, LlmConfig, FilterType, ThemeType } from './types'
 import { showConfirm } from './utils/confirmState'
 import LocalClockPage from './components/productivity/LocalClockPage.vue'
 import CalendarView from './components/productivity/CalendarView.vue'
 import ClockPage from './components/productivity/ClockPage.vue'
 import SettingsPage from './components/common/SettingsPage.vue'
-import AiAssistantPage from './components/ai/AiAssistantPage.vue'
+import AiChatSidebar from './components/ai/AiChatSidebar.vue'
 
 // Navigation Tab State
-type TabType = 'todos' | 'ai' | 'calendar' | 'local-clock' | 'clock' | 'settings'
+type TabType = 'todos' | 'ai-chat' | 'calendar' | 'local-clock' | 'clock' | 'settings'
 const currentTab = ref<TabType>('todos')
+const showAiSidebar = ref(false)
 
 function handleAiPageSend(text: string) {
   aiInput.value = text
@@ -804,6 +829,12 @@ onMounted(() => {
   margin-bottom: 16px;
 }
 
+.toolbar-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
 .filter-group {
   display: flex;
   align-items: center;
@@ -1110,5 +1141,69 @@ onMounted(() => {
 
 .dropdown-item.danger:hover {
   background-color: rgba(229, 62, 62, 0.1);
+}
+
+/* AI Chat Page & Drawer Layout */
+.ai-chat-page-wrapper {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: stretch;
+  background-color: var(--bg-surface);
+  overflow: hidden;
+}
+
+.ai-chat-page-wrapper :deep(.ai-sidebar) {
+  width: 100%;
+  max-width: 900px;
+  border-left: none;
+  box-shadow: 0 0 16px rgba(0, 0, 0, 0.05);
+}
+
+.ai-drawer-overlay {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 100;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.drawer-backdrop {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  background-color: rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(2px);
+}
+
+.drawer-content {
+  position: relative;
+  width: 420px;
+  max-width: 90vw;
+  height: 100%;
+  z-index: 101;
+  box-shadow: -4px 0 20px rgba(0, 0, 0, 0.18);
+  background-color: var(--bg-surface);
+  animation: drawerSlideIn 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes drawerSlideIn {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+.drawer-content :deep(.ai-sidebar) {
+  width: 100% !important;
+  border-left: none;
 }
 </style>

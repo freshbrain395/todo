@@ -2,6 +2,7 @@
   <div class="ai-sidebar" :class="{ collapsed: isCollapsed }">
     <!-- Collapsed Toggle Floating Tab -->
     <button
+      v-if="!hideToggleBtn"
       class="sidebar-toggle-btn"
       @click="isCollapsed = !isCollapsed"
       :title="isCollapsed ? '展开 AI 智能助手侧边栏' : '收起侧边栏'"
@@ -26,7 +27,7 @@
           <button class="icon-btn-sm" @click="clearMessages" title="清空对话历史">
             <Trash2 :size="14" />
           </button>
-          <button class="icon-btn-sm" @click="isCollapsed = true" title="收起侧边栏">
+          <button class="icon-btn-sm" @click="handleClose" title="收起/关闭侧边栏">
             <X :size="14" />
           </button>
         </div>
@@ -103,7 +104,7 @@
       </div>
 
       <!-- 2. Chat Messages Area (Default Chat Mode) -->
-      <div v-else ref="chatContainerRef" class="chat-messages-container">
+      <div v-else-if="currentSidebarMode === 'chat'" ref="chatContainerRef" class="chat-messages-container">
         <!-- Welcome Banner if empty -->
         <div v-if="messages.length === 0" class="chat-welcome-card">
           <div class="welcome-icon"><Sparkles :size="28" /></div>
@@ -159,36 +160,6 @@
           </div>
         </div>
 
-        <!-- 4. Settings Panel -->
-        <div v-else-if="currentSidebarMode === 'settings'" class="sidebar-settings-panel animate-fade-in">
-          <div class="sidebar-setting-item">
-            <label class="form-label">服务商 (Provider)</label>
-            <select v-model="localConfig.provider" class="select-input" @change="onProviderChange">
-              <option value="siliconflow">SiliconFlow (云端)</option>
-              <option value="ollama">Ollama (本地)</option>
-            </select>
-          </div>
-
-          <div class="sidebar-setting-item">
-            <label class="form-label">接口地址 (Base URL)</label>
-            <input type="text" v-model="localConfig.base_url" class="text-input" />
-          </div>
-
-          <div class="sidebar-setting-item">
-            <label class="form-label">API Key</label>
-            <input type="password" v-model="localConfig.api_key" class="text-input" placeholder="sk-..." :disabled="localConfig.provider === 'ollama'" />
-          </div>
-
-          <div class="sidebar-setting-item">
-            <label class="form-label">模型名称 (Model)</label>
-            <input type="text" v-model="localConfig.model" class="text-input" />
-          </div>
-
-          <button class="btn btn-primary btn-sm btn-save-sidebar" @click="saveLlmSettings">
-            <Check :size="13" /> 保存模型配置
-          </button>
-        </div>
-
         <!-- Thinking Animation -->
         <div v-if="isProcessing" class="chat-bubble-wrapper sender-ai animate-fade-in">
           <div class="bubble-avatar"><Bot :size="14" /></div>
@@ -200,6 +171,36 @@
             </div>
           </div>
         </div>
+      </div>
+
+      <!-- 4. Settings Panel -->
+      <div v-else-if="currentSidebarMode === 'settings'" class="sidebar-settings-panel animate-fade-in">
+        <div class="sidebar-setting-item">
+          <label class="form-label">服务商 (Provider)</label>
+          <select v-model="localConfig.provider" class="select-input" @change="onProviderChange">
+            <option value="siliconflow">SiliconFlow (云端)</option>
+            <option value="ollama">Ollama (本地)</option>
+          </select>
+        </div>
+
+        <div class="sidebar-setting-item">
+          <label class="form-label">接口地址 (Base URL)</label>
+          <input type="text" v-model="localConfig.base_url" class="text-input" />
+        </div>
+
+        <div class="sidebar-setting-item">
+          <label class="form-label">API Key</label>
+          <input type="password" v-model="localConfig.api_key" class="text-input" placeholder="sk-..." :disabled="localConfig.provider === 'ollama'" />
+        </div>
+
+        <div class="sidebar-setting-item">
+          <label class="form-label">模型名称 (Model)</label>
+          <input type="text" v-model="localConfig.model" class="text-input" />
+        </div>
+
+        <button class="btn btn-primary btn-sm btn-save-sidebar" @click="saveLlmSettings">
+          <Check :size="13" /> 保存模型配置
+        </button>
       </div>
 
       <!-- 3. Bottom Input Box -->
@@ -238,15 +239,27 @@ import {
 import type { ChatMessage, LlmConfig, AiActionResult } from '../../types'
 import { showConfirm } from '../../utils/confirmState'
 
-const props = defineProps<{
-  config: LlmConfig
-  isProcessing: boolean
-}>()
+const props = withDefaults(
+  defineProps<{
+    config: LlmConfig
+    isProcessing: boolean
+    hideToggleBtn?: boolean
+  }>(),
+  {
+    hideToggleBtn: false
+  }
+)
 
 const emit = defineEmits<{
   (e: 'send', text: string): void
   (e: 'update:config', config: LlmConfig): void
+  (e: 'close'): void
 }>()
+
+function handleClose() {
+  isCollapsed.value = true
+  emit('close')
+}
 
 type SidebarMode = 'chat' | 'prompts' | 'agent' | 'settings'
 const currentSidebarMode = ref<SidebarMode>('chat')
@@ -443,7 +456,7 @@ defineExpose({
   display: flex;
   flex-direction: column;
   height: 100%;
-  width: 360px;
+  width: 100%;
   overflow: hidden;
 }
 
