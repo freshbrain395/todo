@@ -58,53 +58,38 @@
         </div>
 
         <div class="ai-settings-sub-content">
-          <!-- Section 1: LLM Parameters (Cards Layout) -->
-          <LlmSettingsTab
-            v-if="aiSubTab === 'llm'"
+          <AiSettingsView
+            :active-tab="aiSubTab"
             :saved-providers="savedProviders"
             :local-config="llmConfig"
             :fetched-models="fetchedModels"
             :is-fetching-models="isFetchingModels"
             :fetch-model-error="fetchModelError"
+            :prompt-library="promptLibrary"
+            v-model:active-prompt-id="activePromptId"
+            :editing-prompt-id="editingPromptId"
+            :edit-form="editForm"
+            :agent-tools="agentTools"
+            :skills-library="skillsLibrary"
+            :editing-skill-id="editingSkillId"
+            :skill-form="skillForm"
             @update-provider="onProviderEdited"
             @select-provider="selectProvider"
             @delete-provider="deleteProvider"
             @fetch-models="fetchModels"
             @add-custom-provider="addCustomProvider"
-          />
-
-          <!-- Section 2: Prompts Configuration & Selection -->
-          <PromptsSettingsTab
-            v-if="aiSubTab === 'prompts'"
-            :prompt-library="promptLibrary"
-            v-model:active-prompt-id="activePromptId"
-            :editing-prompt-id="editingPromptId"
-            :edit-form="editForm"
+            @update-thinking="val => llmConfig.enable_thinking = val"
             @add-new-prompt="addNewPrompt"
             @start-edit-prompt="startEditPrompt"
             @save-edit-prompt="saveEditPrompt"
             @cancel-edit-prompt="cancelEditPrompt"
             @delete-prompt="deletePrompt"
-          />
-
-          <!-- Section 3: Agent Tools Configuration & Selection -->
-          <ToolsSettingsTab
-            v-if="aiSubTab === 'tools'"
-            :agent-tools="agentTools"
-            @enable-all="enableAllTools"
-            @disable-all="disableAllTools"
-            @reset-default="resetToolsDefault"
+            @enable-all-tools="enableAllTools"
+            @disable-all-tools="disableAllTools"
+            @reset-default-tools="resetToolsDefault"
             @save-tools="saveToolsStorage"
-          />
-
-          <!-- Section 4: Skills Configuration & Selection -->
-          <SkillsSettingsTab
-            v-if="aiSubTab === 'skills'"
-            :skills-library="skillsLibrary"
-            :editing-skill-id="editingSkillId"
-            :skill-form="skillForm"
-            @enable-all="enableAllSkills"
-            @disable-all="disableAllSkills"
+            @enable-all-skills="enableAllSkills"
+            @disable-all-skills="disableAllSkills"
             @add-new-skill="addNewSkill"
             @start-edit-skill="startEditSkill"
             @save-edit-skill="saveEditSkill"
@@ -247,10 +232,7 @@ import { soundPlayer, type SoundType } from '../../utils/audio'
 import { showConfirm } from '../../utils/confirmState'
 import UserSwitchModal from './UserSwitchModal.vue'
 import AdminUserManagementModal from './AdminUserManagementModal.vue'
-import LlmSettingsTab from '../ai/settings/LlmSettingsTab.vue'
-import PromptsSettingsTab from '../ai/settings/PromptsSettingsTab.vue'
-import ToolsSettingsTab from '../ai/settings/ToolsSettingsTab.vue'
-import SkillsSettingsTab from '../ai/settings/SkillsSettingsTab.vue'
+import AiSettingsView from '../ai/AiSettingsView.vue'
 
 import {
   getCurrentUserId,

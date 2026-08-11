@@ -220,10 +220,7 @@
 
 
 
-    <!-- 4. Status Bar -->
-    <footer class="status-bar">
-      <span class="status-text">{{ statusMessage }}</span>
-    </footer>
+
 
     <!-- Floating AI Chat Sidebar Drawer Overlay -->
     <div v-if="showAiSidebar && currentTab !== 'ai-chat'" class="ai-drawer-overlay">
@@ -990,13 +987,7 @@ onMounted(() => {
   flex: 1;
 }
 
-.status-bar {
-  padding: 6px 20px;
-  background-color: var(--bg-surface);
-  border-top: 1px solid var(--border-color);
-  font-size: 12px;
-  color: var(--text-muted);
-}
+
 
 /* Modals */
 .modal-backdrop {

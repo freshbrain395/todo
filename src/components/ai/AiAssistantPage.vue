@@ -166,7 +166,8 @@
 
       <!-- Mode 2: Prompts -->
       <div v-else-if="currentMode === 'prompts'" class="mode-workspace-padded">
-        <PromptsSettingsTab
+        <AiSettingsView
+          active-tab="prompts"
           :prompt-library="promptLibrary"
           v-model:active-prompt-id="activePromptId"
           :editing-prompt-id="editingPromptId"
@@ -181,23 +182,25 @@
 
       <!-- Mode 3: Agent Tools -->
       <div v-else-if="currentMode === 'agent'" class="mode-workspace-padded">
-        <ToolsSettingsTab
+        <AiSettingsView
+          active-tab="tools"
           :agent-tools="agentTools"
-          @enable-all="enableAllTools"
-          @disable-all="disableAllTools"
-          @reset-default="resetToolsDefault"
+          @enable-all-tools="enableAllTools"
+          @disable-all-tools="disableAllTools"
+          @reset-default-tools="resetToolsDefault"
           @save-tools="saveToolsStorage"
         />
       </div>
 
       <!-- Mode 4: Skills -->
       <div v-else-if="currentMode === 'skills'" class="mode-workspace-padded">
-        <SkillsSettingsTab
+        <AiSettingsView
+          active-tab="skills"
           :skills-library="skillsLibrary"
           :editing-skill-id="editingSkillId"
           :skill-form="skillForm"
-          @enable-all="enableAllSkills"
-          @disable-all="disableAllSkills"
+          @enable-all-skills="enableAllSkills"
+          @disable-all-skills="disableAllSkills"
           @add-new-skill="addNewSkill"
           @start-edit-skill="startEditSkill"
           @save-edit-skill="saveEditSkill"
@@ -209,7 +212,8 @@
 
       <!-- Mode 5: Settings -->
       <div v-else-if="currentMode === 'settings'" class="mode-workspace-padded">
-        <LlmSettingsTab
+        <AiSettingsView
+          active-tab="llm"
           :saved-providers="savedProviders"
           :local-config="localConfig"
           :fetched-models="fetchedModels"
@@ -220,6 +224,7 @@
           @delete-provider="deleteProvider"
           @fetch-models="fetchModels"
           @add-custom-provider="addCustomProvider"
+          @update-thinking="val => localConfig.enable_thinking = val"
         />
       </div>
     </main>
@@ -235,10 +240,7 @@ import {
 import NavbarClock from '../widgets/NavbarClock.vue'
 import type { ChatMessage, LlmConfig, AiActionResult } from '../../types'
 import { showConfirm } from '../../utils/confirmState'
-import LlmSettingsTab from './settings/LlmSettingsTab.vue'
-import PromptsSettingsTab from './settings/PromptsSettingsTab.vue'
-import ToolsSettingsTab from './settings/ToolsSettingsTab.vue'
-import SkillsSettingsTab from './settings/SkillsSettingsTab.vue'
+import AiSettingsView from './AiSettingsView.vue'
 
 const props = defineProps<{
   config: LlmConfig
