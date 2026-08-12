@@ -64,6 +64,37 @@
       </nav>
 
       <div class="header-right">
+        <!-- User Authentication & Local Mode Dropdown -->
+        <div v-if="currentUser" class="user-dropdown-container">
+          <button
+            class="user-badge-btn"
+            @click="toggleUserMenu"
+            title="用户账号与下拉菜单"
+          >
+            <span class="user-avatar-icon">👤</span>
+            <span class="user-name-label">{{ currentUser.username }}</span>
+            <ChevronDown :size="12" class="chevron-icon" :class="{ open: showUserMenu }" />
+          </button>
+
+          <!-- User Dropdown Menu / Popup -->
+          <div v-if="showUserMenu" class="user-dropdown-menu animate-fade-in" @click.stop>
+            <div class="dropdown-header">
+              <div class="dropdown-user-name">👤 {{ currentUser.username }}</div>
+              <div class="dropdown-user-id">账号 ID: {{ currentUser.id }}</div>
+            </div>
+            <div class="dropdown-divider"></div>
+            <button class="dropdown-item" @click="currentTab = 'settings'; closeUserMenu()">
+              <Settings :size="14" /> <span>系统设置</span>
+            </button>
+            <button class="dropdown-item danger" @click="handleLogout(); closeUserMenu()">
+              <LogOut :size="14" /> <span>退出登录</span>
+            </button>
+          </div>
+        </div>
+        <button v-else class="login-trigger-btn" @click="showAuthModal = true" title="登录 / 注册账号">
+          <LogIn :size="15" />
+        </button>
+
         <button
           class="nav-tab-btn"
           :class="{ active: showAiSidebar }"
@@ -74,6 +105,7 @@
         </button>
       </div>
     </header>
+
 
     <!-- 2. Main Content Area -->
     <main class="main-content">
@@ -214,6 +246,8 @@
         <SettingsPage
           v-model:theme="theme"
           v-model:config="llmConfig"
+          @logout="handleLogout"
+          @userChanged="loadTodos"
         />
       </template>
     </main>
@@ -330,19 +364,84 @@
         </div>
       </div>
     </div>
+
+    <!-- Login / Registration / Local Mode Modal -->
+    <LoginPage
+      v-if="showAuthModal"
+      @login-success="onLoginSuccess"
+      @use-local-mode="onUseLocalMode"
+      @close="showAuthModal = false"
+    />
   </div>
 </template>
 
+
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue'
-import { CheckSquare, Calendar, Clock, Flame, Settings, MessageSquare } from 'lucide-vue-next'
-import type { Todo, LlmConfig, FilterType, ThemeType } from './types'
+import { ref, onMounted, onUnmounted, watch } from 'vue'
+import { CheckSquare, Calendar, Clock, Flame, Settings, MessageSquare, LogIn, LogOut, ChevronDown } from 'lucide-vue-next'
+import type { Todo, LlmConfig, FilterType, ThemeType, User } from './types'
 import { showConfirm } from './utils/confirmState'
 import LocalClockPage from './components/productivity/LocalClockPage.vue'
 import CalendarView from './components/productivity/CalendarView.vue'
 import ClockPage from './components/productivity/ClockPage.vue'
 import SettingsPage from './components/common/SettingsPage.vue'
 import AiChatSidebar from './components/ai/AiChatSidebar.vue'
+import LoginPage from './components/common/LoginPage.vue'
+
+// User Auth & Local Mode State
+const currentUser = ref<User | null>(
+  localStorage.getItem('todo_current_user')
+    ? JSON.parse(localStorage.getItem('todo_current_user')!)
+    : null
+)
+const showAuthModal = ref(false)
+
+// User Dropdown Menu State & Event Listeners
+const showUserMenu = ref(false)
+
+function toggleUserMenu(e: Event) {
+  e.stopPropagation()
+  showUserMenu.value = !showUserMenu.value
+}
+
+function closeUserMenu() {
+  showUserMenu.value = false
+}
+
+onMounted(() => {
+  window.addEventListener('click', closeUserMenu)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('click', closeUserMenu)
+})
+
+function onLoginSuccess(user: User) {
+  currentUser.value = user
+  localStorage.setItem('todo_current_user', JSON.stringify(user))
+  localStorage.removeItem('todo_guest_mode')
+  showAuthModal.value = false
+  statusMessage.value = `🔑 已登录为 [${user.username}] (ID: ${user.id})`
+  loadTodos()
+}
+
+function onUseLocalMode() {
+  currentUser.value = null
+  localStorage.removeItem('todo_current_user')
+  localStorage.setItem('todo_guest_mode', 'true')
+  showAuthModal.value = false
+  statusMessage.value = `🏠 已切换为【游客模式】（离线本地可用）`
+  loadTodos()
+}
+
+function handleLogout() {
+  currentUser.value = null
+  localStorage.removeItem('todo_current_user')
+  localStorage.removeItem('todo_guest_mode')
+  showAuthModal.value = true
+  statusMessage.value = `↩️ 已退出登录`
+  loadTodos()
+}
 
 // Navigation Tab State
 type TabType = 'todos' | 'ai-chat' | 'calendar' | 'local-clock' | 'clock' | 'settings'
@@ -364,7 +463,7 @@ const theme = ref<ThemeType>((localStorage.getItem('todo_theme') as ThemeType) |
 watch(theme, (newVal) => {
   localStorage.setItem('todo_theme', newVal)
   document.documentElement.setAttribute('data-theme', newVal)
-})
+}, { immediate: true })
 
 // LLM Config State
 const llmConfig = ref<LlmConfig>({
@@ -406,21 +505,22 @@ async function tauriInvoke<T>(cmd: string, args: Record<string, any> = {}): Prom
     return await invoke<T>(cmd, args)
   } catch (e) {
     console.warn(`[Tauri Web Fallback] ${cmd}`, args, e)
-    // Web fallback mock implementation
+    // Web fallback mock implementation with user_id isolation
+    const storageKey = `web_todos_${args.user_id || 0}`
     if (cmd === 'get_todos') {
-      if (!localStorage.getItem('web_todos')) {
+      if (!localStorage.getItem(storageKey)) {
         const defaultData: Todo[] = [
-          { id: 1, title: '完成项目整体架构设计', category: '工作', priority: 'high', completed: true, created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
-          { id: 2, title: '完成 Tauri Rust SQLite 数据库集成', category: '工作', priority: 'high', completed: true, created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
-          { id: 3, title: '集成大语言模型配置与语义解析', category: 'AI', priority: 'medium', completed: false, created_at: new Date().toISOString(), updated_at: new Date().toISOString() }
+          { id: 1, title: '完成项目整体架构设计', category: '工作', priority: 'high', completed: true, created_at: new Date().toISOString(), updated_at: new Date().toISOString(), user_id: args.user_id || 0 },
+          { id: 2, title: '完成 Tauri Rust SQLite 数据库集成', category: '工作', priority: 'high', completed: true, created_at: new Date().toISOString(), updated_at: new Date().toISOString(), user_id: args.user_id || 0 },
+          { id: 3, title: '集成大语言模型配置与语义解析', category: 'AI', priority: 'medium', completed: false, created_at: new Date().toISOString(), updated_at: new Date().toISOString(), user_id: args.user_id || 0 }
         ]
-        localStorage.setItem('web_todos', JSON.stringify(defaultData))
+        localStorage.setItem(storageKey, JSON.stringify(defaultData))
       }
-      const stored = JSON.parse(localStorage.getItem('web_todos') || '[]') as Todo[]
+      const stored = JSON.parse(localStorage.getItem(storageKey) || '[]') as Todo[]
       return stored as T
     }
     if (cmd === 'add_todo') {
-      const stored = JSON.parse(localStorage.getItem('web_todos') || '[]') as Todo[]
+      const stored = JSON.parse(localStorage.getItem(storageKey) || '[]') as Todo[]
       const newId = Date.now()
       stored.push({
         id: newId,
@@ -430,20 +530,21 @@ async function tauriInvoke<T>(cmd: string, args: Record<string, any> = {}): Prom
         completed: false,
         remind_at: args.remind_at,
         created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
+        updated_at: new Date().toISOString(),
+        user_id: args.user_id || 0
       })
-      localStorage.setItem('web_todos', JSON.stringify(stored))
+      localStorage.setItem(storageKey, JSON.stringify(stored))
       return newId as T
     }
     if (cmd === 'update_todo_status') {
-      const stored = JSON.parse(localStorage.getItem('web_todos') || '[]') as Todo[]
+      const stored = JSON.parse(localStorage.getItem(storageKey) || '[]') as Todo[]
       const idx = stored.findIndex(t => t.id === args.id)
       if (idx >= 0) stored[idx].completed = args.completed
-      localStorage.setItem('web_todos', JSON.stringify(stored))
+      localStorage.setItem(storageKey, JSON.stringify(stored))
       return true as T
     }
     if (cmd === 'update_todo') {
-      const stored = JSON.parse(localStorage.getItem('web_todos') || '[]') as Todo[]
+      const stored = JSON.parse(localStorage.getItem(storageKey) || '[]') as Todo[]
       const idx = stored.findIndex(t => t.id === args.id)
       if (idx >= 0) {
         stored[idx].title = args.title
@@ -452,13 +553,13 @@ async function tauriInvoke<T>(cmd: string, args: Record<string, any> = {}): Prom
         stored[idx].remind_at = args.remind_at
         stored[idx].updated_at = new Date().toISOString()
       }
-      localStorage.setItem('web_todos', JSON.stringify(stored))
+      localStorage.setItem(storageKey, JSON.stringify(stored))
       return true as T
     }
     if (cmd === 'delete_todo') {
-      let stored = JSON.parse(localStorage.getItem('web_todos') || '[]') as Todo[]
+      let stored = JSON.parse(localStorage.getItem(storageKey) || '[]') as Todo[]
       stored = stored.filter(t => t.id !== args.id)
-      localStorage.setItem('web_todos', JSON.stringify(stored))
+      localStorage.setItem(storageKey, JSON.stringify(stored))
       return true as T
     }
     throw e
@@ -476,12 +577,14 @@ function priorityLabel(prio: string) {
 async function loadTodos() {
   loading.value = true
   try {
+    const uid = currentUser.value ? currentUser.value.id : 0
     const result = await tauriInvoke<Todo[]>('get_todos', {
       filter: currentFilter.value,
-      search: searchKeyword.value
+      search: searchKeyword.value,
+      user_id: uid
     })
     todos.value = result || []
-    statusMessage.value = `当前共加载 ${todos.value.length} 项待办任务`
+    statusMessage.value = `${currentUser.value ? `👤 [${currentUser.value.username}]` : '🏠 [本地模式]'} 共加载 ${todos.value.length} 项待办任务`
   } catch (err: any) {
     statusMessage.value = `❌ 加载失败: ${err?.message || err}`
   } finally {
@@ -498,7 +601,8 @@ function setFilter(filter: FilterType) {
 async function toggleStatus(todo: Todo) {
   const newStatus = !todo.completed
   try {
-    await tauriInvoke('update_todo_status', { id: todo.id, completed: newStatus })
+    const uid = currentUser.value ? currentUser.value.id : 0
+    await tauriInvoke('update_todo_status', { id: todo.id, completed: newStatus, user_id: uid })
     todo.completed = newStatus
     statusMessage.value = newStatus ? `✅ 标记任务 [${todo.title}] 已完成` : `↩️ 恢复任务 [${todo.title}] 为未完成`
   } catch (err: any) {
@@ -538,6 +642,7 @@ async function saveTodoForm() {
   }
 
   const remindStr = todoForm.value.enableReminder && todoForm.value.remindAt ? todoForm.value.remindAt.replace('T', ' ') + ':00' : null
+  const uid = currentUser.value ? currentUser.value.id : 0
 
   try {
     if (editingTodo.value) {
@@ -546,7 +651,8 @@ async function saveTodoForm() {
         title: todoForm.value.title.trim(),
         category: todoForm.value.category.trim(),
         priority: todoForm.value.priority,
-        remind_at: remindStr
+        remind_at: remindStr,
+        user_id: uid
       })
       statusMessage.value = `✅ 待办事项 [${todoForm.value.title}] 更新成功`
     } else {
@@ -554,7 +660,8 @@ async function saveTodoForm() {
         title: todoForm.value.title.trim(),
         category: todoForm.value.category.trim(),
         priority: todoForm.value.priority,
-        remind_at: remindStr
+        remind_at: remindStr,
+        user_id: uid
       })
       statusMessage.value = `✨ 成功创建待办事项 [${todoForm.value.title}]`
     }
@@ -576,7 +683,8 @@ async function deleteTodo(id: number, skipConfirm = false) {
     if (!confirmed) return
   }
   try {
-    await tauriInvoke('delete_todo', { id })
+    const uid = currentUser.value ? currentUser.value.id : 0
+    await tauriInvoke('delete_todo', { id, user_id: uid })
     statusMessage.value = `🗑️ 任务已成功删除`
     loadTodos()
   } catch (err: any) {
@@ -608,12 +716,15 @@ async function sendAiCommand() {
   statusMessage.value = '🧠 AI 智能体分析思考并执行中...'
 
   try {
+    const uid = currentUser.value ? currentUser.value.id : 0
     const res = await tauriInvoke<any>('execute_ai_command', {
       input: text,
-      config: llmConfig.value
+      config: llmConfig.value,
+      user_id: uid
     })
     aiInput.value = ''
     statusMessage.value = `✅ AI 任务完成：${res.message}`
+
     if (res.should_refresh) {
       loadTodos()
     }
@@ -627,6 +738,12 @@ async function sendAiCommand() {
 onMounted(() => {
   document.documentElement.setAttribute('data-theme', theme.value)
   loadTodos()
+  
+  // 启动软件后，若未登录且未记住游客模式，自动弹出 3D 登录/注册卡片
+  const isGuest = localStorage.getItem('todo_guest_mode') === 'true'
+  if (!currentUser.value && !isGuest) {
+    showAuthModal.value = true
+  }
 })
 </script>
 
@@ -679,7 +796,7 @@ onMounted(() => {
 
 .nav-tab-btn:hover {
   color: var(--text-main);
-  background-color: rgba(255, 255, 255, 0.08);
+  background-color: var(--bg-hover);
 }
 
 .nav-tab-btn.active {
@@ -1184,4 +1301,155 @@ onMounted(() => {
   width: 100% !important;
   border-left: none;
 }
+
+/* User Auth Badge Styles */
+.user-badge {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.user-dropdown-container {
+  position: relative;
+}
+
+.user-badge-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background-color: rgba(59, 130, 246, 0.1);
+  border: 1px solid rgba(59, 130, 246, 0.3);
+  color: var(--primary, #3b82f6);
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.user-badge-btn:hover {
+  background-color: rgba(59, 130, 246, 0.2);
+  border-color: var(--primary, #3b82f6);
+}
+
+.chevron-icon {
+  transition: transform 0.2s ease;
+  color: var(--text-muted, #64748b);
+}
+
+.chevron-icon.open {
+  transform: rotate(180deg);
+}
+
+.user-dropdown-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  width: 170px;
+  background-color: var(--bg-card, #ffffff);
+  border: 1px solid var(--border-color, #e2e8f0);
+  border-radius: 10px;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.12), 0 8px 10px -6px rgba(0, 0, 0, 0.06);
+  padding: 6px;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.dropdown-header {
+  padding: 6px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.dropdown-user-name {
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--text-main, #0f172a);
+}
+
+.dropdown-user-id {
+  font-size: 11px;
+  color: var(--text-muted, #64748b);
+}
+
+.dropdown-divider {
+  height: 1px;
+  background-color: var(--border-color, #e2e8f0);
+  margin: 2px 0;
+}
+
+.dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 7px 10px;
+  border-radius: 6px;
+  border: none;
+  background: transparent;
+  color: var(--text-main, #334155);
+  font-size: 12px;
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease;
+  text-align: left;
+}
+
+.dropdown-item:hover {
+  background-color: var(--bg-hover, #f1f5f9);
+  color: var(--primary, #3b82f6);
+}
+
+.dropdown-item.danger {
+  color: #ef4444;
+}
+
+.dropdown-item.danger:hover {
+  background-color: rgba(239, 68, 68, 0.1);
+  color: #dc2626;
+}
+
+.user-name-label {
+  font-weight: 700;
+  max-width: 110px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.user-badge.local-mode {
+  background-color: rgba(16, 185, 129, 0.1);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  color: #059669;
+}
+
+.mode-label {
+  font-weight: 600;
+}
+
+.login-trigger-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  background-color: var(--primary, #3b82f6);
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.login-trigger-btn:hover {
+  opacity: 0.9;
+  transform: translateY(-1px);
+}
 </style>
+

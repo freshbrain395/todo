@@ -17,7 +17,7 @@ node_modules/
 dist/
 
 # Rust & Tauri
-src-tauri/target/
+**/target/
 src-tauri/gen/
 
 # Build & Eggs

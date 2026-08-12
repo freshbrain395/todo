@@ -7,15 +7,25 @@
   --bg-surface: #FFFFFF;
   --bg-card: #FFFFFF;
   --bg-card-hover: #F8FAFC;
+  --bg-hover: #EDF2F7;
+  --bg-subtle: #F1F5F9;
+  --bg-primary: #F7FAFC;
+  --bg-overlay: rgba(0, 0, 0, 0.4);
   --border-color: #E2E8F0;
   --border-color-focus: #3182CE;
+  --border-subtle: #EDF2F7;
   --text-main: #1A202C;
+  --text-primary: #1A202C;
   --text-muted: #718096;
+  --text-secondary: #4A5568;
   
   --primary: #3182CE;
   --primary-hover: #2B6CB0;
+  --primary-rgb: 49, 130, 206;
   --ai-purple: #805AD5;
   --ai-purple-hover: #6B46C1;
+  --ai-purple-rgb: 128, 90, 213;
+  --code-bg: #F8FAFC;
   
   --shadow-sm: 0 1px 3px rgba(0,0,0,0.05);
   --shadow-md: 0 4px 12px rgba(0,0,0,0.08);
@@ -30,15 +40,25 @@
   --bg-surface: #24283B;
   --bg-card: #24283B;
   --bg-card-hover: #1F2335;
+  --bg-hover: #2E334D;
+  --bg-subtle: #1F2335;
+  --bg-primary: #1A1B26;
+  --bg-overlay: rgba(0, 0, 0, 0.65);
   --border-color: #414868;
   --border-color-focus: #7AA2F7;
+  --border-subtle: #2F354F;
   --text-main: #C0CAF5;
+  --text-primary: #C0CAF5;
   --text-muted: #A9B1D6;
+  --text-secondary: #9AA5CE;
   
   --primary: #7AA2F7;
   --primary-hover: #89DDFF;
+  --primary-rgb: 122, 162, 247;
   --ai-purple: #BB9AF7;
   --ai-purple-hover: #C0CAF5;
+  --ai-purple-rgb: 187, 154, 247;
+  --code-bg: #16161E;
   
   --shadow-sm: 0 1px 3px rgba(0,0,0,0.3);
   --shadow-md: 0 4px 14px rgba(0,0,0,0.4);
@@ -50,15 +70,25 @@
   --bg-surface: #3B4252;
   --bg-card: #3B4252;
   --bg-card-hover: #434C5E;
+  --bg-hover: #4C566A;
+  --bg-subtle: #333A48;
+  --bg-primary: #2E3440;
+  --bg-overlay: rgba(0, 0, 0, 0.6);
   --border-color: #4C566A;
   --border-color-focus: #88C0D0;
+  --border-subtle: #434C5E;
   --text-main: #E5E9F0;
+  --text-primary: #E5E9F0;
   --text-muted: #D8DEE9;
+  --text-secondary: #D8DEE9;
   
   --primary: #88C0D0;
   --primary-hover: #8FBCBB;
+  --primary-rgb: 136, 192, 208;
   --ai-purple: #B48EAD;
   --ai-purple-hover: #D8DEE9;
+  --ai-purple-rgb: 180, 142, 173;
+  --code-bg: #242933;
   
   --shadow-sm: 0 1px 3px rgba(0,0,0,0.25);
   --shadow-md: 0 4px 14px rgba(0,0,0,0.35);

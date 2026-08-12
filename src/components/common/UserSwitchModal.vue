@@ -158,7 +158,7 @@ function handleCreateUser() {
 
 .btn-close:hover {
   color: var(--text-main);
-  background-color: rgba(0, 0, 0, 0.05);
+  background-color: var(--bg-hover);
 }
 
 .modal-body {
@@ -198,12 +198,12 @@ function handleCreateUser() {
 
 .user-card:hover {
   border-color: var(--primary);
-  background-color: rgba(var(--primary-rgb, 59, 130, 246), 0.05);
+  background-color: rgba(var(--primary-rgb), 0.1);
 }
 
 .user-card.active {
   border-color: var(--primary);
-  background-color: rgba(var(--primary-rgb, 59, 130, 246), 0.1);
+  background-color: rgba(var(--primary-rgb), 0.18);
 }
 
 .user-avatar {

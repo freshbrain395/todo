@@ -7,7 +7,15 @@ export interface Todo {
   remind_at?: string | null;
   created_at: string;
   updated_at: string;
+  user_id?: number;
 }
+
+export interface User {
+  id: number;
+  username: string;
+  created_at?: string;
+}
+
 
 export interface LlmConfig {
   provider: string;

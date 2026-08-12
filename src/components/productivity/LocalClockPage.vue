@@ -609,8 +609,8 @@ onUnmounted(() => {
   height: 100%;
   padding: 24px;
   box-sizing: border-box;
-  background: var(--bg-primary, #0f172a);
-  color: var(--text-primary, #f8fafc);
+  background: var(--bg-app);
+  color: var(--text-main);
   overflow: hidden;
 }
 
@@ -643,12 +643,12 @@ onUnmounted(() => {
 }
 
 .icon-primary {
-  color: #38bdf8;
+  color: var(--primary);
 }
 
 .title-subtext {
   font-size: 0.85rem;
-  color: #94a3b8;
+  color: var(--text-muted);
 }
 
 .toolbar-right {
@@ -660,8 +660,8 @@ onUnmounted(() => {
 
 .mode-toggle-group {
   display: flex;
-  background: rgba(30, 41, 59, 0.7);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
   border-radius: 8px;
   padding: 3px;
   gap: 2px;
@@ -673,7 +673,7 @@ onUnmounted(() => {
   gap: 5px;
   background: transparent;
   border: none;
-  color: #94a3b8;
+  color: var(--text-muted);
   padding: 5px 10px;
   border-radius: 6px;
   font-size: 0.8rem;
@@ -682,13 +682,13 @@ onUnmounted(() => {
 }
 
 .mode-btn:hover {
-  color: #f1f5f9;
-  background: rgba(255, 255, 255, 0.05);
+  color: var(--text-main);
+  background: var(--bg-hover);
 }
 
 .mode-btn.active {
-  background: #38bdf8;
-  color: #0f172a;
+  background: var(--primary);
+  color: #ffffff;
   font-weight: 600;
 }
 
@@ -696,9 +696,9 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   gap: 6px;
-  background: rgba(30, 41, 59, 0.7);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  color: #cbd5e1;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  color: var(--text-main);
   padding: 6px 12px;
   border-radius: 8px;
   font-size: 0.82rem;
@@ -707,21 +707,21 @@ onUnmounted(() => {
 }
 
 .control-btn:hover {
-  background: rgba(51, 65, 85, 0.8);
-  color: #fff;
+  background: var(--bg-hover);
+  border-color: var(--border-color-focus);
 }
 
 .control-btn.active {
-  border-color: #38bdf8;
-  color: #38bdf8;
-  background: rgba(56, 189, 248, 0.1);
+  border-color: var(--primary);
+  color: var(--primary);
+  background: rgba(var(--primary-rgb), 0.1);
 }
 
 .btn-primary-sm {
   display: flex;
   align-items: center;
   gap: 6px;
-  background: linear-gradient(135deg, #0284c7, #2563eb);
+  background: var(--primary);
   color: #fff;
   border: none;
   padding: 7px 14px;
@@ -729,13 +729,14 @@ onUnmounted(() => {
   font-size: 0.83rem;
   font-weight: 600;
   cursor: pointer;
-  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25);
+  box-shadow: var(--shadow-sm);
   transition: all 0.2s ease;
 }
 
 .btn-primary-sm:hover {
+  background: var(--primary-hover);
   transform: translateY(-1px);
-  box-shadow: 0 6px 16px rgba(37, 99, 235, 0.35);
+  box-shadow: var(--shadow-md);
 }
 
 .clock-content-scroll {
@@ -750,12 +751,11 @@ onUnmounted(() => {
 /* Hero Clock Card */
 .hero-clock-card {
   position: relative;
-  background: linear-gradient(145deg, rgba(30, 41, 59, 0.9), rgba(15, 23, 42, 0.95));
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
   border-radius: 20px;
   padding: 28px 32px;
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
-  backdrop-filter: blur(12px);
+  box-shadow: var(--shadow-md);
   overflow: hidden;
 }
 
@@ -763,8 +763,8 @@ onUnmounted(() => {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  background: rgba(56, 189, 248, 0.1);
-  border: 1px solid rgba(56, 189, 248, 0.2);
+  background: rgba(var(--primary-rgb), 0.1);
+  border: 1px solid rgba(var(--primary-rgb), 0.2);
   padding: 6px 14px;
   border-radius: 20px;
   font-size: 0.85rem;
@@ -773,11 +773,11 @@ onUnmounted(() => {
 
 .badge-text {
   font-weight: 600;
-  color: #e2e8f0;
+  color: var(--text-main);
 }
 
 .badge-offset {
-  color: #38bdf8;
+  color: var(--primary);
   font-family: monospace;
 }
 
@@ -801,29 +801,29 @@ onUnmounted(() => {
 }
 
 .clock-outer-circle {
-  fill: rgba(15, 23, 42, 0.8);
-  stroke: #334155;
+  fill: var(--bg-card);
+  stroke: var(--border-color);
   stroke-width: 4;
 }
 
 .clock-inner-circle {
-  fill: rgba(30, 41, 59, 0.6);
-  stroke: rgba(56, 189, 248, 0.2);
+  fill: var(--bg-app);
+  stroke: rgba(var(--primary-rgb), 0.3);
   stroke-width: 1;
 }
 
 .hour-tick {
-  stroke: #94a3b8;
+  stroke: var(--text-main);
   stroke-width: 2.5;
 }
 
 .minute-tick {
-  stroke: #475569;
+  stroke: var(--text-muted);
   stroke-width: 1;
 }
 
 .clock-number {
-  fill: #cbd5e1;
+  fill: var(--text-main);
   font-size: 14px;
   font-weight: 700;
   font-family: system-ui, sans-serif;
@@ -834,12 +834,12 @@ onUnmounted(() => {
 }
 
 .hour-hand {
-  stroke: #f1f5f9;
+  stroke: var(--text-main);
   stroke-width: 4.5;
 }
 
 .minute-hand {
-  stroke: #38bdf8;
+  stroke: var(--primary);
   stroke-width: 3;
 }
 
@@ -876,26 +876,24 @@ onUnmounted(() => {
 .time-main {
   font-size: 4.2rem;
   letter-spacing: -0.04em;
-  background: linear-gradient(180deg, #ffffff 30%, #cbd5e1 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+  color: var(--text-main);
 }
 
 .time-seconds {
   font-size: 2.8rem;
-  color: #38bdf8;
+  color: var(--primary);
 }
 
 .time-milliseconds {
   font-size: 1.8rem;
-  color: #94a3b8;
+  color: var(--text-muted);
   width: 3.2ch;
 }
 
 .time-ampm {
   font-size: 1.4rem;
   margin-left: 12px;
-  color: #fbbf24;
+  color: #d97706;
   font-weight: 700;
 }
 
@@ -904,16 +902,16 @@ onUnmounted(() => {
   align-items: center;
   gap: 10px;
   font-size: 1.05rem;
-  color: #94a3b8;
+  color: var(--text-muted);
 }
 
 .icon-muted {
-  color: #64748b;
+  color: var(--text-muted);
 }
 
 .week-pill {
-  background: rgba(255, 255, 255, 0.08);
-  color: #e2e8f0;
+  background: var(--bg-hover);
+  color: var(--text-main);
   padding: 3px 10px;
   border-radius: 6px;
   font-size: 0.85rem;
@@ -939,8 +937,8 @@ onUnmounted(() => {
 }
 
 .city-count-badge {
-  background: rgba(56, 189, 248, 0.15);
-  color: #38bdf8;
+  background: rgba(var(--primary-rgb), 0.15);
+  color: var(--primary);
   font-size: 0.75rem;
   padding: 2px 8px;
   border-radius: 12px;
@@ -950,14 +948,14 @@ onUnmounted(() => {
 .text-btn {
   background: none;
   border: none;
-  color: #64748b;
+  color: var(--text-muted);
   font-size: 0.82rem;
   cursor: pointer;
   transition: color 0.2s ease;
 }
 
 .text-btn:hover {
-  color: #38bdf8;
+  color: var(--primary);
 }
 
 .world-cities-grid {
@@ -968,21 +966,22 @@ onUnmounted(() => {
 
 .city-clock-card {
   position: relative;
-  background: rgba(30, 41, 59, 0.6);
-  border: 1px solid rgba(255, 255, 255, 0.07);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
   border-radius: 14px;
   padding: 16px 18px;
   display: flex;
   flex-direction: column;
   gap: 12px;
   transition: all 0.25s ease;
+  box-shadow: var(--shadow-sm);
 }
 
 .city-clock-card:hover {
   transform: translateY(-2px);
-  background: rgba(30, 41, 59, 0.85);
-  border-color: rgba(56, 189, 248, 0.3);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+  background: var(--bg-card-hover);
+  border-color: var(--border-color-focus);
+  box-shadow: var(--shadow-md);
 }
 
 .remove-city-btn {
@@ -991,7 +990,7 @@ onUnmounted(() => {
   right: 12px;
   background: transparent;
   border: none;
-  color: #64748b;
+  color: var(--text-muted);
   cursor: pointer;
   opacity: 0;
   transition: all 0.2s ease;
@@ -1028,14 +1027,14 @@ onUnmounted(() => {
 
 .city-tz {
   font-size: 0.75rem;
-  color: #64748b;
+  color: var(--text-muted);
 }
 
 .city-time-display {
   font-family: 'JetBrains Mono', monospace;
   font-size: 1.7rem;
   font-weight: 700;
-  color: #38bdf8;
+  color: var(--primary);
 }
 
 .city-footer {
@@ -1043,22 +1042,22 @@ onUnmounted(() => {
   justify-content: space-between;
   align-items: center;
   font-size: 0.78rem;
-  color: #94a3b8;
+  color: var(--text-muted);
 }
 
 .city-offset-tag {
-  color: #cbd5e1;
+  color: var(--text-main);
 }
 
 .city-date-tag {
-  color: #64748b;
+  color: var(--text-muted);
 }
 
 /* Modal */
 .modal-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.65);
+  background: var(--bg-overlay);
   backdrop-filter: blur(4px);
   display: flex;
   align-items: center;
@@ -1067,15 +1066,15 @@ onUnmounted(() => {
 }
 
 .modal-card {
-  background: #1e293b;
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
   border-radius: 16px;
   width: 90%;
   max-width: 480px;
   max-height: 80vh;
   display: flex;
   flex-direction: column;
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+  box-shadow: var(--shadow-lg);
   overflow: hidden;
 }
 
@@ -1084,7 +1083,7 @@ onUnmounted(() => {
   justify-content: space-between;
   align-items: center;
   padding: 16px 20px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  border-bottom: 1px solid var(--border-color);
 }
 
 .modal-title {
@@ -1101,12 +1100,12 @@ onUnmounted(() => {
 .close-btn {
   background: none;
   border: none;
-  color: #94a3b8;
+  color: var(--text-muted);
   cursor: pointer;
 }
 
 .close-btn:hover {
-  color: #fff;
+  color: var(--text-main);
 }
 
 .modal-body {
@@ -1126,22 +1125,22 @@ onUnmounted(() => {
 .search-icon {
   position: absolute;
   left: 12px;
-  color: #64748b;
+  color: var(--text-muted);
 }
 
 .search-input {
   width: 100%;
-  background: rgba(15, 23, 42, 0.6);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: var(--bg-app);
+  border: 1px solid var(--border-color);
   border-radius: 8px;
   padding: 10px 12px 10px 36px;
-  color: #fff;
+  color: var(--text-main);
   font-size: 0.9rem;
   outline: none;
 }
 
 .search-input:focus {
-  border-color: #38bdf8;
+  border-color: var(--primary);
 }
 
 .available-cities-list {
@@ -1156,8 +1155,8 @@ onUnmounted(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background: rgba(30, 41, 59, 0.5);
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  background: var(--bg-app);
+  border: 1px solid var(--border-color);
   padding: 10px 14px;
   border-radius: 10px;
 }
@@ -1184,7 +1183,7 @@ onUnmounted(() => {
 
 .c-tz {
   font-size: 0.75rem;
-  color: #64748b;
+  color: var(--text-muted);
 }
 
 .city-action-right {
@@ -1196,13 +1195,13 @@ onUnmounted(() => {
 .live-preview-time {
   font-family: monospace;
   font-size: 0.9rem;
-  color: #38bdf8;
+  color: var(--primary);
 }
 
 .btn-add-action {
-  background: rgba(56, 189, 248, 0.15);
-  color: #38bdf8;
-  border: 1px solid rgba(56, 189, 248, 0.3);
+  background: rgba(var(--primary-rgb), 0.15);
+  color: var(--primary);
+  border: 1px solid rgba(var(--primary-rgb), 0.3);
   padding: 4px 10px;
   border-radius: 6px;
   font-size: 0.8rem;
@@ -1211,8 +1210,8 @@ onUnmounted(() => {
 }
 
 .btn-add-action:hover:not(:disabled) {
-  background: #38bdf8;
-  color: #0f172a;
+  background: var(--primary);
+  color: #ffffff;
 }
 
 .btn-add-action:disabled {
@@ -1223,7 +1222,7 @@ onUnmounted(() => {
 
 .empty-search {
   text-align: center;
-  color: #64748b;
+  color: var(--text-muted);
   padding: 20px;
   font-size: 0.85rem;
 }

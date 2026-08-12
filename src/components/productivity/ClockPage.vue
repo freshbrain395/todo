@@ -53,8 +53,8 @@ const subTab = ref<'pomodoro' | 'countdown'>('pomodoro')
   height: 100%;
   padding: 20px 24px;
   box-sizing: border-box;
-  background: var(--bg-primary, #0f172a);
-  color: var(--text-primary, #f8fafc);
+  background: var(--bg-app);
+  color: var(--text-main);
   gap: 16px;
   overflow: hidden;
 }
@@ -63,10 +63,11 @@ const subTab = ref<'pomodoro' | 'countdown'>('pomodoro')
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background: rgba(30, 41, 59, 0.6);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
   border-radius: 12px;
   padding: 6px 12px;
+  box-shadow: var(--shadow-sm);
 }
 
 .nav-left {
@@ -80,8 +81,8 @@ const subTab = ref<'pomodoro' | 'countdown'>('pomodoro')
   align-items: center;
   gap: 8px;
   background: transparent;
-  border: none;
-  color: #94a3b8;
+  border: 1px solid transparent;
+  color: var(--text-muted);
   padding: 8px 16px;
   border-radius: 8px;
   font-size: 0.88rem;
@@ -91,14 +92,14 @@ const subTab = ref<'pomodoro' | 'countdown'>('pomodoro')
 }
 
 .sub-tab-btn:hover {
-  color: #f1f5f9;
-  background: rgba(255, 255, 255, 0.05);
+  color: var(--text-main);
+  background: var(--bg-hover);
 }
 
 .sub-tab-btn.active {
-  background: linear-gradient(135deg, rgba(56, 189, 248, 0.2), rgba(37, 99, 235, 0.2));
-  color: #38bdf8;
-  border: 1px solid rgba(56, 189, 248, 0.3);
+  background: rgba(var(--primary-rgb), 0.12);
+  color: var(--primary);
+  border: 1px solid rgba(var(--primary-rgb), 0.3);
 }
 
 .nav-right {
@@ -108,7 +109,7 @@ const subTab = ref<'pomodoro' | 'countdown'>('pomodoro')
 
 .sub-nav-hint {
   font-size: 0.8rem;
-  color: #64748b;
+  color: var(--text-muted);
 }
 
 .workspace-body {

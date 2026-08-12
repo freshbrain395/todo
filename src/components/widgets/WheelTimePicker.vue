@@ -311,12 +311,12 @@ function setTimePreset(hStr: string, mStr: string) {
 
 .top-mask {
   top: 0;
-  background: linear-gradient(to bottom, var(--bg-app) 10%, rgba(0,0,0,0) 100%);
+  background: linear-gradient(to bottom, var(--bg-app) 10%, transparent 100%);
 }
 
 .bottom-mask {
   bottom: 0;
-  background: linear-gradient(to top, var(--bg-app) 10%, rgba(0,0,0,0) 100%);
+  background: linear-gradient(to top, var(--bg-app) 10%, transparent 100%);
 }
 
 .wheel-column {

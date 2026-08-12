@@ -1,14 +1,33 @@
 use tauri::State;
-use crate::db::{DbState, Todo};
+use crate::db::{DbState, Todo, User};
 use crate::llm::{parse_intent_and_execute, AiActionResult, LlmConfig};
+
+#[tauri::command]
+pub fn register_user(
+    username: String,
+    password: String,
+    db: State<'_, DbState>,
+) -> Result<User, String> {
+    db.register_user(&username, &password)
+}
+
+#[tauri::command]
+pub fn login_user(
+    username: String,
+    password: String,
+    db: State<'_, DbState>,
+) -> Result<User, String> {
+    db.login_user(&username, &password)
+}
 
 #[tauri::command]
 pub fn get_todos(
     filter: String,
     search: String,
+    user_id: Option<i64>,
     db: State<'_, DbState>,
 ) -> Result<Vec<Todo>, String> {
-    db.get_todos(&filter, &search).map_err(|e| e.to_string())
+    db.get_todos(&filter, &search, user_id).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -17,9 +36,10 @@ pub fn add_todo(
     priority: String,
     category: String,
     remind_at: Option<String>,
+    user_id: Option<i64>,
     db: State<'_, DbState>,
 ) -> Result<i64, String> {
-    db.add_todo(&title, &priority, &category, remind_at.as_deref())
+    db.add_todo(&title, &priority, &category, remind_at.as_deref(), user_id)
         .map_err(|e| e.to_string())
 }
 
@@ -27,9 +47,10 @@ pub fn add_todo(
 pub fn update_todo_status(
     id: i64,
     completed: bool,
+    user_id: Option<i64>,
     db: State<'_, DbState>,
 ) -> Result<bool, String> {
-    db.update_todo_status(id, completed).map_err(|e| e.to_string())
+    db.update_todo_status(id, completed, user_id).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -39,15 +60,16 @@ pub fn update_todo(
     priority: String,
     category: String,
     remind_at: Option<String>,
+    user_id: Option<i64>,
     db: State<'_, DbState>,
 ) -> Result<bool, String> {
-    db.update_todo(id, &title, &priority, &category, remind_at.as_deref())
+    db.update_todo(id, &title, &priority, &category, remind_at.as_deref(), user_id)
         .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
-pub fn delete_todo(id: i64, db: State<'_, DbState>) -> Result<bool, String> {
-    db.delete_todo(id).map_err(|e| e.to_string())
+pub fn delete_todo(id: i64, user_id: Option<i64>, db: State<'_, DbState>) -> Result<bool, String> {
+    db.delete_todo(id, user_id).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -114,9 +136,10 @@ pub async fn fetch_models(base_url: String, api_key: String) -> Result<Vec<Strin
 pub async fn execute_ai_command(
     input: String,
     config: LlmConfig,
+    user_id: Option<i64>,
     db: State<'_, DbState>,
 ) -> Result<AiActionResult, String> {
-    parse_intent_and_execute(&input, &config, &db).await
+    parse_intent_and_execute(&input, &config, &db, user_id).await
 }
 
 #[tauri::command]
@@ -130,3 +153,4 @@ pub fn save_clock_config(config_json: String, db: State<'_, DbState>) -> Result<
         .map(|_| true)
         .map_err(|e| e.to_string())
 }
+

@@ -473,12 +473,12 @@ function setTomorrowMorning() {
 
 .top-mask {
   top: 0;
-  background: linear-gradient(to bottom, var(--bg-surface) 10%, rgba(255, 255, 255, 0) 100%);
+  background: linear-gradient(to bottom, var(--bg-surface) 10%, transparent 100%);
 }
 
 .bottom-mask {
   bottom: 0;
-  background: linear-gradient(to top, var(--bg-surface) 10%, rgba(255, 255, 255, 0) 100%);
+  background: linear-gradient(to top, var(--bg-surface) 10%, transparent 100%);
 }
 
 .wheel-column {

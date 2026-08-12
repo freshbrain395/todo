@@ -36,6 +36,7 @@ pub async fn parse_intent_and_execute(
     user_input: &str,
     config: &LlmConfig,
     db: &super::db::DbState,
+    user_id: Option<i64>,
 ) -> Result<AiActionResult, String> {
     let client = Client::builder()
         .timeout(Duration::from_secs(15))
@@ -136,7 +137,7 @@ JSON 格式标准：
             let remind_at = data["remind_at"].as_str();
 
             let todo_id = db
-                .add_todo(title, priority, category, remind_at)
+                .add_todo(title, priority, category, remind_at, user_id)
                 .map_err(|e| format!("写入数据库失败: {}", e))?;
 
             let reply = parsed_result["raw_response"]
@@ -153,7 +154,7 @@ JSON 格式标准：
         "complete" => {
             let id = data["id"].as_i64().unwrap_or(0);
             if id > 0 {
-                let _ = db.update_todo_status(id, true);
+                let _ = db.update_todo_status(id, true, user_id);
                 Ok(AiActionResult {
                     action: "complete".to_string(),
                     data: json!({"id": id}),
@@ -173,7 +174,7 @@ JSON 格式标准：
         "delete" => {
             let id = data["id"].as_i64().unwrap_or(0);
             if id > 0 {
-                let _ = db.delete_todo(id);
+                let _ = db.delete_todo(id, user_id);
                 Ok(AiActionResult {
                     action: "delete".to_string(),
                     data: json!({"id": id}),
@@ -190,6 +191,7 @@ JSON 格式标准：
                 })
             }
         }
+
         _ => {
             let reply = parsed_result["raw_response"]
                 .as_str()

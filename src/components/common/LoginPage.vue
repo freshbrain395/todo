@@ -1,175 +1,323 @@
 <template>
-  <div class="login-overlay animate-fade-in">
-    <div class="login-card shadow-2xl">
-      <!-- Top Brand Header -->
-      <div class="login-header">
-        <div class="brand-logo">
-          <CheckSquare :size="32" class="logo-icon" />
-        </div>
-        <h1 class="brand-title">Todo Agent</h1>
-        <p class="brand-subtitle">智能待办事项与个人效率 AI 助手</p>
-      </div>
+  <div class="login-overlay animate-fade-in" @click.self="handleClose">
+    <!-- 3D Perspective Card Container -->
+    <div class="card-perspective">
+      <div class="flip-card-inner" :class="{ 'is-flipped': isFlipped }">
+        
+        <!-- FRONT FACE: LOGIN CARD -->
+        <div class="card-face card-front shadow-2xl">
+          <!-- Close Button -->
+          <button class="close-btn" @click="handleClose" title="关闭">✕</button>
 
-      <!-- Mode Switch Tabs -->
-      <div class="tab-switch">
-        <button
-          class="tab-btn"
-          :class="{ active: mode === 'login' }"
-          @click="mode = 'login'"
-        >
-          <LogIn :size="16" /> 用户登录
-        </button>
-        <button
-          class="tab-btn"
-          :class="{ active: mode === 'register' }"
-          @click="mode = 'register'"
-        >
-          <UserPlus :size="16" /> 新建账号
-        </button>
-      </div>
-
-      <!-- Form Content: Login Mode -->
-      <form v-if="mode === 'login'" class="login-form" @submit.prevent="handleLogin">
-        <div class="form-group">
-          <label class="input-label">选择登录账号</label>
-          <div class="user-select-grid">
-            <div
-              v-for="item in usersList"
-              :key="item.user.id"
-              class="user-select-card"
-              :class="{ selected: selectedUserId === item.user.id }"
-              @click="selectedUserId = item.user.id"
-            >
-              <div
-                class="avatar-circle"
-                :style="{ backgroundColor: item.user.avatarColor || '#3B82F6' }"
-              >
-                {{ item.user.username.substring(0, 1).toUpperCase() }}
-              </div>
-              <div class="user-name-box">
-                <span class="user-name">{{ item.user.username }}</span>
-                <span class="user-id-sub">ID: {{ item.user.id }}</span>
-              </div>
-              <CheckCircle2 v-if="selectedUserId === item.user.id" class="check-icon" :size="18" />
+          <!-- Header -->
+          <div class="login-header">
+            <div class="brand-logo">
+              <CheckSquare :size="32" class="logo-icon" />
             </div>
+            <h1 class="brand-title">Todo Agent</h1>
+            <p class="brand-subtitle">智能待办事项与个人效率 AI 助手</p>
+          </div>
+
+          <!-- Mode Title & Flip Action Header -->
+          <div class="card-mode-bar">
+            <span class="mode-tag"><LogIn :size="15" /> 用户登录</span>
+            <button type="button" class="flip-trigger-btn" @click="toggleFlip">
+              <span>去注册账号</span> <Repeat :size="13" />
+            </button>
+          </div>
+
+          <!-- Login Form -->
+          <form class="login-form" @submit.prevent="handleLogin">
+            <div class="form-group">
+              <label class="input-label">用户名</label>
+              <div class="input-wrapper">
+                <User :size="16" class="field-icon" />
+                <input
+                  type="text"
+                  v-model="loginUsername"
+                  placeholder="请输入注册时的用户名"
+                  class="form-input"
+                  required
+                />
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label class="input-label">账号密码</label>
+              <div class="input-wrapper">
+                <Lock :size="16" class="field-icon" />
+                <input
+                  type="password"
+                  v-model="loginPassword"
+                  placeholder="请输入密码"
+                  class="form-input"
+                  required
+                />
+              </div>
+            </div>
+
+            <div v-if="errorMessage && !isFlipped" class="error-tip-alert">
+              {{ errorMessage }}
+            </div>
+            <div v-if="successMessage && !isFlipped" class="success-tip-alert">
+              {{ successMessage }}
+            </div>
+
+            <button type="submit" class="submit-btn" :disabled="loading">
+              <span v-if="loading" class="spinner-sm"></span>
+              <LogIn v-else :size="16" />
+              <span>{{ loading ? '登录中...' : '立即登录' }}</span>
+            </button>
+          </form>
+
+          <!-- Guest Mode Quick Entry -->
+          <div class="local-mode-banner" @click="handleUseLocalMode" title="以游客身份使用全部本地功能">
+            <div class="banner-left">
+              <Home :size="18" class="banner-icon" />
+              <div class="banner-text">
+                <span class="banner-title">不登录？继续使用【游客模式】</span>
+                <span class="banner-desc">无需账号，所有待办数据安全保存在本地</span>
+              </div>
+            </div>
+            <ChevronRight :size="16" class="banner-arrow" />
+          </div>
+
+          <div class="login-footer">
+            <span>SQLite 本地隔离 ｜ 点击上方“去注册账号”切换卡片背面</span>
           </div>
         </div>
 
-        <div class="form-group">
-          <label class="input-label">账号密码</label>
-          <div class="input-wrapper">
-            <Lock :size="16" class="field-icon" />
-            <input
-              type="password"
-              v-model="passwordInput"
-              placeholder="请输入密码"
-              class="form-input"
-            />
+        <!-- BACK FACE: REGISTER CARD -->
+        <div class="card-face card-back shadow-2xl">
+          <!-- Close Button -->
+          <button class="close-btn" @click="handleClose" title="关闭">✕</button>
+
+          <!-- Header -->
+          <div class="login-header">
+            <div class="brand-logo register-brand">
+              <UserPlus :size="32" class="logo-icon" />
+            </div>
+            <h1 class="brand-title">创建新账号</h1>
+            <p class="brand-subtitle">注册 Todo Agent 体验云端同步与多端联动</p>
+          </div>
+
+          <!-- Mode Title & Flip Action Header -->
+          <div class="card-mode-bar">
+            <span class="mode-tag register-tag"><UserPlus :size="15" /> 账号注册</span>
+            <button type="button" class="flip-trigger-btn" @click="toggleFlip">
+              <span>返回登录</span> <Repeat :size="13" />
+            </button>
+          </div>
+
+          <!-- Register Form -->
+          <form class="login-form" @submit.prevent="handleRegister">
+            <div class="form-group">
+              <label class="input-label">注册用户名</label>
+              <div class="input-wrapper">
+                <User :size="16" class="field-icon" />
+                <input
+                  type="text"
+                  v-model="registerUsername"
+                  placeholder="请输入字母/汉字用户名"
+                  class="form-input"
+                  required
+                />
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label class="input-label">设置密码</label>
+              <div class="input-wrapper">
+                <Lock :size="16" class="field-icon" />
+                <input
+                  type="password"
+                  v-model="registerPassword"
+                  placeholder="请设置密码 (至少 3 位)"
+                  class="form-input"
+                  required
+                />
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label class="input-label">确认密码</label>
+              <div class="input-wrapper">
+                <Lock :size="16" class="field-icon" />
+                <input
+                  type="password"
+                  v-model="registerPasswordConfirm"
+                  placeholder="请再次输入密码确认"
+                  class="form-input"
+                  required
+                />
+              </div>
+            </div>
+
+            <div v-if="errorMessage && isFlipped" class="error-tip-alert">
+              {{ errorMessage }}
+            </div>
+            <div v-if="successMessage && isFlipped" class="success-tip-alert">
+              {{ successMessage }}
+            </div>
+
+            <button type="submit" class="submit-btn register-theme" :disabled="loading">
+              <span v-if="loading" class="spinner-sm"></span>
+              <UserPlus v-else :size="16" />
+              <span>{{ loading ? '注册中...' : '确认创建账号' }}</span>
+            </button>
+          </form>
+
+          <!-- Guest Mode Quick Entry -->
+          <div class="local-mode-banner" @click="handleUseLocalMode" title="以游客身份使用全部本地功能">
+            <div class="banner-left">
+              <Home :size="18" class="banner-icon" />
+              <div class="banner-text">
+                <span class="banner-title">跳过注册？使用【游客模式】</span>
+                <span class="banner-desc">随时可以在系统界面中注册并升级离线数据</span>
+              </div>
+            </div>
+            <ChevronRight :size="16" class="banner-arrow" />
+          </div>
+
+          <div class="login-footer">
+            <span>SQLite 本地隔离 ｜ 点击上方“返回登录”翻转至登录卡片</span>
           </div>
         </div>
 
-        <div v-if="errorMessage" class="error-tip-alert">
-          {{ errorMessage }}
-        </div>
-
-        <button type="submit" class="submit-btn" :disabled="!selectedUserId">
-          <LogIn :size="16" /> 登录管理员 / 选中账号
-        </button>
-      </form>
-
-      <!-- Form Content: Register Mode -->
-      <form v-else class="login-form" @submit.prevent="handleRegister">
-        <div class="form-group">
-          <label class="input-label">账号用户名</label>
-          <div class="input-wrapper">
-            <User :size="16" class="field-icon" />
-            <input
-              type="text"
-              v-model="registerUsername"
-              placeholder="请输入您的昵称或用户名"
-              class="form-input"
-              required
-            />
-          </div>
-        </div>
-
-        <div class="form-group">
-          <label class="input-label">专属主题头像配色</label>
-          <div class="color-options">
-            <button
-              type="button"
-              v-for="color in avatarColors"
-              :key="color"
-              class="color-pill"
-              :style="{ backgroundColor: color }"
-              :class="{ active: selectedColor === color }"
-              @click="selectedColor = color"
-            ></button>
-          </div>
-        </div>
-
-        <button type="submit" class="submit-btn register-theme" :disabled="!registerUsername.trim()">
-          <UserPlus :size="16" /> 创建新用户 JSON 配置
-        </button>
-      </form>
-
-      <div class="login-footer">
-        <span>配置格式: 独立 JSON 文件存储 ｜ Rust SQLite 驱动支撑</span>
       </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
-import { CheckSquare, LogIn, UserPlus, Lock, User, CheckCircle2 } from 'lucide-vue-next'
-import {
-  getAllUserAccountsMap,
-  setCurrentUserId,
-  createNewUser,
-  verifyUserPassword,
-  type UserAccountData
-} from '../../utils/configManager'
+import { ref } from 'vue'
+import { CheckSquare, LogIn, UserPlus, Lock, User, Home, ChevronRight, Repeat } from 'lucide-vue-next'
+import type { User as UserType } from '../../types'
 
 const emit = defineEmits<{
-  (e: 'loginSuccess'): void
+  (e: 'loginSuccess', user: UserType): void
+  (e: 'useLocalMode'): void
+  (e: 'close'): void
 }>()
 
-const mode = ref<'login' | 'register'>('login')
-const usersMap = ref<Record<string, UserAccountData>>(getAllUserAccountsMap())
-const usersList = computed(() => Object.values(usersMap.value))
+const isFlipped = ref(false)
+const loading = ref(false)
 
-const selectedUserId = ref<string>('user_admin')
-const passwordInput = ref('')
-const errorMessage = ref('')
+const loginUsername = ref('')
+const loginPassword = ref('')
 
 const registerUsername = ref('')
-const registerPassword = ref('123456')
-const avatarColors = ['#3B82F6', '#10B981', '#F59E0B', '#EC4899', '#8B5CF6', '#64748B']
-const selectedColor = ref(avatarColors[0])
+const registerPassword = ref('')
+const registerPasswordConfirm = ref('')
 
-function handleLogin() {
+const errorMessage = ref('')
+const successMessage = ref('')
+
+function toggleFlip() {
+  isFlipped.value = !isFlipped.value
   errorMessage.value = ''
-  if (!selectedUserId.value) return
+  successMessage.value = ''
+}
 
-  // 验证密码
-  const isValid = verifyUserPassword(selectedUserId.value, passwordInput.value)
-  if (!isValid) {
-    errorMessage.value = '❌ 账号或密码错误，请重新输入！'
+async function tauriInvoke<T>(cmd: string, args: Record<string, any> = {}): Promise<T> {
+  try {
+    const { invoke } = await import('@tauri-apps/api/core')
+    return await invoke<T>(cmd, args)
+  } catch (e: any) {
+    console.warn(`[Tauri Auth Fallback] ${cmd}`, args, e)
+    // Web fallback implementation for browser dev testing
+    if (cmd === 'register_user') {
+      const usersRaw = localStorage.getItem('web_users') || '[]'
+      const users = JSON.parse(usersRaw)
+      if (users.find((u: any) => u.username === args.username)) {
+        throw new Error('该用户名已被注册，请翻转回登录页尝试登录')
+      }
+      const newUser: UserType = {
+        id: Date.now(),
+        username: args.username,
+        created_at: new Date().toISOString()
+      }
+      users.push({ ...newUser, password: args.password })
+      localStorage.setItem('web_users', JSON.stringify(users))
+      return newUser as T
+    }
+    if (cmd === 'login_user') {
+      const usersRaw = localStorage.getItem('web_users') || '[]'
+      const users = JSON.parse(usersRaw)
+      const found = users.find((u: any) => u.username === args.username)
+      if (!found) throw new Error('用户不存在，请点击卡片右上角注册新账号')
+      if (found.password !== args.password) throw new Error('密码不正确，请重新输入')
+      return { id: found.id, username: found.username, created_at: found.created_at } as T
+    }
+    throw e
+  }
+}
+
+async function handleLogin() {
+  errorMessage.value = ''
+  successMessage.value = ''
+  if (!loginUsername.value.trim() || !loginPassword.value) {
+    errorMessage.value = '请输入完整的用户名和密码'
     return
   }
 
-  setCurrentUserId(selectedUserId.value)
-  emit('loginSuccess')
+  loading.value = true
+  try {
+    const user = await tauriInvoke<UserType>('login_user', {
+      username: loginUsername.value.trim(),
+      password: loginPassword.value
+    })
+    successMessage.value = `🎉 登录成功，欢迎回来，${user.username}！`
+    setTimeout(() => {
+      emit('loginSuccess', user)
+    }, 400)
+  } catch (err: any) {
+    errorMessage.value = `❌ ${err?.message || err}`
+  } finally {
+    loading.value = false
+  }
 }
 
-function handleRegister() {
+async function handleRegister() {
   errorMessage.value = ''
-  if (!registerUsername.value.trim()) return
-  const pass = registerPassword.value.trim() || '123456'
-  const newUser = createNewUser(registerUsername.value.trim(), pass, selectedColor.value)
-  setCurrentUserId(newUser.id)
-  emit('loginSuccess')
+  successMessage.value = ''
+
+  if (!registerUsername.value.trim()) {
+    errorMessage.value = '请输入注册用户名'
+    return
+  }
+  if (registerPassword.value.length < 3) {
+    errorMessage.value = '密码长度不能小于 3 位'
+    return
+  }
+  if (registerPassword.value !== registerPasswordConfirm.value) {
+    errorMessage.value = '两次输入的密码不一致'
+    return
+  }
+
+  loading.value = true
+  try {
+    const user = await tauriInvoke<UserType>('register_user', {
+      username: registerUsername.value.trim(),
+      password: registerPassword.value
+    })
+    successMessage.value = `✨ 注册成功！已为您自动登录 [${user.username}]`
+    setTimeout(() => {
+      emit('loginSuccess', user)
+    }, 400)
+  } catch (err: any) {
+    errorMessage.value = `❌ ${err?.message || err}`
+  } finally {
+    loading.value = false
+  }
+}
+
+function handleUseLocalMode() {
+  emit('useLocalMode')
+}
+
+function handleClose() {
+  emit('close')
 }
 </script>
 
@@ -180,24 +328,80 @@ function handleRegister() {
   left: 0;
   right: 0;
   bottom: 0;
-  background: linear-gradient(135deg, rgba(15, 23, 42, 0.85) 0%, rgba(30, 41, 59, 0.95) 100%);
-  backdrop-filter: blur(8px);
+  background: rgba(15, 23, 42, 0.75);
+  backdrop-filter: blur(10px);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 1000;
 }
 
-.login-card {
+/* 3D Container & Perspective */
+.card-perspective {
+  perspective: 1200px;
   width: 440px;
-  max-width: 90vw;
+  max-width: 92vw;
+  min-height: 580px;
+}
+
+.flip-card-inner {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  transition: transform 0.65s cubic-bezier(0.4, 0.2, 0.2, 1);
+  transform-style: preserve-3d;
+}
+
+.flip-card-inner.is-flipped {
+  transform: rotateY(180deg);
+}
+
+/* Card Front & Back Styling */
+.card-face {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
   background-color: var(--bg-card, #ffffff);
   border: 1px solid var(--border-color, #e2e8f0);
-  border-radius: 16px;
-  padding: 32px;
+  border-radius: 20px;
+  padding: 28px 30px;
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: 16px;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  box-sizing: border-box;
+}
+
+.card-front {
+  transform: rotateY(0deg);
+  z-index: 2;
+}
+
+.card-back {
+  transform: rotateY(180deg);
+}
+
+.close-btn {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  background: transparent;
+  border: none;
+  font-size: 16px;
+  color: var(--text-muted, #94a3b8);
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 6px;
+  transition: all 0.2s;
+  z-index: 10;
+}
+
+.close-btn:hover {
+  background-color: rgba(0, 0, 0, 0.06);
+  color: var(--text-main, #0f172a);
 }
 
 .login-header {
@@ -208,140 +412,96 @@ function handleRegister() {
 }
 
 .brand-logo {
-  width: 56px;
-  height: 56px;
+  width: 52px;
+  height: 52px;
   border-radius: 14px;
-  background: linear-gradient(135deg, #3B82F6 0%, #2563EB 100%);
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
   color: #ffffff;
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-bottom: 12px;
+  margin-bottom: 8px;
   box-shadow: 0 8px 16px -4px rgba(59, 130, 246, 0.4);
 }
 
+.brand-logo.register-brand {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  box-shadow: 0 8px 16px -4px rgba(16, 185, 129, 0.4);
+}
+
 .brand-title {
-  font-size: 22px;
+  font-size: 20px;
   font-weight: 800;
   color: var(--text-main, #0f172a);
   margin: 0;
 }
 
 .brand-subtitle {
-  font-size: 13px;
+  font-size: 12px;
   color: var(--text-muted, #64748b);
-  margin-top: 4px;
+  margin-top: 2px;
 }
 
-.tab-switch {
-  display: flex;
-  background-color: var(--bg-app, #f8fafc);
-  border-radius: 10px;
-  padding: 4px;
-  gap: 4px;
-}
-
-.tab-btn {
-  flex: 1;
+/* Card Mode Bar & Flip Switch */
+.card-mode-bar {
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: space-between;
+  background-color: var(--bg-app, #f8fafc);
+  padding: 6px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--border-color, #f1f5f9);
+}
+
+.mode-tag {
+  display: flex;
+  align-items: center;
   gap: 6px;
-  padding: 8px 0;
   font-size: 13px;
-  font-weight: 600;
-  color: var(--text-muted, #64748b);
-  border: none;
+  font-weight: 700;
+  color: var(--primary, #3b82f6);
+}
+
+.mode-tag.register-tag {
+  color: #10b981;
+}
+
+.flip-trigger-btn {
+  display: flex;
+  align-items: center;
+  gap: 5px;
   background: transparent;
-  border-radius: 8px;
+  border: none;
+  color: var(--primary, #3b82f6);
+  font-size: 12px;
+  font-weight: 600;
   cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 6px;
   transition: all 0.2s ease;
 }
 
-.tab-btn.active {
-  background-color: var(--bg-card, #ffffff);
-  color: var(--primary, #3b82f6);
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+.flip-trigger-btn:hover {
+  background-color: rgba(59, 130, 246, 0.1);
+  transform: translateX(2px);
 }
 
 .login-form {
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 14px;
 }
 
 .form-group {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 5px;
 }
 
 .input-label {
   font-size: 12px;
   font-weight: 600;
   color: var(--text-main, #334155);
-}
-
-.user-select-grid {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  max-height: 180px;
-  overflow-y: auto;
-}
-
-.user-select-card {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 10px 14px;
-  border-radius: 10px;
-  border: 1px solid var(--border-color, #e2e8f0);
-  background-color: var(--bg-app, #f8fafc);
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.user-select-card:hover {
-  border-color: var(--primary, #3b82f6);
-}
-
-.user-select-card.selected {
-  border-color: var(--primary, #3b82f6);
-  background-color: rgba(59, 130, 246, 0.08);
-}
-
-.avatar-circle {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  color: #fff;
-  font-size: 14px;
-  font-weight: 700;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.user-name-box {
-  display: flex;
-  flex-direction: column;
-  flex: 1;
-}
-
-.user-name {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--text-main, #0f172a);
-}
-
-.user-id-sub {
-  font-size: 10px;
-  color: var(--text-muted, #64748b);
-}
-
-.check-icon {
-  color: var(--primary, #3b82f6);
 }
 
 .input-wrapper {
@@ -358,42 +518,26 @@ function handleRegister() {
 
 .form-input {
   width: 100%;
-  padding: 10px 12px 10px 36px;
+  padding: 9px 12px 9px 36px;
   border-radius: 8px;
   border: 1px solid var(--border-color, #cbd5e1);
   background-color: var(--bg-app, #f8fafc);
   color: var(--text-main, #0f172a);
   font-size: 13px;
   outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  box-sizing: border-box;
 }
 
 .form-input:focus {
   border-color: var(--primary, #3b82f6);
-}
-
-.color-options {
-  display: flex;
-  gap: 10px;
-}
-
-.color-pill {
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  border: 2px solid transparent;
-  cursor: pointer;
-  transition: transform 0.2s ease;
-}
-
-.color-pill.active {
-  transform: scale(1.15);
-  border-color: var(--text-main, #0f172a);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
 }
 
 .submit-btn {
   width: 100%;
-  padding: 12px;
-  border-radius: 8px;
+  padding: 11px;
+  border-radius: 9px;
   border: none;
   background-color: var(--primary, #3b82f6);
   color: #ffffff;
@@ -404,20 +548,70 @@ function handleRegister() {
   align-items: center;
   justify-content: center;
   gap: 8px;
-  transition: opacity 0.2s ease;
+  transition: all 0.2s ease;
+  margin-top: 4px;
 }
 
 .submit-btn:hover {
-  opacity: 0.9;
+  opacity: 0.92;
+  transform: translateY(-1px);
 }
 
 .submit-btn:disabled {
-  opacity: 0.5;
+  opacity: 0.6;
   cursor: not-allowed;
+  transform: none;
 }
 
 .submit-btn.register-theme {
-  background-color: #10B981;
+  background-color: #10b981;
+}
+
+.local-mode-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(5, 150, 105, 0.05) 100%);
+  border: 1px dashed rgba(16, 185, 129, 0.4);
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.local-mode-banner:hover {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.18) 0%, rgba(5, 150, 105, 0.12) 100%);
+  transform: translateY(-1px);
+}
+
+.banner-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.banner-icon {
+  color: #10b981;
+}
+
+.banner-text {
+  display: flex;
+  flex-direction: column;
+}
+
+.banner-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: #059669;
+}
+
+.banner-desc {
+  font-size: 11px;
+  color: var(--text-muted, #64748b);
+}
+
+.banner-arrow {
+  color: #10b981;
 }
 
 .error-tip-alert {
@@ -429,9 +623,33 @@ function handleRegister() {
   padding: 8px 12px;
 }
 
+.success-tip-alert {
+  font-size: 12px;
+  color: #10b981;
+  background-color: rgba(16, 185, 129, 0.1);
+  border: 1px solid rgba(16, 185, 129, 0.2);
+  border-radius: 6px;
+  padding: 8px 12px;
+}
+
 .login-footer {
   text-align: center;
   font-size: 11px;
   color: var(--text-muted, #94a3b8);
+  margin-top: -4px;
+}
+
+.spinner-sm {
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }
 </style>
+
