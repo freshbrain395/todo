@@ -3,16 +3,27 @@
     <!-- 1. Header Bar with Navigation Tabs -->
     <header class="header">
       <div class="header-left">
+        <!-- Mobile Navigation Toggle Button (< 640px) -->
+        <button
+          class="mobile-nav-toggle-btn"
+          @click="toggleMobileNavMenu"
+          :title="showMobileNavMenu ? '关闭导航菜单' : '展开导航菜单'"
+        >
+          <X v-if="showMobileNavMenu" :size="18" />
+          <Menu v-else :size="18" />
+        </button>
+
         <h1 class="app-title">📝 Todo Agent</h1>
       </div>
 
-      <!-- Center Navbar Navigation Tabs -->
+      <!-- Center Navbar Navigation Tabs (Desktop & Tablet) -->
       <nav class="navbar-tabs">
         <button
           class="nav-tab-btn"
           :class="{ active: currentTab === 'todos' }"
           @click="currentTab = 'todos'"
           title="待办事项"
+          data-tooltip="待办事项"
         >
           <CheckSquare :size="15" /> <span>待办事项</span>
         </button>
@@ -22,6 +33,7 @@
           :class="{ active: currentTab === 'ai-chat' }"
           @click="currentTab = 'ai-chat'"
           title="AI 聊天"
+          data-tooltip="AI 聊天"
         >
           <MessageSquare :size="15" /> <span>AI 聊天</span>
         </button>
@@ -31,6 +43,7 @@
           :class="{ active: currentTab === 'calendar' }"
           @click="currentTab = 'calendar'"
           title="任务日历"
+          data-tooltip="任务日历"
         >
           <Calendar :size="15" /> <span>任务日历</span>
         </button>
@@ -40,6 +53,7 @@
           :class="{ active: currentTab === 'local-clock' }"
           @click="currentTab = 'local-clock'"
           title="本地时钟"
+          data-tooltip="本地时钟"
         >
           <Clock :size="15" /> <span>本地时钟</span>
         </button>
@@ -49,6 +63,7 @@
           :class="{ active: currentTab === 'clock' }"
           @click="currentTab = 'clock'"
           title="专注时钟"
+          data-tooltip="专注时钟"
         >
           <Flame :size="15" /> <span>专注时钟</span>
         </button>
@@ -58,6 +73,7 @@
           :class="{ active: currentTab === 'settings' }"
           @click="currentTab = 'settings'"
           title="系统设置"
+          data-tooltip="系统设置"
         >
           <Settings :size="15" /> <span>系统设置</span>
         </button>
@@ -96,13 +112,82 @@
         </button>
 
         <button
-          class="nav-tab-btn"
+          class="nav-tab-btn ai-assistant-toggle-btn"
           :class="{ active: showAiSidebar }"
           @click="showAiSidebar = !showAiSidebar"
           title="打开/收起 AI 聊天侧边栏"
+          data-tooltip="AI 助手"
         >
           <MessageSquare :size="15" /> <span>AI 助手</span>
         </button>
+      </div>
+
+      <!-- Mobile Dropdown Navigation Menu (< 640px) -->
+      <div v-if="showMobileNavMenu" class="mobile-dropdown-menu animate-fade-in" @click.stop>
+        <div class="mobile-nav-links">
+          <button
+            class="mobile-nav-item"
+            :class="{ active: currentTab === 'todos' }"
+            @click="selectMobileTab('todos')"
+          >
+            <CheckSquare :size="16" /> <span>待办事项</span>
+          </button>
+          <button
+            class="mobile-nav-item"
+            :class="{ active: currentTab === 'ai-chat' }"
+            @click="selectMobileTab('ai-chat')"
+          >
+            <MessageSquare :size="16" /> <span>AI 聊天</span>
+          </button>
+          <button
+            class="mobile-nav-item"
+            :class="{ active: currentTab === 'calendar' }"
+            @click="selectMobileTab('calendar')"
+          >
+            <Calendar :size="16" /> <span>任务日历</span>
+          </button>
+          <button
+            class="mobile-nav-item"
+            :class="{ active: currentTab === 'local-clock' }"
+            @click="selectMobileTab('local-clock')"
+          >
+            <Clock :size="16" /> <span>本地时钟</span>
+          </button>
+          <button
+            class="mobile-nav-item"
+            :class="{ active: currentTab === 'clock' }"
+            @click="selectMobileTab('clock')"
+          >
+            <Flame :size="16" /> <span>专注时钟</span>
+          </button>
+          <button
+            class="mobile-nav-item"
+            :class="{ active: currentTab === 'settings' }"
+            @click="selectMobileTab('settings')"
+          >
+            <Settings :size="16" /> <span>系统设置</span>
+          </button>
+        </div>
+
+        <div class="mobile-nav-divider"></div>
+
+        <!-- User section in mobile dropdown -->
+        <div class="mobile-user-section">
+          <template v-if="currentUser">
+            <div class="mobile-user-info">
+              <span class="user-avatar-icon">👤</span>
+              <span class="mobile-user-name">{{ currentUser.username }}</span>
+            </div>
+            <button class="mobile-action-btn danger" @click="handleLogout(); showMobileNavMenu = false">
+              <LogOut :size="15" /> <span>退出登录</span>
+            </button>
+          </template>
+          <template v-else>
+            <button class="mobile-action-btn primary" @click="showAuthModal = true; showMobileNavMenu = false">
+              <LogIn :size="15" /> <span>登录 / 注册账号</span>
+            </button>
+          </template>
+        </div>
       </div>
     </header>
 
@@ -378,7 +463,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, watch } from 'vue'
-import { CheckSquare, Calendar, Clock, Flame, Settings, MessageSquare, LogIn, LogOut, ChevronDown } from 'lucide-vue-next'
+import { CheckSquare, Calendar, Clock, Flame, Settings, MessageSquare, LogIn, LogOut, ChevronDown, Menu, X } from 'lucide-vue-next'
 import type { Todo, LlmConfig, FilterType, ThemeType, User } from './types'
 import { showConfirm } from './utils/confirmState'
 import LocalClockPage from './components/productivity/LocalClockPage.vue'
@@ -399,13 +484,29 @@ const showAuthModal = ref(false)
 // User Dropdown Menu State & Event Listeners
 const showUserMenu = ref(false)
 
+// Mobile Navigation Dropdown Menu State (< 640px)
+const showMobileNavMenu = ref(false)
+
 function toggleUserMenu(e: Event) {
   e.stopPropagation()
   showUserMenu.value = !showUserMenu.value
+  showMobileNavMenu.value = false
 }
 
 function closeUserMenu() {
   showUserMenu.value = false
+  showMobileNavMenu.value = false
+}
+
+function toggleMobileNavMenu(e: Event) {
+  e.stopPropagation()
+  showMobileNavMenu.value = !showMobileNavMenu.value
+  showUserMenu.value = false
+}
+
+function selectMobileTab(tab: 'todos' | 'ai-chat' | 'calendar' | 'local-clock' | 'clock' | 'settings') {
+  currentTab.value = tab
+  showMobileNavMenu.value = false
 }
 
 onMounted(() => {
@@ -756,6 +857,7 @@ onMounted(() => {
 }
 
 .header {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -764,6 +866,27 @@ onMounted(() => {
   border-bottom: 1px solid var(--border-color);
   gap: 12px;
   flex-wrap: nowrap;
+  z-index: 100;
+}
+
+.mobile-nav-toggle-btn {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+  background: var(--bg-app);
+  color: var(--text-main);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.mobile-nav-toggle-btn:hover {
+  background: var(--bg-hover);
+  border-color: var(--primary);
+  color: var(--primary);
 }
 
 .navbar-tabs {
@@ -778,6 +901,7 @@ onMounted(() => {
 }
 
 .nav-tab-btn {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 6px;
@@ -803,6 +927,108 @@ onMounted(() => {
   color: var(--primary);
   background-color: var(--bg-surface);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+/* Mobile Dropdown Navigation Styles (< 640px) */
+.mobile-dropdown-menu {
+  position: absolute;
+  top: calc(100% + 1px);
+  left: 0;
+  right: 0;
+  background-color: var(--bg-surface);
+  border-bottom: 1px solid var(--border-color);
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.15);
+  padding: 12px 16px;
+  z-index: 999;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  backdrop-filter: blur(12px);
+}
+
+.mobile-nav-links {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+}
+
+.mobile-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+  background-color: var(--bg-app);
+  color: var(--text-muted);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.mobile-nav-item:hover {
+  background-color: var(--bg-hover);
+  color: var(--text-main);
+  border-color: var(--primary);
+}
+
+.mobile-nav-item.active {
+  background-color: var(--primary);
+  color: #ffffff;
+  border-color: var(--primary);
+  font-weight: 600;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.mobile-nav-divider {
+  height: 1px;
+  background-color: var(--border-color);
+  margin: 2px 0;
+}
+
+.mobile-user-section {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.mobile-user-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-main);
+}
+
+.mobile-action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: 8px;
+  border: none;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.mobile-action-btn.primary {
+  background-color: var(--primary);
+  color: #ffffff;
+}
+
+.mobile-action-btn.danger {
+  background-color: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+}
+
+.mobile-action-btn.danger:hover {
+  background-color: #ef4444;
+  color: #ffffff;
 }
 
 .header-left {
@@ -873,18 +1099,7 @@ onMounted(() => {
   }
 }
 
-@media (max-width: 820px) {
-  .nav-tab-btn {
-    padding: 5px 8px;
-    gap: 4px;
-  }
-
-  .header-right {
-    gap: 8px;
-  }
-}
-
-@media (max-width: 680px) {
+@media (max-width: 860px) {
   .nav-tab-btn span {
     display: none;
   }
@@ -893,13 +1108,49 @@ onMounted(() => {
     padding: 6px 10px;
   }
 
-  .app-title {
-    font-size: 15px;
+  /* Show Hover Tooltip when text is hidden */
+  .nav-tab-btn[data-tooltip]:hover::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    top: calc(100% + 8px);
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: var(--text-main);
+    color: var(--bg-surface);
+    padding: 4px 8px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 500;
+    white-space: nowrap;
+    pointer-events: none;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    z-index: 1000;
   }
 
-  .header-right .btn-primary {
-    padding: 6px 10px;
-    font-size: 12px;
+  .app-title {
+    font-size: 16px;
+  }
+}
+
+@media (max-width: 640px) {
+  .mobile-nav-toggle-btn {
+    display: flex;
+  }
+
+  .navbar-tabs {
+    display: none;
+  }
+
+  .header-right .user-dropdown-container {
+    display: none;
+  }
+
+  .ai-assistant-toggle-btn span {
+    display: none;
+  }
+
+  .app-title {
+    font-size: 15px;
   }
 }
 
