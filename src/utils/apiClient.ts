@@ -30,16 +30,43 @@ function setStorageItem(key: string, value: string): void {
 }
 
 /**
- * 封装前端与后端（Tauri IPC / Web Fallback）交互的所有 11 个 API 接口
+ * 封装前端与后端（Python FastAPI RPC / Web Fallback）交互的所有 API 接口
  */
 export async function invokeApi<T>(cmd: string, args: Record<string, any> = {}): Promise<T> {
-  try {
-    const { invoke } = await import('@tauri-apps/api/core')
-    return await invoke<T>(cmd, args)
-  } catch (e) {
-    // 处于浏览器环境或 Tauri 未加载时使用 Web Fallback Mock
-    return webFallbackHandler<T>(cmd, args)
+  // 1. 处于具备网络 origin 的浏览器环境时，尝试直接请求 Python FastAPI 后端 (/api/invoke)
+  if (
+    typeof window !== 'undefined' &&
+    window.location &&
+    typeof window.location.origin === 'string' &&
+    window.location.origin.startsWith('http')
+  ) {
+    try {
+      const response = await fetch('/api/invoke', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cmd, args }),
+      })
+      if (response.ok) {
+        return (await response.json()) as T
+      } else if (response.status === 400 || response.status === 500) {
+        const errData = await response.json().catch(() => null)
+        const errMsg = errData?.detail || `API 请求错误: HTTP ${response.status}`
+        throw new Error(errMsg)
+      }
+    } catch (e: any) {
+      if (
+        e.message &&
+        !e.message.includes('Failed to fetch') &&
+        !e.message.includes('NetworkError') &&
+        !e.message.includes('Failed to parse URL')
+      ) {
+        throw e
+      }
+    }
   }
+
+  // 2. 离线或纯前端测试环境降级使用 Web Fallback
+  return webFallbackHandler<T>(cmd, args)
 }
 
 function webFallbackHandler<T>(cmd: string, args: Record<string, any>): T {

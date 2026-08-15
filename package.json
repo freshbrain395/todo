@@ -4,23 +4,24 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "concurrently -k -n backend,frontend -c magenta,cyan \"uv run todo-server\" \"vite\"",
+    "dev:backend": "uv run todo-server",
+    "dev:frontend": "vite",
+    "cli": "uv run todo-cli",
     "build": "vue-tsc && vite build",
     "preview": "vite preview",
     "test": "vitest run",
-    "tauri": "tauri",
-    "cli": "cargo run --manifest-path src-tauri/Cargo.toml -- interactive"
+    "test:backend": "uv run --extra dev pytest backend/tests",
+    "test:all": "vitest run && uv run --extra dev pytest backend/tests"
   },
   "dependencies": {
-    "@tauri-apps/api": "^2.0.0",
-    "@tauri-apps/plugin-shell": "^2.0.0",
     "lucide-vue-next": "^0.454.0",
     "vue": "^3.5.12"
   },
   "devDependencies": {
-    "@tauri-apps/cli": "^2.0.0",
     "@vitejs/plugin-vue": "^5.1.4",
     "@vue/test-utils": "^2.4.11",
+    "concurrently": "^10.0.4",
     "happy-dom": "^20.11.1",
     "typescript": "^5.6.3",
     "vite": "^5.4.10",

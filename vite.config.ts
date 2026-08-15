@@ -15,19 +15,14 @@ export default defineConfig({
     environment: 'happy-dom',
     globals: true
   },
-  // Vite options tailored for Tauri development & HMR
-  clearScreen: false,
   server: {
     port: 1420,
-    strictPort: true,
     host: true,
-    hmr: {
-      protocol: 'ws',
-      host: 'localhost',
-      port: 1420
-    },
-    watch: {
-      ignored: ['**/src-tauri/**']
+    proxy: {
+      '/api': {
+        target: 'http://127.0.0.1:8000',
+        changeOrigin: true,
+      }
     }
   }
 })

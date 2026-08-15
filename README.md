@@ -1,48 +1,76 @@
 # Todo Agent (Python + Vue 3)
 
-这是一个现代化的 TODO 智能体应用，支持 Web 前端、FastAPI 接口服务与交互式智能终端 CLI。
+这是一个现代化的 TODO 智能体应用，支持 Web 前端界面、FastAPI 接口服务与交互式智能终端 CLI。
 
-## 架构说明
+## 🌟 一键启动前后端
 
-- **后端架构**：Python 3 (基于 [uv](https://docs.astral.sh/uv/) 管理，分层架构：`api/`、`service/`、`repository/`、`cli/`)
-- **Web 服务**：FastAPI + Uvicorn + Pydantic (提供 RESTful 与通用 RPC 接口)
-- **数据持久化**：SQLite 数据库
-- **AI 智能体引擎**：支持多厂商 LLM（SiliconFlow、DeepSeek、Ollama 等）自然语言意图识别与任务自动调度
-- **交互式 CLI**：基于 Prompt Toolkit + Rich，支持 Slash Commands 补全、彩色可视化与 Agent 会话
-- **前端 UI**：Vue 3 + Vite + TypeScript + Lucide Icons
+使用 `pnpm` 一键同时启动 Python 后端服务与 Vite 前端界面：
+
+```bash
+# 1. 安装前端依赖
+pnpm install
+
+# 2. 一键启动前后端（后端 8000 端口 + 前端 1420 端口）
+pnpm dev
+```
 
 ---
 
-## 启动与运行
+## 🛠️ 项目管理与常用命令
 
-### 1. Python 后端与 CLI（使用 `uv` 管理）
+### 1. 前端管理（使用 `pnpm`）
 
-```bash
-# 启动 FastAPI HTTP/RPC 接口服务 (默认端口 8000)
-uv run todo-server
-# 或
-uv run python -m backend.main
+- **一键启动前后端服务**：
+  ```bash
+  pnpm dev
+  ```
+- **仅启动前端 Web 开发服务器**：
+  ```bash
+  pnpm run dev:frontend
+  ```
+- **构建前端生产产物**：
+  ```bash
+  pnpm run build
+  ```
+- **运行前端单元测试**：
+  ```bash
+  pnpm test
+  ```
 
-# 启动交互式智能终端 CLI
-uv run todo-cli
+---
 
-# 快速执行 CLI 命令
-uv run todo-cli --list
-uv run todo-cli add "学习 Python FastAPI 与 UV"
+### 2. Python 后端与 CLI（使用 `uv`）
 
-# 运行后端单元测试
-uv run --extra dev pytest backend/tests
-```
+- **仅启动 FastAPI 后端服务**：
+  ```bash
+  uv run todo-server
+  # 或
+  pnpm run dev:backend
+  ```
+- **启动交互式智能终端 CLI**：
+  ```bash
+  uv run todo-cli
+  # 或
+  pnpm run cli
+  ```
+- **快速执行命令行指令**：
+  ```bash
+  uv run todo-cli --list
+  uv run todo-cli add "学习 Python FastAPI 与 UV"
+  uv run todo-cli --help
+  ```
+- **运行后端 Python 测试**：
+  ```bash
+  uv run --extra dev pytest backend/tests
+  ```
 
-### 2. 前端界面（使用 `pnpm` 管理）
+---
 
-```bash
-# 安装前端依赖
-pnpm install
+## 📁 架构分层
 
-# 启动前端开发服务器
-pnpm run dev
-
-# 构建前端产物
-pnpm run build
-```
+- **前端 UI**：Vue 3 + Vite + TypeScript + Lucide Icons
+- **后端架构**：Python 3 (基于 `uv` 包管理器)
+  - `backend/api/`：FastAPI 路由组与通用 RPC 适配器
+  - `backend/service/`：业务逻辑层、LLM 智能体意图解析引擎
+  - `backend/repository/`：SQLite 数据访问层（Todo、User、Config、AI Session）
+  - `backend/cli.py`：基于 Prompt Toolkit + Rich 的交互式命令行终端
