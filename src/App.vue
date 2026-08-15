@@ -60,12 +60,32 @@
 
         <button
           class="nav-tab-btn"
-          :class="{ active: currentTab === 'clock' }"
-          @click="currentTab = 'clock'"
-          title="专注时钟"
-          data-tooltip="专注时钟"
+          :class="{ active: currentTab === 'countdown' }"
+          @click="currentTab = 'countdown'"
+          title="倒计时"
+          data-tooltip="倒计时"
         >
-          <Flame :size="15" /> <span>专注时钟</span>
+          <Hourglass :size="15" /> <span>倒计时</span>
+        </button>
+
+        <button
+          class="nav-tab-btn"
+          :class="{ active: currentTab === 'alarm' }"
+          @click="currentTab = 'alarm'"
+          title="闹钟"
+          data-tooltip="闹钟"
+        >
+          <Alarm :size="15" /> <span>闹钟</span>
+        </button>
+
+        <button
+          class="nav-tab-btn"
+          :class="{ active: currentTab === 'pomodoro' }"
+          @click="currentTab = 'pomodoro'"
+          title="番茄时钟"
+          data-tooltip="番茄时钟"
+        >
+          <Flame :size="15" /> <span>番茄时钟</span>
         </button>
 
         <button
@@ -125,10 +145,24 @@
           </button>
           <button
             class="mobile-nav-item"
-            :class="{ active: currentTab === 'clock' }"
-            @click="selectMobileTab('clock')"
+            :class="{ active: currentTab === 'countdown' }"
+            @click="selectMobileTab('countdown')"
           >
-            <Flame :size="16" /> <span>专注时钟</span>
+            <Hourglass :size="16" /> <span>倒计时</span>
+          </button>
+          <button
+            class="mobile-nav-item"
+            :class="{ active: currentTab === 'alarm' }"
+            @click="selectMobileTab('alarm')"
+          >
+            <Alarm :size="16" /> <span>闹钟</span>
+          </button>
+          <button
+            class="mobile-nav-item"
+            :class="{ active: currentTab === 'pomodoro' }"
+            @click="selectMobileTab('pomodoro')"
+          >
+            <Flame :size="16" /> <span>番茄时钟</span>
           </button>
           <button
             class="mobile-nav-item"
@@ -271,12 +305,22 @@
         <LocalClockPage />
       </template>
 
-      <!-- Tab 5: Pomodoro Focus Clock View -->
-      <template v-else-if="currentTab === 'clock'">
-        <ClockPage />
+      <!-- Tab 5: Countdown Timer View -->
+      <template v-else-if="currentTab === 'countdown'">
+        <AlarmCountdown />
       </template>
 
-      <!-- Tab 5: Settings View -->
+      <!-- Tab 6: Alarm View -->
+      <template v-else-if="currentTab === 'alarm'">
+        <AlarmCountdown mode="alarm" />
+      </template>
+
+      <!-- Tab 7: Pomodoro Timer View -->
+      <template v-else-if="currentTab === 'pomodoro'">
+        <PomodoroTimer />
+      </template>
+
+      <!-- Tab 8: Settings View -->
       <template v-else-if="currentTab === 'settings'">
         <SettingsPage
           v-model:theme="theme"
@@ -414,13 +458,14 @@
 
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, watch } from 'vue'
-import { CheckSquare, Calendar, Clock, Flame, Settings, MessageSquare, Menu, X } from 'lucide-vue-next'
+import { CheckSquare, Calendar, Clock, Flame, Settings, MessageSquare, Menu, X, Hourglass, Alarm } from 'lucide-vue-next'
 import type { Todo, LlmConfig, FilterType, ThemeType, User, AiActionResult } from './types'
 import { showConfirm } from './utils/confirmState'
 import { getLlmConfig, saveLlmConfig as persistLlmConfig, getTheme, saveTheme, getPrompts, getActivePromptId, getSkills } from './utils/aiStorage'
 import LocalClockPage from './components/productivity/LocalClockPage.vue'
 import CalendarView from './components/productivity/CalendarView.vue'
-import ClockPage from './components/productivity/ClockPage.vue'
+import PomodoroTimer from './components/productivity/PomodoroTimer.vue'
+import AlarmCountdown from './components/productivity/AlarmCountdown.vue'
 import SettingsPage from './components/common/SettingsPage.vue'
 import AiChatSidebar from './components/ai/AiChatSidebar.vue'
 import AiAssistantPage from './components/ai/AiAssistantPage.vue'
@@ -458,7 +503,7 @@ function toggleMobileNavMenu(e: Event) {
   showUserMenu.value = false
 }
 
-function selectMobileTab(tab: 'todos' | 'ai-chat' | 'calendar' | 'local-clock' | 'clock' | 'settings') {
+function selectMobileTab(tab: 'todos' | 'ai-chat' | 'calendar' | 'local-clock' | 'countdown' | 'alarm' | 'pomodoro' | 'settings') {
   currentTab.value = tab
   showMobileNavMenu.value = false
 }
@@ -499,7 +544,7 @@ function handleLogout() {
 }
 
 // Navigation Tab State
-type TabType = 'todos' | 'ai-chat' | 'calendar' | 'local-clock' | 'clock' | 'settings'
+type TabType = 'todos' | 'ai-chat' | 'calendar' | 'local-clock' | 'countdown' | 'alarm' | 'pomodoro' | 'settings'
 const currentTab = ref<TabType>('todos')
 const showAiSidebar = ref(false)
 const aiInput = ref('')
