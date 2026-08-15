@@ -1,208 +1,248 @@
 <template>
   <div class="settings-container animate-fade-in">
     <div class="settings-card">
-      <h2 class="page-title"><Settings :size="20" /> 系统全局与用户偏好设置</h2>
+      <div class="settings-header">
+        <h2 class="page-title"><Settings :size="22" /> 系统全局与用户偏好设置</h2>
+      </div>
 
-      <!-- Section 0: Theme Exterior Settings -->
-      <div class="settings-section">
-        <h3 class="section-title"><Palette :size="16" /> 界面主题外观</h3>
-        <div class="setting-item">
-          <div class="item-label">
-            <span>系统应用主题</span>
-            <small>选择您喜爱的界面视觉风格（浅色、暗黑或极光风格）</small>
-          </div>
-          <div class="item-control">
-            <select v-model="theme" class="select-input" @change="saveThemeSettings">
-              <option value="light">☀️ 浅色明亮 (Light Classic)</option>
-              <option value="dark">🌙 暗黑现代 (Dark Modern)</option>
-              <option value="nord">❄️ 极光冰蓝 (Nord Aurora)</option>
-            </select>
+      <!-- 单层扁平 Tab 导航页签栏 (按 PRD 要求平铺 8 个功能项) -->
+      <div class="settings-main-tabs">
+        <button
+          class="main-tab-btn"
+          :class="{ active: activeTab === 'llm' }"
+          @click="activeTab = 'llm'"
+        >
+          <Brain :size="16" /> <span>大模型参数</span>
+        </button>
+
+        <button
+          class="main-tab-btn"
+          :class="{ active: activeTab === 'prompts' }"
+          @click="activeTab = 'prompts'"
+        >
+          <Sparkles :size="16" /> <span>Prompts 预设 ({{ promptLibrary.length }})</span>
+        </button>
+
+        <button
+          class="main-tab-btn"
+          :class="{ active: activeTab === 'tools' }"
+          @click="activeTab = 'tools'"
+        >
+          <Wrench :size="16" /> <span>Agent Tools ({{ enabledToolsCount }}/{{ agentTools.length }})</span>
+        </button>
+
+        <button
+          class="main-tab-btn"
+          :class="{ active: activeTab === 'skills' }"
+          @click="activeTab = 'skills'"
+        >
+          <BookOpen :size="16" /> <span>Skills 技能库 ({{ enabledSkillsCount }}/{{ skillsLibrary.length }})</span>
+        </button>
+
+        <button
+          class="main-tab-btn"
+          :class="{ active: activeTab === 'appearance' }"
+          @click="activeTab = 'appearance'"
+        >
+          <Palette :size="16" /> <span>外观界面主题</span>
+        </button>
+
+        <button
+          class="main-tab-btn"
+          :class="{ active: activeTab === 'audio' }"
+          @click="activeTab = 'audio'"
+        >
+          <Volume2 :size="16" /> <span>提示与音效</span>
+        </button>
+
+        <button
+          class="main-tab-btn"
+          :class="{ active: activeTab === 'account' }"
+          @click="activeTab = 'account'"
+        >
+          <User :size="16" /> <span>账号与权限</span>
+        </button>
+
+        <button
+          class="main-tab-btn"
+          :class="{ active: activeTab === 'backup' }"
+          @click="activeTab = 'backup'"
+        >
+          <FileJson :size="16" /> <span>数据备份与危险区</span>
+        </button>
+      </div>
+
+      <!-- 选项卡 1 ~ 4: AI 模块相关设置 (渲染 AiSettingsView) -->
+      <div v-if="['llm', 'prompts', 'tools', 'skills'].includes(activeTab)" class="tab-pane">
+        <AiSettingsView
+          :active-tab="(activeTab as 'llm' | 'prompts' | 'tools' | 'skills')"
+          :saved-providers="savedProviders"
+          :local-config="llmConfig"
+          :fetched-models="fetchedModels"
+          :is-fetching-models="isFetchingModels"
+          :fetch-model-error="fetchModelError"
+          :prompt-library="promptLibrary"
+          v-model:active-prompt-id="activePromptId"
+          :editing-prompt-id="editingPromptId"
+          :edit-form="editForm"
+          :agent-tools="agentTools"
+          :skills-library="skillsLibrary"
+          :editing-skill-id="editingSkillId"
+          :skill-form="skillForm"
+          @update-provider="onProviderEdited"
+          @select-provider="selectProvider"
+          @delete-provider="deleteProvider"
+          @fetch-models="fetchModels"
+          @add-custom-provider="addCustomProvider"
+          @update-thinking="val => llmConfig.enable_thinking = val"
+          @add-new-prompt="addNewPrompt"
+          @start-edit-prompt="startEditPrompt"
+          @save-edit-prompt="saveEditPrompt"
+          @cancel-edit-prompt="cancelEditPrompt"
+          @delete-prompt="deletePrompt"
+          @enable-all-tools="enableAllTools"
+          @disable-all-tools="disableAllTools"
+          @reset-default-tools="resetToolsDefault"
+          @save-tools="saveToolsStorage"
+          @enable-all-skills="enableAllSkills"
+          @disable-all-skills="disableAllSkills"
+          @add-new-skill="addNewSkill"
+          @start-edit-skill="startEditSkill"
+          @save-edit-skill="saveEditSkill"
+          @cancel-edit-skill="cancelEditSkill"
+          @delete-skill="deleteSkill"
+          @save-skills="saveSkillsStorage"
+        />
+      </div>
+
+      <!-- 选项卡 5: 外观界面主题 -->
+      <div v-else-if="activeTab === 'appearance'" class="tab-pane">
+        <div class="settings-section">
+          <h3 class="section-title"><Palette :size="16" /> 界面主题与视觉外观</h3>
+          <div class="setting-item">
+            <div class="item-label">
+              <span>系统应用主题</span>
+              <small>选择您喜爱的界面视觉风格（浅色、暗黑或极光风格）</small>
+            </div>
+            <div class="item-control">
+              <select v-model="theme" class="select-input" @change="saveThemeSettings">
+                <option value="light">☀️ 浅色明亮 (Light Classic)</option>
+                <option value="dark">🌙 暗黑现代 (Dark Modern)</option>
+                <option value="nord">❄️ 极光冰蓝 (Nord Aurora)</option>
+              </select>
+            </div>
           </div>
         </div>
       </div>
 
-      <!-- Section 1: AI Model & Agent Settings -->
-      <div class="settings-section">
-        <h3 class="section-title"><Brain :size="16" /> AI 大模型与 Agent 功能配置</h3>
-        
-        <!-- Sub Tabs Navigation inside Settings -->
-        <div class="settings-sub-tabs">
-          <button
-            class="sub-tab-btn"
-            :class="{ active: aiSubTab === 'llm' }"
-            @click="aiSubTab = 'llm'"
-          >
-            <Brain :size="14" /> <span>1. 大模型参数</span>
-          </button>
-          <button
-            class="sub-tab-btn"
-            :class="{ active: aiSubTab === 'prompts' }"
-            @click="aiSubTab = 'prompts'"
-          >
-            <Sparkles :size="14" /> <span>2. Prompts 预设 ({{ promptLibrary.length }})</span>
-          </button>
-          <button
-            class="sub-tab-btn"
-            :class="{ active: aiSubTab === 'tools' }"
-            @click="aiSubTab = 'tools'"
-          >
-            <Wrench :size="14" /> <span>3. Agent Tools ({{ enabledToolsCount }}/{{ agentTools.length }})</span>
-          </button>
-          <button
-            class="sub-tab-btn"
-            :class="{ active: aiSubTab === 'skills' }"
-            @click="aiSubTab = 'skills'"
-          >
-            <BookOpen :size="14" /> <span>4. Skills 技能库 ({{ enabledSkillsCount }}/{{ skillsLibrary.length }})</span>
-          </button>
-        </div>
+      <!-- 选项卡 6: 提示与音效 -->
+      <div v-else-if="activeTab === 'audio'" class="tab-pane">
+        <div class="settings-section">
+          <h3 class="section-title"><Volume2 :size="16" /> 定时与响铃提醒音效设置</h3>
 
-        <div class="ai-settings-sub-content">
-          <AiSettingsView
-            :active-tab="aiSubTab"
-            :saved-providers="savedProviders"
-            :local-config="llmConfig"
-            :fetched-models="fetchedModels"
-            :is-fetching-models="isFetchingModels"
-            :fetch-model-error="fetchModelError"
-            :prompt-library="promptLibrary"
-            v-model:active-prompt-id="activePromptId"
-            :editing-prompt-id="editingPromptId"
-            :edit-form="editForm"
-            :agent-tools="agentTools"
-            :skills-library="skillsLibrary"
-            :editing-skill-id="editingSkillId"
-            :skill-form="skillForm"
-            @update-provider="onProviderEdited"
-            @select-provider="selectProvider"
-            @delete-provider="deleteProvider"
-            @fetch-models="fetchModels"
-            @add-custom-provider="addCustomProvider"
-            @update-thinking="val => llmConfig.enable_thinking = val"
-            @add-new-prompt="addNewPrompt"
-            @start-edit-prompt="startEditPrompt"
-            @save-edit-prompt="saveEditPrompt"
-            @cancel-edit-prompt="cancelEditPrompt"
-            @delete-prompt="deletePrompt"
-            @enable-all-tools="enableAllTools"
-            @disable-all-tools="disableAllTools"
-            @reset-default-tools="resetToolsDefault"
-            @save-tools="saveToolsStorage"
-            @enable-all-skills="enableAllSkills"
-            @disable-all-skills="disableAllSkills"
-            @add-new-skill="addNewSkill"
-            @start-edit-skill="startEditSkill"
-            @save-edit-skill="saveEditSkill"
-            @cancel-edit-skill="cancelEditSkill"
-            @delete-skill="deleteSkill"
-            @save-skills="saveSkillsStorage"
-          />
-        </div>
-      </div>
-
-      <!-- Section 2: User Config Account -->
-      <div class="settings-section">
-        <h3 class="section-title"><User :size="16" /> 用户账号与 JSON 独立配置</h3>
-        <div class="setting-item">
-          <div class="item-label">
-            <span>当前登录账号：<strong>{{ currentUserName }}</strong> <span v-if="isAdmin" class="admin-tag">👑 管理员</span></span>
-            <small>当前账号配置均实时存储在前端 JSON 集合中</small>
+          <div class="setting-item">
+            <div class="item-label">
+              <span>提醒音效类型</span>
+              <small>在番茄钟、倒计时与闹钟响铃时播放的声音</small>
+            </div>
+            <div class="item-control">
+              <select v-model="soundType" class="select-input" @change="saveAudioSettings">
+                <option value="chime">🔔 清脆金铃 (Digital Chime)</option>
+                <option value="marimba">🎵 柔和木鱼 (Soft Marimba)</option>
+                <option value="cyber">⚡ 科技和声 (Cyber Pulse)</option>
+                <option value="beep">📢 警报哔哔 (Beep Alert)</option>
+              </select>
+              <button class="btn btn-listen" @click="testSound">
+                <Volume2 :size="14" /> 试听音效
+              </button>
+            </div>
           </div>
-          <div class="item-control">
-            <button v-if="isAdmin" class="btn btn-admin-manage" @click="isAdminModalOpen = true">
-              <ShieldCheck :size="14" /> 管理员用户列表与权限
-            </button>
-            <button class="btn btn-listen" @click="isSwitchModalOpen = true">
-              <Users :size="14" /> 切换 / 新增用户账号
-            </button>
-            <button class="btn btn-logout-danger" @click="emit('logout')">
-              <LogOut :size="14" /> 退出登录
-            </button>
+
+          <div class="setting-item">
+            <div class="item-label">
+              <span>响铃音量大小 ({{ Math.round(soundVolume * 100) }}%)</span>
+              <small>调节提醒声音播放音量</small>
+            </div>
+            <div class="item-control">
+              <input
+                type="range"
+                min="0"
+                max="1"
+                step="0.05"
+                v-model.number="soundVolume"
+                class="volume-slider"
+                @input="saveAudioSettings"
+              />
+            </div>
           </div>
         </div>
       </div>
 
-      <!-- Section 3: JSON Export & Import -->
-      <div class="settings-section">
-        <h3 class="section-title"><FileJson :size="16" /> JSON 格式配置管理</h3>
-
-        <div class="setting-item">
-          <div class="item-label">
-            <span>备份与恢复独立 JSON 配置文件</span>
-            <small>将当前用户的全套偏好配置导出为 .json 文件，或从已有 JSON 配置文件中一键导入</small>
-          </div>
-          <div class="item-control">
-            <button class="btn btn-listen" @click="exportJsonConfig">
-              <Download :size="14" /> 导出 JSON 配置
-            </button>
-            <button class="btn btn-listen" @click="triggerImport">
-              <Upload :size="14" /> 导入 JSON 配置
-            </button>
-            <input
-              type="file"
-              ref="fileInputRef"
-              accept=".json,application/json"
-              style="display: none;"
-              @change="handleImportJson"
-            />
+      <!-- 选项卡 7: 账号与权限 -->
+      <div v-else-if="activeTab === 'account'" class="tab-pane">
+        <div class="settings-section">
+          <h3 class="section-title"><User :size="16" /> 用户账号与权限配置</h3>
+          <div class="setting-item">
+            <div class="item-label">
+              <span>当前登录账号：<strong>{{ currentUserName }}</strong> <span v-if="isAdmin" class="admin-tag">👑 管理员</span></span>
+              <small>当前账号配置均实时存储在前端 JSON 集合中</small>
+            </div>
+            <div class="item-control">
+              <button v-if="isAdmin" class="btn btn-admin-manage" @click="isAdminModalOpen = true">
+                <ShieldCheck :size="14" /> 管理员用户列表与权限
+              </button>
+              <button class="btn btn-listen" @click="isSwitchModalOpen = true">
+                <Users :size="14" /> 切换 / 新增用户账号
+              </button>
+              <button class="btn btn-logout-danger" @click="emit('logout')">
+                <LogOut :size="14" /> 退出登录
+              </button>
+            </div>
           </div>
         </div>
       </div>
 
-      <!-- Section 4: Audio Reminder Settings -->
-      <div class="settings-section">
-        <h3 class="section-title"><Volume2 :size="16" /> 定时与响铃提醒音效设置</h3>
+      <!-- 选项卡 8: 数据备份与危险区 -->
+      <div v-else-if="activeTab === 'backup'" class="tab-pane">
+        <div class="settings-section">
+          <h3 class="section-title"><FileJson :size="16" /> JSON 格式配置导出与恢复</h3>
 
-        <div class="setting-item">
-          <div class="item-label">
-            <span>提醒音效类型</span>
-            <small>在番茄钟、倒计时与闹钟响铃时播放的声音</small>
-          </div>
-          <div class="item-control">
-            <select v-model="soundType" class="select-input" @change="saveAudioSettings">
-              <option value="chime">🔔 清脆金铃 (Digital Chime)</option>
-              <option value="marimba">🎵 柔和木鱼 (Soft Marimba)</option>
-              <option value="cyber">⚡ 科技和声 (Cyber Pulse)</option>
-              <option value="beep">📢 警报哔哔 (Beep Alert)</option>
-            </select>
-            <button class="btn btn-listen" @click="testSound">
-              <Volume2 :size="14" /> 试听音效
-            </button>
+          <div class="setting-item">
+            <div class="item-label">
+              <span>备份与恢复独立 JSON 配置文件</span>
+              <small>将当前用户的全套偏好配置导出为 .json 文件，或从已有 JSON 配置文件中一键导入</small>
+            </div>
+            <div class="item-control">
+              <button class="btn btn-listen" @click="exportJsonConfig">
+                <Download :size="14" /> 导出 JSON 配置
+              </button>
+              <button class="btn btn-listen" @click="triggerImport">
+                <Upload :size="14" /> 导入 JSON 配置
+              </button>
+              <input
+                type="file"
+                ref="fileInputRef"
+                accept=".json,application/json"
+                style="display: none;"
+                @change="handleImportJson"
+              />
+            </div>
           </div>
         </div>
 
-        <div class="setting-item">
-          <div class="item-label">
-            <span>响铃音量大小 ({{ Math.round(soundVolume * 100) }}%)</span>
-            <small>调节提醒声音播放音量</small>
-          </div>
-          <div class="item-control">
-            <input
-              type="range"
-              min="0"
-              max="1"
-              step="0.05"
-              v-model.number="soundVolume"
-              class="volume-slider"
-              @input="saveAudioSettings"
-            />
-          </div>
-        </div>
-      </div>
+        <div class="settings-section">
+          <h3 class="section-title"><Trash2 :size="16" /> 重置与危险操作区</h3>
 
-      <!-- Section 5: Reset & Danger Zone -->
-      <div class="settings-section">
-        <h3 class="section-title"><Trash2 :size="16" /> 重置与危险操作区</h3>
-
-        <div class="setting-item">
-          <div class="item-label">
-            <span>恢复默认设置与应用缓存</span>
-            <small>重置所有音效偏好、主题配置和页面交互历史状态</small>
-          </div>
-          <div class="item-control">
-            <button class="btn btn-reset-danger" @click="resetAllSettings">
-              <RotateCcw :size="14" /> 重置当前用户偏好设置
-            </button>
+          <div class="setting-item">
+            <div class="item-label">
+              <span>恢复默认设置与应用缓存</span>
+              <small>重置所有音效偏好、主题配置和页面交互历史状态</small>
+            </div>
+            <div class="item-control">
+              <button class="btn btn-reset-danger" @click="resetAllSettings">
+                <RotateCcw :size="14" /> 重置当前用户偏好设置
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -248,13 +288,23 @@ import {
 } from '../../utils/configManager'
 import type { LlmConfig, ThemeType } from '../../types'
 import {
-  defaultSkillsLibrary,
-  defaultPromptsLibrary,
   defaultAgentTools,
   type SkillItem,
   type PromptItem,
   type AgentToolItem
 } from '../../utils/aiDefaults'
+import {
+  getProviders,
+  saveProviders,
+  getPrompts,
+  savePrompts,
+  getActivePromptId,
+  setActivePromptId,
+  getSkills,
+  saveSkills,
+  getToolConfig,
+  saveToolConfig
+} from '../../utils/aiStorage'
 
 
 
@@ -285,9 +335,9 @@ function saveThemeSettings() {
   emit('update:theme', theme.value)
 }
 
-// AI Settings State & Functions
-type AiSubTab = 'llm' | 'prompts' | 'tools' | 'skills'
-const aiSubTab = ref<AiSubTab>('llm')
+// Single Flat Tab Navigation State (8 items in PRD order)
+type SettingsFlatTab = 'llm' | 'prompts' | 'tools' | 'skills' | 'appearance' | 'audio' | 'account' | 'backup'
+const activeTab = ref<SettingsFlatTab>('llm')
 
 const llmConfig = ref<LlmConfig>({ ...currentConfig.value.llmConfig })
 
@@ -308,17 +358,10 @@ interface CustomLlmProvider {
   base_url: string
   api_key: string
   model: string
-  is_custom: boolean
+  is_custom?: boolean
 }
 
-const defaultProviders: CustomLlmProvider[] = [
-  { id: 'ollama', name: 'Native Ollama (本地大模型服务)', base_url: 'http://localhost:11434', api_key: '', model: 'llama3:latest', is_custom: false },
-  { id: 'siliconflow', name: 'SiliconFlow (硅基流动云端 API)', base_url: 'https://api.siliconflow.cn/v1', api_key: '', model: 'Qwen/Qwen2.5-7B-Instruct', is_custom: false }
-]
-
-const savedProviders = ref<CustomLlmProvider[]>(
-  JSON.parse(localStorage.getItem('ai_custom_providers') || 'null') || defaultProviders
-)
+const savedProviders = ref<CustomLlmProvider[]>(getProviders())
 
 const fetchedModels = ref<Record<string, {id: string, name: string}[]>>({})
 const isFetchingModels = ref<Record<string, boolean>>({})
@@ -378,7 +421,7 @@ async function fetchModels(p: CustomLlmProvider) {
 }
 
 function saveProvidersStorage() {
-  localStorage.setItem('ai_custom_providers', JSON.stringify(savedProviders.value))
+  saveProviders(savedProviders.value)
 }
 
 function onProviderEdited(p: CustomLlmProvider) {
@@ -424,19 +467,17 @@ function deleteProvider(id: string) {
 }
 
 // Prompts State & Functions
-const promptLibrary = ref<PromptItem[]>(
-  JSON.parse(localStorage.getItem('ai_prompt_library') || 'null') || defaultPromptsLibrary
-)
-const activePromptId = ref<string>(localStorage.getItem('ai_active_prompt_id') || 'p1')
+const promptLibrary = ref<PromptItem[]>(getPrompts())
+const activePromptId = ref<string>(getActivePromptId())
 const editingPromptId = ref<string | null>(null)
 const editForm = ref({ category: '', title: '', text: '', jsonFormat: '' })
 
 watch(activePromptId, (newId) => {
-  localStorage.setItem('ai_active_prompt_id', newId)
+  setActivePromptId(newId)
 })
 
 function savePromptLibraryStorage() {
-  localStorage.setItem('ai_prompt_library', JSON.stringify(promptLibrary.value))
+  savePrompts(promptLibrary.value)
 }
 
 function startEditPrompt(item: PromptItem) {
@@ -493,13 +534,8 @@ function deletePrompt(id: string) {
 }
 
 // Agent Tools State & Functions
-const storedToolsConfig = localStorage.getItem('agent_enabled_tools')
-let initialEnabledMap: Record<string, boolean> = {}
-if (storedToolsConfig) {
-  try {
-    initialEnabledMap = JSON.parse(storedToolsConfig)
-  } catch (e) {}
-}
+const storedToolsConfig = getToolConfig()
+let initialEnabledMap: Record<string, boolean> = storedToolsConfig || {}
 
 const agentTools = ref<AgentToolItem[]>(
   defaultAgentTools.map(t => ({
@@ -517,7 +553,7 @@ function saveToolsStorage() {
   agentTools.value.forEach(t => {
     map[t.id] = t.enabled
   })
-  localStorage.setItem('agent_enabled_tools', JSON.stringify(map))
+  saveToolConfig(map)
 }
 
 function enableAllTools() {
@@ -536,14 +572,12 @@ function resetToolsDefault() {
 }
 
 // Skills State & Functions
-const skillsLibrary = ref<SkillItem[]>(
-  JSON.parse(localStorage.getItem('agent_skills_config') || 'null') || defaultSkillsLibrary
-)
+const skillsLibrary = ref<SkillItem[]>(getSkills())
 
 const enabledSkillsCount = computed(() => skillsLibrary.value.filter(s => s.enabled).length)
 
 function saveSkillsStorage() {
-  localStorage.setItem('agent_skills_config', JSON.stringify(skillsLibrary.value))
+  saveSkills(skillsLibrary.value)
 }
 
 function enableAllSkills() {
@@ -709,9 +743,12 @@ async function resetAllSettings() {
   display: flex;
   justify-content: center;
   align-items: flex-start;
-  height: 100%;
+  width: 100%;
+  flex: 1;
+  min-height: 0;
   padding: 24px;
   overflow-y: auto;
+  box-sizing: border-box;
 }
 
 .settings-card {
@@ -720,11 +757,12 @@ async function resetAllSettings() {
   background-color: transparent;
   border: none;
   border-radius: 0;
-  padding: 10px;
+  padding: 10px 10px 40px 10px;
   box-shadow: none;
   display: flex;
   flex-direction: column;
   gap: 28px;
+  flex-shrink: 0;
 }
 
 .page-title {
@@ -735,6 +773,62 @@ async function resetAllSettings() {
   align-items: center;
   gap: 8px;
   margin: 0;
+}
+
+.settings-main-tabs {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-bottom: 1px solid var(--border-color, #333);
+  padding-bottom: 12px;
+  overflow-x: auto;
+}
+
+.main-tab-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 18px;
+  background: var(--bg-surface, #1e1e2e);
+  border: 1px solid var(--border-color, #333);
+  border-radius: 8px;
+  color: var(--text-muted, #aaa);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s ease-in-out;
+}
+
+.main-tab-btn:hover {
+  color: var(--text-main, #fff);
+  border-color: var(--primary, #3182ce);
+  background: var(--bg-card-hover, rgba(49, 130, 206, 0.08));
+}
+
+.main-tab-btn.active {
+  background: var(--primary, #3182ce);
+  color: #ffffff;
+  border-color: var(--primary, #3182ce);
+  box-shadow: 0 4px 12px rgba(49, 130, 206, 0.25);
+}
+
+.tab-pane {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  animation: tabFadeIn 0.2s ease-in-out;
+}
+
+@keyframes tabFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .settings-section {

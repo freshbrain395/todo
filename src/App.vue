@@ -80,38 +80,8 @@
       </nav>
 
       <div class="header-right">
-        <!-- User Authentication & Local Mode Dropdown -->
-        <div v-if="currentUser" class="user-dropdown-container">
-          <button
-            class="user-badge-btn"
-            @click="toggleUserMenu"
-            title="用户账号与下拉菜单"
-          >
-            <span class="user-avatar-icon">👤</span>
-            <span class="user-name-label">{{ currentUser.username }}</span>
-            <ChevronDown :size="12" class="chevron-icon" :class="{ open: showUserMenu }" />
-          </button>
-
-          <!-- User Dropdown Menu / Popup -->
-          <div v-if="showUserMenu" class="user-dropdown-menu animate-fade-in" @click.stop>
-            <div class="dropdown-header">
-              <div class="dropdown-user-name">👤 {{ currentUser.username }}</div>
-              <div class="dropdown-user-id">账号 ID: {{ currentUser.id }}</div>
-            </div>
-            <div class="dropdown-divider"></div>
-            <button class="dropdown-item" @click="currentTab = 'settings'; closeUserMenu()">
-              <Settings :size="14" /> <span>系统设置</span>
-            </button>
-            <button class="dropdown-item danger" @click="handleLogout(); closeUserMenu()">
-              <LogOut :size="14" /> <span>退出登录</span>
-            </button>
-          </div>
-        </div>
-        <button v-else class="login-trigger-btn" @click="showAuthModal = true" title="登录 / 注册账号">
-          <LogIn :size="15" />
-        </button>
-
         <button
+          v-if="currentTab !== 'ai-chat'"
           class="nav-tab-btn ai-assistant-toggle-btn"
           :class="{ active: showAiSidebar }"
           @click="showAiSidebar = !showAiSidebar"
@@ -168,32 +138,12 @@
             <Settings :size="16" /> <span>系统设置</span>
           </button>
         </div>
-
-        <div class="mobile-nav-divider"></div>
-
-        <!-- User section in mobile dropdown -->
-        <div class="mobile-user-section">
-          <template v-if="currentUser">
-            <div class="mobile-user-info">
-              <span class="user-avatar-icon">👤</span>
-              <span class="mobile-user-name">{{ currentUser.username }}</span>
-            </div>
-            <button class="mobile-action-btn danger" @click="handleLogout(); showMobileNavMenu = false">
-              <LogOut :size="15" /> <span>退出登录</span>
-            </button>
-          </template>
-          <template v-else>
-            <button class="mobile-action-btn primary" @click="showAuthModal = true; showMobileNavMenu = false">
-              <LogIn :size="15" /> <span>登录 / 注册账号</span>
-            </button>
-          </template>
-        </div>
       </div>
     </header>
 
 
     <!-- 2. Main Content Area -->
-    <main class="main-content">
+    <main class="main-content" :class="{ 'full-chat-mode': currentTab === 'ai-chat' }">
       <!-- Tab 1: Todos List View -->
       <template v-if="currentTab === 'todos'">
         <!-- Filter & Search Toolbar -->
@@ -295,13 +245,13 @@
         </div>
       </template>
 
-      <!-- Tab 3: AI Chat View -->
+      <!-- Tab 2: AI Chat View -->
       <template v-else-if="currentTab === 'ai-chat'">
         <div class="ai-chat-page-wrapper">
-          <AiChatSidebar
+          <AiAssistantPage
+            ref="aiAssistantRef"
             :config="llmConfig"
             :is-processing="aiProcessing"
-            :hide-toggle-btn="true"
             @send="handleAiPageSend"
             @update:config="onLlmConfigUpdate"
           />
@@ -346,6 +296,7 @@
       <div class="drawer-backdrop" @click="showAiSidebar = false"></div>
       <div class="drawer-content">
         <AiChatSidebar
+          ref="aiDrawerSidebarRef"
           :config="llmConfig"
           :is-processing="aiProcessing"
           :hide-toggle-btn="true"
@@ -463,14 +414,16 @@
 
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, watch } from 'vue'
-import { CheckSquare, Calendar, Clock, Flame, Settings, MessageSquare, LogIn, LogOut, ChevronDown, Menu, X } from 'lucide-vue-next'
-import type { Todo, LlmConfig, FilterType, ThemeType, User } from './types'
+import { CheckSquare, Calendar, Clock, Flame, Settings, MessageSquare, Menu, X } from 'lucide-vue-next'
+import type { Todo, LlmConfig, FilterType, ThemeType, User, AiActionResult } from './types'
 import { showConfirm } from './utils/confirmState'
+import { getLlmConfig, saveLlmConfig as persistLlmConfig, getTheme, saveTheme, getPrompts, getActivePromptId, getSkills } from './utils/aiStorage'
 import LocalClockPage from './components/productivity/LocalClockPage.vue'
 import CalendarView from './components/productivity/CalendarView.vue'
 import ClockPage from './components/productivity/ClockPage.vue'
 import SettingsPage from './components/common/SettingsPage.vue'
 import AiChatSidebar from './components/ai/AiChatSidebar.vue'
+import AiAssistantPage from './components/ai/AiAssistantPage.vue'
 import LoginPage from './components/common/LoginPage.vue'
 
 // User Auth & Local Mode State
@@ -492,6 +445,7 @@ function toggleUserMenu(e: Event) {
   showUserMenu.value = !showUserMenu.value
   showMobileNavMenu.value = false
 }
+void toggleUserMenu
 
 function closeUserMenu() {
   showUserMenu.value = false
@@ -548,6 +502,8 @@ function handleLogout() {
 type TabType = 'todos' | 'ai-chat' | 'calendar' | 'local-clock' | 'clock' | 'settings'
 const currentTab = ref<TabType>('todos')
 const showAiSidebar = ref(false)
+const aiInput = ref('')
+const aiProcessing = ref(false)
 
 function handleAiPageSend(text: string) {
   aiInput.value = text
@@ -556,21 +512,23 @@ function handleAiPageSend(text: string) {
 
 function onLlmConfigUpdate(newConfig: LlmConfig) {
   llmConfig.value = { ...newConfig }
-  localStorage.setItem('siliconflow_api_key', newConfig.api_key)
+  persistLlmConfig(newConfig)
 }
 
 // Theme State
-const theme = ref<ThemeType>((localStorage.getItem('todo_theme') as ThemeType) || 'light')
+const storedTheme = getTheme() as ThemeType | null
+const theme = ref<ThemeType>(storedTheme || 'light')
 watch(theme, (newVal) => {
-  localStorage.setItem('todo_theme', newVal)
+  saveTheme(newVal)
   document.documentElement.setAttribute('data-theme', newVal)
 }, { immediate: true })
 
 // LLM Config State
-const llmConfig = ref<LlmConfig>({
+const storedLlmConfig = getLlmConfig()
+const llmConfig = ref<LlmConfig>(storedLlmConfig || {
   provider: 'siliconflow',
   base_url: 'https://api.siliconflow.cn/v1',
-  api_key: localStorage.getItem('siliconflow_api_key') || '',
+  api_key: '',
   model: 'deepseek-ai/DeepSeek-V4-Flash',
   enable_thinking: false
 })
@@ -595,9 +553,9 @@ const todoForm = ref({
 
 const showModelModal = ref(false)
 
-// AI Input State
-const aiInput = ref('')
-const aiProcessing = ref(false)
+// AI Sidebar Component Refs
+const aiAssistantRef = ref<any>(null)
+const aiDrawerSidebarRef = ref<any>(null)
 
 // Tauri Invoke Helper (with fallback for web browser testing)
 async function tauriInvoke<T>(cmd: string, args: Record<string, any> = {}): Promise<T> {
@@ -662,6 +620,98 @@ async function tauriInvoke<T>(cmd: string, args: Record<string, any> = {}): Prom
       stored = stored.filter(t => t.id !== args.id)
       localStorage.setItem(storageKey, JSON.stringify(stored))
       return true as T
+    }
+    if (cmd === 'execute_ai_command') {
+      const input = (args.input || '') as string
+      const config = (args.config || {}) as LlmConfig
+      const userId = args.user_id || 0
+
+      // 1. 如果配置了 API Key，在 Web Fallback 下直接请求大模型 API
+      if (config.api_key && config.provider === 'siliconflow') {
+        try {
+          const resp = await fetch(`${config.base_url}/chat/completions`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${config.api_key}`
+            },
+            body: JSON.stringify({
+              model: config.model || 'deepseek-ai/DeepSeek-V4-Flash',
+              messages: [
+                { role: 'system', content: '你是一个高效智能的 Todo 待办事项助手。' },
+                { role: 'user', content: input }
+              ]
+            })
+          })
+          const json = await resp.json()
+          if (json.choices && json.choices.length > 0) {
+            const aiText = json.choices[0].message.content
+            return {
+              action: 'chat',
+              message: aiText,
+              should_refresh: false,
+              data: null
+            } as T
+          }
+        } catch (apiErr) {
+          console.warn('Web API Fetch Failed, fallback to mock parser:', apiErr)
+        }
+      }
+
+      // 2. 离线模式 / 未填 Key 时的智能待办指令解析
+      let stored = JSON.parse(localStorage.getItem(storageKey) || '[]') as Todo[]
+
+      if (input.includes('新建') || input.includes('创建') || input.includes('添加') || input.includes('提醒我') || input.includes('安排')) {
+        let title = input.replace(/(帮我|请|提醒我|新建|创建|添加|安排|待办|任务)/g, '').trim()
+        if (!title) title = '新智能待办任务'
+        const newTodo: Todo = {
+          id: Date.now(),
+          title: title,
+          category: input.includes('工作') ? '工作' : input.includes('学习') ? '学习' : '生活',
+          priority: input.includes('高') || input.includes('紧急') ? 'high' : 'medium',
+          completed: false,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          user_id: userId
+        }
+        stored.push(newTodo)
+        localStorage.setItem(storageKey, JSON.stringify(stored))
+        return {
+          action: 'add',
+          message: `已自动为您创建待办任务：【${title}】`,
+          should_refresh: true,
+          data: newTodo
+        } as T
+      } else if (input.includes('完成') || input.includes('做完') || input.includes('标记')) {
+        if (stored.length > 0) {
+          stored[0].completed = true
+          localStorage.setItem(storageKey, JSON.stringify(stored))
+          return {
+            action: 'complete',
+            message: `已为您标记任务【${stored[0].title}】为已完成！`,
+            should_refresh: true,
+            data: stored[0]
+          } as T
+        }
+      } else if (input.includes('删除') || input.includes('清理')) {
+        if (stored.length > 0) {
+          const deleted = stored.shift()
+          localStorage.setItem(storageKey, JSON.stringify(stored))
+          return {
+            action: 'delete',
+            message: `已为您删除任务【${deleted?.title || ''}】`,
+            should_refresh: true,
+            data: null
+          } as T
+        }
+      }
+
+      return {
+        action: 'chat',
+        message: `收到！我是您的 AI 待办助手。您刚才说："${input}"。我可以帮助您创建、完成或整理待办事项！在“系统设置”或 AI 聊天页配置您的 LLM API Key，即可开启完全通用的智能深度对话！`,
+        should_refresh: false,
+        data: null
+      } as T
     }
     throw e
   }
@@ -803,7 +853,7 @@ function onProviderChange() {
 }
 
 function saveLlmConfig() {
-  localStorage.setItem('siliconflow_api_key', llmConfig.value.api_key)
+  persistLlmConfig(llmConfig.value)
   showModelModal.value = false
   statusMessage.value = `⚙️ LLM 配置已更新 [Provider: ${llmConfig.value.provider}, Model: ${llmConfig.value.model}]`
 }
@@ -818,22 +868,57 @@ async function sendAiCommand() {
 
   try {
     const uid = currentUser.value ? currentUser.value.id : 0
-    const res = await tauriInvoke<any>('execute_ai_command', {
+    const history = aiAssistantRef.value?.getHistory?.() || aiDrawerSidebarRef.value?.getHistory?.() || []
+    const systemPrompt = buildSystemPrompt()
+    const res = await tauriInvoke<AiActionResult>('execute_ai_command', {
       input: text,
       config: llmConfig.value,
-      user_id: uid
+      user_id: uid,
+      history: history.length ? history : null,
+      system_prompt: systemPrompt || null
     })
     aiInput.value = ''
     statusMessage.value = `✅ AI 任务完成：${res.message}`
+
+    // 重点：将 AI 响应追加回全屏页或侧边抽屉的对话框
+    if (aiAssistantRef.value) {
+      aiAssistantRef.value.appendAiResponse(res)
+    }
+    if (aiDrawerSidebarRef.value) {
+      aiDrawerSidebarRef.value.appendAiResponse(res)
+    }
 
     if (res.should_refresh) {
       loadTodos()
     }
   } catch (err: any) {
-    statusMessage.value = `❌ AI 执行异常: ${err?.message || err}`
+    const errMsg = err?.message || String(err)
+    statusMessage.value = `❌ AI 执行异常: ${errMsg}`
+
+    if (aiAssistantRef.value) {
+      aiAssistantRef.value.appendSystemError(errMsg)
+    }
+    if (aiDrawerSidebarRef.value) {
+      aiDrawerSidebarRef.value.appendSystemError(errMsg)
+    }
   } finally {
     aiProcessing.value = false
   }
+}
+
+function buildSystemPrompt(): string {
+  const parts: string[] = []
+  const prompts = getPrompts()
+  const activeId = getActivePromptId()
+  const active = prompts.find(p => p.id === activeId && p.enabled !== false)
+  if (active) {
+    parts.push(`【当前激活的提示词模板】\n${active.text}`)
+  }
+  const skills = getSkills().filter(s => s.enabled)
+  if (skills.length) {
+    parts.push(`【当前启用的技能指令】\n${skills.map(s => `- ${s.title}: ${s.systemPrompt}`).join('\n')}`)
+  }
+  return parts.join('\n\n')
 }
 
 onMounted(() => {
@@ -1152,26 +1237,49 @@ onMounted(() => {
   .app-title {
     font-size: 15px;
   }
+
+  .main-content {
+    padding: 12px 10px;
+  }
+
+  .toolbar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  .toolbar-right {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .search-box {
+    flex: 1;
+  }
+
+  .search-box input {
+    width: 100%;
+  }
+
+  .filter-group {
+    flex-wrap: wrap;
+  }
 }
 
-.theme-select-group {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
+@media (max-width: 480px) {
+  .drawer-content {
+    width: 100vw !important;
+    max-width: 100vw !important;
+  }
 
-.label-sm {
-  font-size: 12px;
-  color: var(--text-muted);
-  font-weight: 500;
-}
+  .todo-card {
+    padding: 10px 12px;
+  }
 
-.main-content {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  padding: 16px 20px;
-  overflow: hidden;
+  .card-meta {
+    flex-wrap: wrap;
+    gap: 4px;
+  }
 }
 
 .toolbar {
@@ -1374,6 +1482,8 @@ onMounted(() => {
 
 .modal-card {
   width: 440px;
+  max-width: calc(100vw - 24px);
+  box-sizing: border-box;
   background-color: var(--bg-surface);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-lg);
@@ -1489,6 +1599,22 @@ onMounted(() => {
   background-color: rgba(229, 62, 62, 0.1);
 }
 
+.main-content {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+}
+
+.main-content.full-chat-mode {
+  padding: 0;
+  height: 100%;
+  overflow: hidden;
+}
+
 /* AI Chat Page & Drawer Layout */
 .ai-chat-page-wrapper {
   width: 100%;
@@ -1502,9 +1628,11 @@ onMounted(() => {
 
 .ai-chat-page-wrapper :deep(.ai-sidebar) {
   width: 100%;
-  max-width: 900px;
+  max-width: 1000px;
   border-left: none;
-  box-shadow: 0 0 16px rgba(0, 0, 0, 0.05);
+  border-right: none;
+  box-shadow: none;
+  border-radius: 0;
 }
 
 .ai-drawer-overlay {

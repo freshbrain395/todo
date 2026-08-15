@@ -1,4 +1,5 @@
-import type { SoundType } from './audio';
+import type { SoundType } from './audio'
+import { getLocalUsers, saveLocalUsers } from './aiStorage'
 
 export interface UserProfile {
   id: string;
@@ -28,7 +29,6 @@ export interface UserAccountData {
   config: UserAppConfig;
 }
 
-const STORAGE_USERS_KEY = 'app_users_v2';
 const STORAGE_CURRENT_USER_ID_KEY = 'app_current_user_id_v2';
 const STORAGE_IS_LOGGED_IN_KEY = 'app_is_logged_in_v2';
 
@@ -59,37 +59,12 @@ const DEFAULT_ADMIN_USER: UserProfile = {
 
 // 获取所有用户账号配置映射 (以 userId 为 key 存 JSON 字典)
 export function getAllUserAccountsMap(): Record<string, UserAccountData> {
-  try {
-    const raw = localStorage.getItem(STORAGE_USERS_KEY);
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      // 确保 admin 账号始终存在
-      if (!parsed[DEFAULT_ADMIN_USER.id]) {
-        parsed[DEFAULT_ADMIN_USER.id] = {
-          user: DEFAULT_ADMIN_USER,
-          config: JSON.parse(JSON.stringify(DEFAULT_USER_CONFIG))
-        };
-        saveAllUserAccountsMap(parsed);
-      }
-      return parsed;
-    }
-  } catch (e) {
-    console.error('Failed to parse users config JSON', e);
-  }
-
-  const defaultMap: Record<string, UserAccountData> = {
-    [DEFAULT_ADMIN_USER.id]: {
-      user: DEFAULT_ADMIN_USER,
-      config: JSON.parse(JSON.stringify(DEFAULT_USER_CONFIG))
-    },
-  };
-  saveAllUserAccountsMap(defaultMap);
-  return defaultMap;
+  return getLocalUsers() as Record<string, UserAccountData>
 }
 
 // 保存所有用户 JSON 配置映射
 export function saveAllUserAccountsMap(map: Record<string, UserAccountData>): void {
-  localStorage.setItem(STORAGE_USERS_KEY, JSON.stringify(map));
+  saveLocalUsers(map)
 }
 
 // 获取当前登录状态

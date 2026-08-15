@@ -146,12 +146,18 @@
               <Trash2 :size="14" /> 清空
             </button>
           </div>
-          <div class="input-box-wrapper">
+          <div class="input-box-wrapper" style="position: relative;">
+            <SlashCommandMenu
+              :visible="showSlashMenu"
+              :commands="filteredSlashCommands"
+              v-model:selected-index="selectedIndex"
+              @select="selectCommand"
+            />
             <textarea
               v-model="inputQuery"
               class="chat-textarea"
-              placeholder="发送消息给 AI Agent（Enter 发送，Shift+Enter 换行）..."
-              @keydown.enter.exact.prevent="handleSend"
+              placeholder="发送消息给 AI Agent（输入 / 唤起快捷指令菜单，Enter 发送）..."
+              @keydown="onTextareaKeydown"
             ></textarea>
             <button
               class="btn-send-msg"
@@ -173,10 +179,12 @@
           :editing-prompt-id="editingPromptId"
           :edit-form="editForm"
           @add-new-prompt="addNewPrompt"
+          @add-new-prompt-in-category="addNewPromptInCategory"
           @start-edit-prompt="startEditPrompt"
           @save-edit-prompt="saveEditPrompt"
           @cancel-edit-prompt="cancelEditPrompt"
           @delete-prompt="deletePrompt"
+          @save-prompts="savePromptLibraryStorage"
         />
       </div>
 
@@ -241,6 +249,21 @@ import NavbarClock from '../widgets/NavbarClock.vue'
 import type { ChatMessage, LlmConfig, AiActionResult } from '../../types'
 import { showConfirm } from '../../utils/confirmState'
 import AiSettingsView from './AiSettingsView.vue'
+import SlashCommandMenu from './SlashCommandMenu.vue'
+import { useSlashCommands } from './useSlashCommands'
+import {
+  getProviders,
+  saveProviders,
+  getPrompts,
+  savePrompts,
+  getSkills,
+  saveSkills,
+  getSessions,
+  saveSessions,
+  getToolConfig,
+  saveToolConfig,
+  saveLlmConfig
+} from '../../utils/aiStorage'
 
 const props = defineProps<{
   config: LlmConfig
@@ -261,6 +284,26 @@ const settingsSubTab = ref<SettingsSubTab>('llm')
 const inputQuery = ref('')
 const chatContainerRef = ref<HTMLElement | null>(null)
 
+const {
+  showSlashMenu,
+  selectedIndex,
+  filteredSlashCommands,
+  selectCommand,
+  handleKeydown
+} = useSlashCommands(inputQuery, {
+  onClear: () => clearMessages()
+})
+
+function onTextareaKeydown(e: KeyboardEvent) {
+  if (handleKeydown(e)) {
+    return
+  }
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault()
+    handleSend()
+  }
+}
+
 const localConfig = ref<LlmConfig>({ ...props.config })
 watch(() => props.config, (newVal) => {
   localConfig.value = { ...newVal }
@@ -268,9 +311,7 @@ watch(() => props.config, (newVal) => {
 
 // 监听 localConfig 修改，实现自动保存并回传父组件
 watch(localConfig, (newVal) => {
-  if (newVal.api_key) {
-    localStorage.setItem('siliconflow_api_key', newVal.api_key)
-  }
+  saveLlmConfig({ ...newVal })
   emit('update:config', { ...newVal })
 }, { deep: true })
 
@@ -280,7 +321,7 @@ interface CustomLlmProvider {
   base_url: string
   api_key: string
   model: string
-  is_custom: boolean
+  is_custom?: boolean
 }
 
 const defaultProviders: CustomLlmProvider[] = [
@@ -288,9 +329,7 @@ const defaultProviders: CustomLlmProvider[] = [
   { id: 'siliconflow', name: 'SiliconFlow (硅基流动云端 API)', base_url: 'https://api.siliconflow.cn/v1', api_key: '', model: 'Qwen/Qwen2.5-7B-Instruct', is_custom: false }
 ]
 
-const savedProviders = ref<CustomLlmProvider[]>(
-  JSON.parse(localStorage.getItem('ai_custom_providers') || 'null') || defaultProviders
-)
+const savedProviders = ref<CustomLlmProvider[]>(getProviders(defaultProviders))
 savedProviders.value.sort((a,b) => (a.id === 'ollama' ? -1 : (b.id === 'ollama' ? 1 : 0)))
 
 const fetchedModels = ref<Record<string, {id: string, name: string}[]>>({})
@@ -354,7 +393,7 @@ async function fetchModels(p: CustomLlmProvider) {
 }
 
 function saveProvidersStorage() {
-  localStorage.setItem('ai_custom_providers', JSON.stringify(savedProviders.value))
+  saveProviders(savedProviders.value)
 }
 
 function onProviderEdited(p: CustomLlmProvider) {
@@ -470,12 +509,10 @@ const defaultSkillsLibrary: SkillItem[] = [
   }
 ]
 
-const skillsLibrary = ref<SkillItem[]>(
-  JSON.parse(localStorage.getItem('agent_skills_config') || 'null') || defaultSkillsLibrary
-)
+const skillsLibrary = ref<SkillItem[]>(getSkills(defaultSkillsLibrary))
 
 function saveSkillsStorage() {
-  localStorage.setItem('agent_skills_config', JSON.stringify(skillsLibrary.value))
+  saveSkills(skillsLibrary.value)
 }
 
 const enabledSkillsCount = computed(() => {
@@ -575,15 +612,7 @@ const DEFAULT_SESSIONS: ChatSession[] = [
   }
 ]
 
-const savedSessionsStr = localStorage.getItem('ai_chat_sessions')
-let parsedSessions: ChatSession[] = []
-if (savedSessionsStr) {
-  try {
-    parsedSessions = JSON.parse(savedSessionsStr)
-  } catch (e) {
-    console.error('Failed to parse ai_chat_sessions', e)
-  }
-}
+let parsedSessions = getSessions()
 if (!parsedSessions || parsedSessions.length === 0) {
   parsedSessions = DEFAULT_SESSIONS
 }
@@ -595,7 +624,7 @@ const editingSessionId = ref<string | null>(null)
 const editingSessionTitle = ref('')
 
 function saveSessionsToStorage() {
-  localStorage.setItem('ai_chat_sessions', JSON.stringify(sessions.value))
+  saveSessions(sessions.value)
 }
 
 const activeSession = computed(() => {
@@ -699,6 +728,7 @@ interface PromptItem {
   title: string
   text: string
   jsonFormat?: string
+  enabled?: boolean
 }
 
 const defaultPromptsLibrary: PromptItem[] = [
@@ -706,31 +736,33 @@ const defaultPromptsLibrary: PromptItem[] = [
     id: 'p1',
     category: '时间管理',
     title: '高效工作日程划分',
-    text: '请帮我规划今天的工作日程，把重要且紧急的任务安排在上午最清醒的时候。'
+    text: '请帮我规划今天的工作日程，把重要且紧急的任务安排在上午最清醒的时候。',
+    enabled: true
   },
   {
     id: 'p2',
     category: '任务拆解',
     title: '复杂大项目细化',
-    text: '帮我把"完成项目上线"拆解为 5 个具体的、可落地的子待办事项。'
+    text: '帮我把"完成项目上线"拆解为 5 个具体的、可落地的子待办事项。',
+    enabled: true
   },
   {
     id: 'p3',
     category: '周报生成',
     title: '工作总结整理',
-    text: '请根据我已完成的待办事项，帮我撰写一份简明扼要的本周工作总结。'
+    text: '请根据我已完成的待办事项，帮我撰写一份简明扼要的本周工作总结。',
+    enabled: true
   },
   {
     id: 'p4',
     category: '优先级评估',
     title: '待办四象限排序',
-    text: '分析我现有的待办列表，并给出最推荐优先处理的前 3 项任务建议。'
+    text: '分析我现有的待办列表，并给出最推荐优先处理的前 3 项任务建议。',
+    enabled: true
   }
 ]
 
-const promptLibrary = ref<PromptItem[]>(
-  JSON.parse(localStorage.getItem('ai_prompt_library') || 'null') || defaultPromptsLibrary
-)
+const promptLibrary = ref<PromptItem[]>(getPrompts(defaultPromptsLibrary))
 
 const activePromptId = ref<string>('p1')
 
@@ -744,7 +776,7 @@ const editForm = ref({
 })
 
 function savePromptLibraryStorage() {
-  localStorage.setItem('ai_prompt_library', JSON.stringify(promptLibrary.value))
+  savePrompts(promptLibrary.value)
 }
 
 function startEditPrompt(item: PromptItem) {
@@ -773,19 +805,25 @@ function saveEditPrompt(id: string) {
   editingPromptId.value = null
 }
 
-function addNewPrompt() {
+function addNewPromptInCategory(catName?: string) {
   const newId = 'p_' + Date.now()
+  const category = catName?.trim() || '自定义'
   const newItem: PromptItem = {
     id: newId,
-    category: '自定义',
-    title: '新建提示词',
+    category: category,
+    title: `新建${category === '自定义' ? '' : category}提示词`,
     text: '在此输入您的 Prompt 指令...',
-    jsonFormat: ''
+    jsonFormat: '',
+    enabled: true
   }
   promptLibrary.value.unshift(newItem)
   activePromptId.value = newId
   savePromptLibraryStorage()
   startEditPrompt(newItem)
+}
+
+function addNewPrompt() {
+  addNewPromptInCategory('自定义')
 }
 
 async function deletePrompt(id: string) {
@@ -876,13 +914,8 @@ const defaultAgentTools: AgentToolItem[] = [
   }
 ]
 
-const storedToolsConfig = localStorage.getItem('agent_enabled_tools')
-let initialEnabledMap: Record<string, boolean> = {}
-if (storedToolsConfig) {
-  try {
-    initialEnabledMap = JSON.parse(storedToolsConfig)
-  } catch (e) {}
-}
+const storedToolsConfig = getToolConfig()
+let initialEnabledMap: Record<string, boolean> = storedToolsConfig || {}
 
 const agentTools = ref<AgentToolItem[]>(
   defaultAgentTools.map(t => ({
@@ -900,7 +933,7 @@ function saveToolsStorage() {
   agentTools.value.forEach(t => {
     map[t.id] = t.enabled
   })
-  localStorage.setItem('agent_enabled_tools', JSON.stringify(map))
+  saveToolConfig(map)
 }
 
 function enableAllTools() {
@@ -1009,9 +1042,18 @@ async function clearMessages() {
   }
 }
 
+function getHistory(): { role: string, content: string }[] {
+  const list = activeSession.value?.messages || []
+  return list.map(m => ({
+    role: m.sender === 'ai' ? 'assistant' : (m.sender === 'system' ? 'system' : 'user'),
+    content: m.text
+  }))
+}
+
 defineExpose({
   appendAiResponse,
-  appendSystemError
+  appendSystemError,
+  getHistory
 })
 </script>
 
@@ -2124,6 +2166,7 @@ defineExpose({
 /* Scroll Content Area */
 .settings-content-scroll {
   flex: 1;
+  min-height: 0;
   padding: 24px;
   overflow-y: auto;
   display: flex;

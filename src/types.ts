@@ -42,3 +42,39 @@ export interface ChatMessage {
   timestamp: string;
   actionResult?: AiActionResult;
 }
+
+export interface ChatSession {
+  id: string;
+  title: string;
+  createdAt: number;
+  updatedAt: number;
+  messages: ChatMessage[];
+}
+
+export interface LlmProvider {
+  id: string;
+  name: string;
+  base_url: string;
+  api_key: string;
+  model: string;
+  is_custom?: boolean;
+}
+
+export interface PromptItem {
+  id: string;
+  category: string;
+  title: string;
+  text: string;
+  jsonFormat?: string;
+  enabled?: boolean;
+  isActive?: boolean;
+}
+
+export interface SkillItem {
+  id: string;
+  category: string;
+  title: string;
+  description: string;
+  systemPrompt: string;
+  enabled: boolean;
+}

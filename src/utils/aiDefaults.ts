@@ -25,6 +25,13 @@ export interface AgentToolItem {
   categoryText: string
   icon: any
   enabled: boolean
+  actionType?: 'CREATE' | 'READ' | 'UPDATE' | 'DELETE' | 'EXEC'
+  actionTypeText?: string
+  isDestructive?: boolean
+  riskLevel?: 'low' | 'medium' | 'high'
+  isDefaultEnabled?: boolean
+  paramsInfo?: string
+  usageExample?: string
 }
 
 export const defaultSkillsLibrary: SkillItem[] = [
@@ -105,7 +112,14 @@ export const defaultAgentTools: AgentToolItem[] = [
     category: 'database',
     categoryText: 'SQLite 增',
     icon: PlusCircle,
-    enabled: true
+    enabled: true,
+    actionType: 'CREATE',
+    actionTypeText: 'CREATE · 增',
+    isDestructive: false,
+    riskLevel: 'low',
+    isDefaultEnabled: true,
+    paramsInfo: '(title: string, category?: string, priority?: "low"|"medium"|"high", due_date?: string)',
+    usageExample: '例如：“帮我新建一个明天下午3点开会的待办，优先级设为高”'
   },
   {
     id: 'update_todo_status',
@@ -114,7 +128,14 @@ export const defaultAgentTools: AgentToolItem[] = [
     category: 'database',
     categoryText: 'SQLite 改',
     icon: CheckCircle2,
-    enabled: true
+    enabled: true,
+    actionType: 'UPDATE',
+    actionTypeText: 'UPDATE · 改',
+    isDestructive: false,
+    riskLevel: 'low',
+    isDefaultEnabled: true,
+    paramsInfo: '(id_or_title: string, completed: boolean)',
+    usageExample: '例如：“把‘完成周报’标记为已完成”'
   },
   {
     id: 'delete_todo',
@@ -123,7 +144,14 @@ export const defaultAgentTools: AgentToolItem[] = [
     category: 'database',
     categoryText: 'SQLite 删',
     icon: Trash2,
-    enabled: true
+    enabled: true,
+    actionType: 'DELETE',
+    actionTypeText: 'DELETE · 删',
+    isDestructive: true,
+    riskLevel: 'high',
+    isDefaultEnabled: true,
+    paramsInfo: '(id_or_keyword: string)',
+    usageExample: '例如：“彻底删掉标题包含‘测试草稿’的待办事项”'
   },
   {
     id: 'get_todos',
@@ -132,24 +160,45 @@ export const defaultAgentTools: AgentToolItem[] = [
     category: 'database',
     categoryText: 'SQLite 查',
     icon: Search,
-    enabled: true
+    enabled: true,
+    actionType: 'READ',
+    actionTypeText: 'READ · 查',
+    isDestructive: false,
+    riskLevel: 'low',
+    isDefaultEnabled: true,
+    paramsInfo: '(query?: string, category?: string, status?: "all" | "pending" | "completed")',
+    usageExample: '例如：“帮我搜索分类为‘工作’的所有未完成事项”'
   },
   {
     id: 'set_alarm',
     label: '设置提醒闹钟',
     description: '自动在系统闹钟模块添加指定时间（如 08:30）与备注标签的准时响铃提醒。',
     category: 'system',
-    categoryText: '应用工具',
+    categoryText: '系统控制',
     icon: Bell,
-    enabled: true
+    enabled: true,
+    actionType: 'EXEC',
+    actionTypeText: 'EXEC · 执行',
+    isDestructive: false,
+    riskLevel: 'low',
+    isDefaultEnabled: true,
+    paramsInfo: '(time: string, label: string)',
+    usageExample: '例如：“设置明天早上 08:30 的晨会提醒闹钟”'
   },
   {
     id: 'start_countdown',
     label: '开启专注倒计时',
     description: '在倒计时模块中一键设置并启动指定分钟数（如 25 分钟番茄钟）的专注倒计时。',
     category: 'system',
-    categoryText: '应用工具',
+    categoryText: '系统控制',
     icon: Timer,
-    enabled: true
+    enabled: true,
+    actionType: 'EXEC',
+    actionTypeText: 'EXEC · 执行',
+    isDestructive: false,
+    riskLevel: 'low',
+    isDefaultEnabled: true,
+    paramsInfo: '(minutes: number, title?: string)',
+    usageExample: '例如：“开启 25 分钟番茄工作法专注倒计时”'
   }
 ]

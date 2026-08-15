@@ -27,84 +27,14 @@
           <button class="icon-btn-sm" @click="clearMessages" title="清空对话历史">
             <Trash2 :size="14" />
           </button>
-          <button class="icon-btn-sm" @click="handleClose" title="收起/关闭侧边栏">
+          <button v-if="!isFullPage" class="icon-btn-sm" @click="handleClose" title="收起/关闭侧边栏">
             <X :size="14" />
           </button>
         </div>
       </div>
 
-      <!-- 1.5 Mode Switcher Tabs -->
-      <div class="sidebar-mode-tabs">
-        <button
-          class="mode-tab-btn"
-          :class="{ active: currentSidebarMode === 'chat' }"
-          @click="currentSidebarMode = 'chat'"
-        >
-          <MessageSquare :size="13" /> Chat
-        </button>
-        <button
-          class="mode-tab-btn"
-          :class="{ active: currentSidebarMode === 'prompts' }"
-          @click="currentSidebarMode = 'prompts'"
-        >
-          <Sparkles :size="13" /> Prompts
-        </button>
-        <button
-          class="mode-tab-btn"
-          :class="{ active: currentSidebarMode === 'agent' }"
-          @click="currentSidebarMode = 'agent'"
-        >
-          <Cpu :size="13" /> Agent
-        </button>
-        <button
-          class="mode-tab-btn"
-          :class="{ active: currentSidebarMode === 'settings' }"
-          @click="currentSidebarMode = 'settings'"
-        >
-          <Settings :size="13" /> 设置
-        </button>
-      </div>
-
-      <!-- Prompts Library Panel -->
-      <div v-if="currentSidebarMode === 'prompts'" class="prompts-library-panel animate-fade-in">
-        <h4 class="panel-title"><Sparkles :size="15" /> 常用 AI 提示词库 (Prompts Library)</h4>
-        <p class="panel-desc">点击下方卡片即可快捷使用针对待办管理预设的专业 Prompts：</p>
-
-        <div class="prompts-grid">
-          <div
-            v-for="(item, idx) in promptLibrary"
-            :key="idx"
-            class="prompt-card"
-            @click="usePromptCard(item.text)"
-          >
-            <div class="card-head">
-              <span class="card-category">{{ item.category }}</span>
-              <span class="card-title-text">{{ item.title }}</span>
-            </div>
-            <p class="card-body-text">{{ item.text }}</p>
-          </div>
-        </div>
-      </div>
-
-      <!-- Agent Chain Panel -->
-      <div v-else-if="currentSidebarMode === 'agent'" class="agent-chain-panel animate-fade-in">
-        <div class="agent-intro-card">
-          <Cpu :size="24" class="agent-icon" />
-          <h4>AI 智能体工具链 (Autonomous Agent)</h4>
-          <p>当前智能体已绑定 **SQLite 数据库增删改查工具链**，能根据自然语言意图自动分析并自治执行。</p>
-        </div>
-
-        <div class="agent-tools-list">
-          <span class="tools-title">🛠️ 已挂载工具链 (Registered Tools):</span>
-          <div class="tool-tag">🔹 add_todo (写入数据库待办事项)</div>
-          <div class="tool-tag">🔹 update_todo_status (标记完成/还原)</div>
-          <div class="tool-tag">🔹 delete_todo (物理删除指定 ID 待办)</div>
-          <div class="tool-tag">🔹 get_todos (智能检索与多维度筛选)</div>
-        </div>
-      </div>
-
-      <!-- 2. Chat Messages Area (Default Chat Mode) -->
-      <div v-else-if="currentSidebarMode === 'chat'" ref="chatContainerRef" class="chat-messages-container">
+      <!-- Chat Messages Area -->
+      <div ref="chatContainerRef" class="chat-messages-container">
         <!-- Welcome Banner if empty -->
         <div v-if="messages.length === 0" class="chat-welcome-card">
           <div class="welcome-icon"><Sparkles :size="28" /></div>
@@ -173,44 +103,20 @@
         </div>
       </div>
 
-      <!-- 4. Settings Panel -->
-      <div v-else-if="currentSidebarMode === 'settings'" class="sidebar-settings-panel animate-fade-in">
-        <div class="sidebar-setting-item">
-          <label class="form-label">服务商 (Provider)</label>
-          <select v-model="localConfig.provider" class="select-input" @change="onProviderChange">
-            <option value="siliconflow">SiliconFlow (云端)</option>
-            <option value="ollama">Ollama (本地)</option>
-          </select>
-        </div>
-
-        <div class="sidebar-setting-item">
-          <label class="form-label">接口地址 (Base URL)</label>
-          <input type="text" v-model="localConfig.base_url" class="text-input" />
-        </div>
-
-        <div class="sidebar-setting-item">
-          <label class="form-label">API Key</label>
-          <input type="password" v-model="localConfig.api_key" class="text-input" placeholder="sk-..." :disabled="localConfig.provider === 'ollama'" />
-        </div>
-
-        <div class="sidebar-setting-item">
-          <label class="form-label">模型名称 (Model)</label>
-          <input type="text" v-model="localConfig.model" class="text-input" />
-        </div>
-
-        <button class="btn btn-primary btn-sm btn-save-sidebar" @click="saveLlmSettings">
-          <Check :size="13" /> 保存模型配置
-        </button>
-      </div>
-
       <!-- 3. Bottom Input Box -->
-      <div class="chat-input-area">
+      <div class="chat-input-area" style="position: relative;">
+        <SlashCommandMenu
+          :visible="showSlashMenu"
+          :commands="filteredSlashCommands"
+          v-model:selected-index="selectedIndex"
+          @select="selectCommand"
+        />
         <textarea
           v-model="inputQuery"
           class="chat-textarea"
-          placeholder="✨ 发送消息或给 AI 下达待办指令..."
+          placeholder="✨ 发送消息（输入 / 唤起快捷指令菜单）..."
           rows="2"
-          @keydown.enter.exact.prevent="handleSend"
+          @keydown="onTextareaKeydown"
           :disabled="isProcessing"
         ></textarea>
 
@@ -234,19 +140,24 @@
 import { ref, watch, nextTick } from 'vue'
 import {
   Bot, Sparkles, Trash2, X, User, Settings, Send,
-  PanelRightClose, CheckCircle2, PlusCircle, MessageSquare, Cpu, Check
+  PanelRightClose, CheckCircle2, PlusCircle
 } from 'lucide-vue-next'
 import type { ChatMessage, LlmConfig, AiActionResult } from '../../types'
 import { showConfirm } from '../../utils/confirmState'
+import { saveLlmConfig } from '../../utils/aiStorage'
+import SlashCommandMenu from './SlashCommandMenu.vue'
+import { useSlashCommands } from './useSlashCommands'
 
 const props = withDefaults(
   defineProps<{
     config: LlmConfig
     isProcessing: boolean
     hideToggleBtn?: boolean
+    isFullPage?: boolean
   }>(),
   {
-    hideToggleBtn: false
+    hideToggleBtn: false,
+    isFullPage: false
   }
 )
 
@@ -278,7 +189,7 @@ function onProviderChange() {
 }
 
 function saveLlmSettings() {
-  localStorage.setItem('siliconflow_api_key', localConfig.value.api_key)
+  saveLlmConfig({ ...localConfig.value })
   emit('update:config', { ...localConfig.value })
   alert('✅ 大语言模型 (LLM) 参数设置保存成功！')
 }
@@ -317,9 +228,34 @@ function usePromptCard(promptText: string) {
   sendPresetPrompt(promptText)
 }
 
+void onProviderChange
+void saveLlmSettings
+void promptLibrary
+void usePromptCard
+
 const isCollapsed = ref(false)
 const inputQuery = ref('')
 const chatContainerRef = ref<HTMLElement | null>(null)
+
+const {
+  showSlashMenu,
+  selectedIndex,
+  filteredSlashCommands,
+  selectCommand,
+  handleKeydown
+} = useSlashCommands(inputQuery, {
+  onClear: () => clearMessages()
+})
+
+function onTextareaKeydown(e: KeyboardEvent) {
+  if (handleKeydown(e)) {
+    return
+  }
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault()
+    handleSend()
+  }
+}
 
 const messages = ref<ChatMessage[]>([])
 
@@ -398,9 +334,17 @@ async function clearMessages() {
   messages.value = []
 }
 
+function getHistory(): { role: string, content: string }[] {
+  return messages.value.map(m => ({
+    role: m.sender === 'ai' ? 'assistant' : (m.sender === 'system' ? 'system' : 'user'),
+    content: m.text
+  }))
+}
+
 defineExpose({
   appendAiResponse,
   appendSystemError,
+  getHistory,
   isCollapsed
 })
 </script>
@@ -922,4 +866,24 @@ defineExpose({
 .sidebar-setting-item .text-input {
   width: 100% !important;
   box-sizing: border-box !important;
-}</style>
+}
+
+@media (max-width: 640px) {
+  .chat-messages-container {
+    padding: 10px;
+    gap: 10px;
+  }
+
+  .bubble-content {
+    max-width: 90%;
+  }
+
+  .chat-welcome-card {
+    padding: 14px 10px;
+  }
+
+  .chat-input-area {
+    padding: 8px 10px;
+  }
+}
+</style>

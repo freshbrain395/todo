@@ -1,5 +1,8 @@
 import { createApp } from 'vue'
 import './style.css'
 import App from './App.vue'
+import { initBackendStorage } from './utils/aiStorage'
 
-createApp(App).mount('#app')
+initBackendStorage().finally(() => {
+  createApp(App).mount('#app')
+})
