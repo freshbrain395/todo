@@ -2,6 +2,18 @@ import { describe, it, expect, beforeEach } from 'vitest'
 import { mount } from '@vue/test-utils'
 import App from './App.vue'
 
+const mockStorage = new Map<string, string>()
+const mockLocalStorage = {
+  getItem: (k: string) => mockStorage.get(k) || null,
+  setItem: (k: string, v: string) => { mockStorage.set(k, String(v)) },
+  removeItem: (k: string) => { mockStorage.delete(k) },
+  clear: () => { mockStorage.clear() }
+}
+
+if (typeof globalThis.localStorage === 'undefined' || !globalThis.localStorage.getItem) {
+  Object.defineProperty(globalThis, 'localStorage', { value: mockLocalStorage, writable: true })
+}
+
 function getStoredTodos() {
   const str = localStorage.getItem('web_todos_0') || localStorage.getItem('web_todos')
   return str ? JSON.parse(str) : []
