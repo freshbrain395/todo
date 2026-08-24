@@ -7,8 +7,9 @@
         <button type="button" class="preset-btn" @click="applyPreset(10, 'minute')">+10分钟</button>
         <button type="button" class="preset-btn" @click="applyPreset(30, 'minute')">+30分钟</button>
         <button type="button" class="preset-btn" @click="applyPreset(1, 'hour')">+1小时</button>
-        <button type="button" class="preset-btn" @click="setTonight()">今晚 20:00</button>
-        <button type="button" class="preset-btn" @click="setTomorrowMorning()">明天 09:00</button>
+        <button type="button" class="preset-btn" @click="setTime(9, 0, 0)">09:00</button>
+        <button type="button" class="preset-btn" @click="setTime(18, 0, 0)">18:00</button>
+        <button type="button" class="preset-btn" @click="setTime(20, 0, 0)">20:00</button>
       </div>
 
       <!-- 12h / 24h Toggle Pill -->
@@ -22,7 +23,7 @@
       </button>
     </div>
 
-    <!-- 3D Wheel Container (Without Year and Month) -->
+    <!-- 3D Wheel Container: Hour, Minute, Second -->
     <div class="wheels-container">
       <!-- Highlighting Center Line Bar -->
       <div class="wheel-selection-indicator"></div>
@@ -31,30 +32,7 @@
       <div class="wheel-mask top-mask"></div>
       <div class="wheel-mask bottom-mask"></div>
 
-      <!-- Column 1: Date (Streamlined day/date list) -->
-      <div
-        class="wheel-column col-date"
-        @wheel.prevent="onWheel($event, 'date')"
-        @pointerdown="onPointerDown($event, 'date')"
-        @pointermove="onPointerMove($event)"
-        @pointerup="onPointerUp()"
-        @pointercancel="onPointerUp()"
-      >
-        <div class="column-title">日期</div>
-        <div class="wheel-scroll-list" :style="getScrollStyle('date')">
-          <div
-            v-for="(item, idx) in upcomingDates"
-            :key="'date-' + idx"
-            class="wheel-item"
-            :class="{ active: selectedDateIndex === idx }"
-            @click="selectDateByIndex(idx)"
-          >
-            {{ item.label }}
-          </div>
-        </div>
-      </div>
-
-      <!-- Column 2 (Optional in 12h mode): AM / PM -->
+      <!-- Column 1 (Optional in 12h mode): AM / PM -->
       <div
         v-if="use12Hour"
         class="wheel-column col-ampm"
@@ -78,7 +56,7 @@
         </div>
       </div>
 
-      <!-- Column 3: Hour -->
+      <!-- Column 2: Hour -->
       <div
         class="wheel-column col-hour"
         @wheel.prevent="onWheel($event, 'hour')"
@@ -101,7 +79,7 @@
         </div>
       </div>
 
-      <!-- Column 4: Minute -->
+      <!-- Column 3: Minute -->
       <div
         class="wheel-column col-minute"
         @wheel.prevent="onWheel($event, 'minute')"
@@ -123,18 +101,41 @@
           </div>
         </div>
       </div>
+
+      <!-- Column 4: Second -->
+      <div
+        class="wheel-column col-second"
+        @wheel.prevent="onWheel($event, 'second')"
+        @pointerdown="onPointerDown($event, 'second')"
+        @pointermove="onPointerMove($event)"
+        @pointerup="onPointerUp()"
+        @pointercancel="onPointerUp()"
+      >
+        <div class="column-title">秒</div>
+        <div class="wheel-scroll-list" :style="getScrollStyle('second')">
+          <div
+            v-for="sec in seconds"
+            :key="'sec-' + sec"
+            class="wheel-item"
+            :class="{ active: selectedSecond === sec }"
+            @click="selectedSecond = sec"
+          >
+            {{ formatNum(sec) }}秒
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- Current Formatted Time Preview Display -->
     <div class="formatted-preview">
-      <Calendar :size="13" class="inline-icon" /> 提醒时间: <strong>{{ formattedDisplay }}</strong>
+      <Clock :size="13" class="inline-icon" /> 提醒时刻: <strong>{{ formattedDisplay }}</strong>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from 'vue'
-import { Clock, Calendar } from 'lucide-vue-next'
+import { Clock } from 'lucide-vue-next'
 
 const props = defineProps<{
   modelValue?: string
@@ -147,41 +148,10 @@ const emit = defineEmits<{
 // Item height in pixels
 const ITEM_HEIGHT = 36
 
-interface DateItem {
-  year: number
-  month: number
-  day: number
-  label: string
-}
-
-// Generate next 30 days of selectable dates
-const upcomingDates = computed<DateItem[]>(() => {
-  const list: DateItem[] = []
-  const now = new Date()
-  const weekdays = ['周日', '周一', '周二', '周三', '周四', '周五', '周六']
-  for (let i = 0; i < 35; i++) {
-    const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() + i)
-    let label = ''
-    if (i === 0) label = `今天 (${d.getMonth() + 1}/${d.getDate()})`
-    else if (i === 1) label = `明天 (${d.getMonth() + 1}/${d.getDate()})`
-    else if (i === 2) label = `后天 (${d.getMonth() + 1}/${d.getDate()})`
-    else label = `${d.getMonth() + 1}月${d.getDate()}日 ${weekdays[d.getDay()]}`
-
-    list.push({
-      year: d.getFullYear(),
-      month: d.getMonth() + 1,
-      day: d.getDate(),
-      label
-    })
-  }
-  return list
-})
-
-const selectedDateIndex = ref(0)
-
 const hours24 = Array.from({ length: 24 }, (_, i) => i)
 const hours12 = Array.from({ length: 12 }, (_, i) => i === 0 ? 12 : i)
 const minutes = Array.from({ length: 60 }, (_, i) => i)
+const seconds = Array.from({ length: 60 }, (_, i) => i)
 
 // Detect system 12h vs 24h format
 function detectSystem12Hour(): boolean {
@@ -197,20 +167,14 @@ function detectSystem12Hour(): boolean {
 const use12Hour = ref(detectSystem12Hour())
 const ampm = ref<'AM' | 'PM'>('AM')
 
-const selectedYear = ref(new Date().getFullYear())
-const selectedMonth = ref(new Date().getMonth() + 1)
-const selectedDay = ref(new Date().getDate())
+// Internal Base Date (defaults to today)
+const baseYear = ref(new Date().getFullYear())
+const baseMonth = ref(new Date().getMonth() + 1)
+const baseDay = ref(new Date().getDate())
+
 const selectedHour = ref(new Date().getHours())
 const selectedMinute = ref(new Date().getMinutes())
-
-function selectDateByIndex(idx: number) {
-  if (idx < 0 || idx >= upcomingDates.value.length) return
-  selectedDateIndex.value = idx
-  const item = upcomingDates.value[idx]
-  selectedYear.value = item.year
-  selectedMonth.value = item.month
-  selectedDay.value = item.day
-}
+const selectedSecond = ref(0)
 
 // Sync ampm with selectedHour
 watch(selectedHour, (h) => {
@@ -249,15 +213,15 @@ watch(ampm, (newAmpm) => {
 })
 
 // Drag & Wheel Interaction State
-type ColType = 'date' | 'hour' | 'minute' | 'ampm'
+type ColType = 'hour' | 'minute' | 'second' | 'ampm'
 const isDragging = ref(false)
 const dragCol = ref<ColType | null>(null)
 const startY = ref(0)
 const dragOffset = ref(0)
 const wheelAccumulators: Record<ColType, number> = {
-  date: 0,
   hour: 0,
   minute: 0,
+  second: 0,
   ampm: 0
 }
 
@@ -265,59 +229,56 @@ function parseModelValue(val?: string) {
   if (!val) {
     const now = new Date()
     now.setMinutes(now.getMinutes() + 30)
-    selectedYear.value = now.getFullYear()
-    selectedMonth.value = now.getMonth() + 1
-    selectedDay.value = now.getDate()
+    baseYear.value = now.getFullYear()
+    baseMonth.value = now.getMonth() + 1
+    baseDay.value = now.getDate()
     selectedHour.value = now.getHours()
     selectedMinute.value = now.getMinutes()
-    syncDateIndex()
+    selectedSecond.value = 0
+    return
+  }
+
+  // Handle both "HH:mm" / "HH:mm:ss" and "YYYY-MM-DDTHH:mm:ss"
+  if (val.includes(':') && !val.includes('-')) {
+    const parts = val.split(':')
+    selectedHour.value = parseInt(parts[0], 10) || 0
+    selectedMinute.value = parseInt(parts[1], 10) || 0
+    selectedSecond.value = parseInt(parts[2], 10) || 0
     return
   }
 
   const d = new Date(val.replace(' ', 'T'))
   if (!isNaN(d.getTime())) {
-    selectedYear.value = d.getFullYear()
-    selectedMonth.value = d.getMonth() + 1
-    selectedDay.value = d.getDate()
+    baseYear.value = d.getFullYear()
+    baseMonth.value = d.getMonth() + 1
+    baseDay.value = d.getDate()
     selectedHour.value = d.getHours()
     selectedMinute.value = d.getMinutes()
-    syncDateIndex()
-  }
-}
-
-function syncDateIndex() {
-  const matchIdx = upcomingDates.value.findIndex(
-    item => item.year === selectedYear.value && item.month === selectedMonth.value && item.day === selectedDay.value
-  )
-  if (matchIdx >= 0) {
-    selectedDateIndex.value = matchIdx
-  } else {
-    selectedDateIndex.value = 0
+    selectedSecond.value = d.getSeconds()
   }
 }
 
 const formattedIsoValue = computed(() => {
-  const y = selectedYear.value
-  const m = String(selectedMonth.value).padStart(2, '0')
-  const d = String(selectedDay.value).padStart(2, '0')
+  const y = baseYear.value
+  const m = String(baseMonth.value).padStart(2, '0')
+  const d = String(baseDay.value).padStart(2, '0')
   const h = String(selectedHour.value).padStart(2, '0')
   const min = String(selectedMinute.value).padStart(2, '0')
-  return `${y}-${m}-${d}T${h}:${min}`
+  const sec = String(selectedSecond.value).padStart(2, '0')
+  return `${y}-${m}-${d}T${h}:${min}:${sec}`
 })
 
 const formattedDisplay = computed(() => {
-  const y = selectedYear.value
-  const m = String(selectedMonth.value).padStart(2, '0')
-  const d = String(selectedDay.value).padStart(2, '0')
   const min = String(selectedMinute.value).padStart(2, '0')
+  const sec = String(selectedSecond.value).padStart(2, '0')
 
   if (use12Hour.value) {
     const period = ampm.value === 'AM' ? '上午' : '下午'
     const h12 = String(currentDisplayHour.value).padStart(2, '0')
-    return `${y}年${m}月${d}日 ${period} ${h12}:${min}`
+    return `${period} ${h12}:${min}:${sec}`
   }
   const h24 = String(selectedHour.value).padStart(2, '0')
-  return `${y}年${m}月${d}日 ${h24}:${min}`
+  return `${h24}:${min}:${sec}`
 })
 
 watch(formattedIsoValue, (newVal) => {
@@ -344,14 +305,14 @@ function formatNum(num: number): string {
 
 function getScrollStyle(col: ColType) {
   let index = 0
-  if (col === 'date') {
-    index = selectedDateIndex.value
-  } else if (col === 'ampm') {
+  if (col === 'ampm') {
     index = ampm.value === 'AM' ? 0 : 1
   } else if (col === 'hour') {
     index = displayHours.value.indexOf(currentDisplayHour.value)
   } else if (col === 'minute') {
     index = minutes.indexOf(selectedMinute.value)
+  } else if (col === 'second') {
+    index = seconds.indexOf(selectedSecond.value)
   }
 
   if (index < 0) index = 0
@@ -368,10 +329,7 @@ function getScrollStyle(col: ColType) {
 }
 
 function stepValue(col: ColType, delta: number) {
-  if (col === 'date') {
-    const nextIdx = Math.max(0, Math.min(upcomingDates.value.length - 1, selectedDateIndex.value + delta))
-    selectDateByIndex(nextIdx)
-  } else if (col === 'ampm') {
+  if (col === 'ampm') {
     ampm.value = ampm.value === 'AM' ? 'PM' : 'AM'
   } else if (col === 'hour') {
     const list = displayHours.value
@@ -382,6 +340,10 @@ function stepValue(col: ColType, delta: number) {
     const idx = minutes.indexOf(selectedMinute.value)
     const nextIdx = Math.max(0, Math.min(minutes.length - 1, idx + delta))
     selectedMinute.value = minutes[nextIdx]
+  } else if (col === 'second') {
+    const idx = seconds.indexOf(selectedSecond.value)
+    const nextIdx = Math.max(0, Math.min(seconds.length - 1, idx + delta))
+    selectedSecond.value = seconds[nextIdx]
   }
 }
 
@@ -432,38 +394,15 @@ function applyPreset(amount: number, unit: 'minute' | 'hour') {
   } else if (unit === 'hour') {
     now.setHours(now.getHours() + amount)
   }
-  selectedYear.value = now.getFullYear()
-  selectedMonth.value = now.getMonth() + 1
-  selectedDay.value = now.getDate()
   selectedHour.value = now.getHours()
   selectedMinute.value = now.getMinutes()
-  syncDateIndex()
+  selectedSecond.value = 0
 }
 
-function setTonight() {
-  const now = new Date()
-  now.setHours(20, 0, 0, 0)
-  if (now.getTime() < Date.now()) {
-    now.setDate(now.getDate() + 1)
-  }
-  selectedYear.value = now.getFullYear()
-  selectedMonth.value = now.getMonth() + 1
-  selectedDay.value = now.getDate()
-  selectedHour.value = 20
-  selectedMinute.value = 0
-  syncDateIndex()
-}
-
-function setTomorrowMorning() {
-  const tomorrow = new Date()
-  tomorrow.setDate(tomorrow.getDate() + 1)
-  tomorrow.setHours(9, 0, 0, 0)
-  selectedYear.value = tomorrow.getFullYear()
-  selectedMonth.value = tomorrow.getMonth() + 1
-  selectedDay.value = tomorrow.getDate()
-  selectedHour.value = 9
-  selectedMinute.value = 0
-  syncDateIndex()
+function setTime(h: number, m: number, s: number) {
+  selectedHour.value = h
+  selectedMinute.value = m
+  selectedSecond.value = s
 }
 </script>
 
@@ -598,20 +537,20 @@ function setTomorrowMorning() {
   touch-action: none;
 }
 
-.wheel-column.col-date {
-  flex: 1.6;
-}
-
 .wheel-column.col-ampm {
-  flex: 0.9;
+  flex: 1;
 }
 
 .wheel-column.col-hour {
-  flex: 1;
+  flex: 1.2;
 }
 
 .wheel-column.col-minute {
-  flex: 1;
+  flex: 1.2;
+}
+
+.wheel-column.col-second {
+  flex: 1.2;
 }
 
 .wheel-column:active {
@@ -641,7 +580,7 @@ function setTomorrowMorning() {
 .wheel-item {
   height: 36px;
   line-height: 36px;
-  font-size: 13px;
+  font-size: 13.5px;
   color: var(--text-muted, #64748b);
   cursor: pointer;
   transition: all 0.2s;
@@ -653,9 +592,9 @@ function setTomorrowMorning() {
 .wheel-item.active {
   color: var(--primary, #3b82f6);
   font-weight: 800;
-  font-size: 14px;
+  font-size: 15px;
   opacity: 1;
-  transform: scale(1.08);
+  transform: scale(1.1);
 }
 
 .formatted-preview {
