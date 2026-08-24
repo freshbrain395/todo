@@ -1,12 +1,25 @@
 <template>
   <div class="wheel-datetime-picker">
-    <!-- Quick Selection Preset Tags -->
-    <div class="quick-presets">
-      <span class="preset-label"><Clock :size="12" /> 快捷设置:</span>
-      <button type="button" class="preset-btn" @click="applyPreset(10, 'minute')">+10分钟</button>
-      <button type="button" class="preset-btn" @click="applyPreset(30, 'minute')">+30分钟</button>
-      <button type="button" class="preset-btn" @click="applyPreset(1, 'hour')">+1小时</button>
-      <button type="button" class="preset-btn" @click="setTomorrowMorning()">明天 09:00</button>
+    <!-- Header: Quick Presets & 12h/24h Mode Switch -->
+    <div class="picker-top-bar">
+      <div class="quick-presets">
+        <span class="preset-label"><Clock :size="12" /> 快捷:</span>
+        <button type="button" class="preset-btn" @click="applyPreset(10, 'minute')">+10分钟</button>
+        <button type="button" class="preset-btn" @click="applyPreset(30, 'minute')">+30分钟</button>
+        <button type="button" class="preset-btn" @click="applyPreset(1, 'hour')">+1小时</button>
+        <button type="button" class="preset-btn" @click="setTonight()">今晚 20:00</button>
+        <button type="button" class="preset-btn" @click="setTomorrowMorning()">明天 09:00</button>
+      </div>
+
+      <!-- 12h / 24h Toggle Pill -->
+      <button
+        type="button"
+        class="time-format-toggle"
+        @click="use12Hour = !use12Hour"
+        :title="use12Hour ? '切换为24小时制' : '切换为12小时制'"
+      >
+        <span>{{ use12Hour ? '12小时制' : '24小时制' }}</span>
+      </button>
     </div>
 
     <!-- 3D Wheel Container -->
@@ -87,7 +100,31 @@
         </div>
       </div>
 
-      <!-- Column 4: Hour -->
+      <!-- Column 4 (Optional in 12h mode): AM / PM -->
+      <div
+        v-if="use12Hour"
+        class="wheel-column col-ampm"
+        @wheel.prevent="onWheel($event, 'ampm')"
+        @pointerdown="onPointerDown($event, 'ampm')"
+        @pointermove="onPointerMove($event)"
+        @pointerup="onPointerUp()"
+        @pointercancel="onPointerUp()"
+      >
+        <div class="column-title">时段</div>
+        <div class="wheel-scroll-list" :style="getScrollStyle('ampm')">
+          <div
+            v-for="p in ['AM', 'PM']"
+            :key="'p-' + p"
+            class="wheel-item"
+            :class="{ active: ampm === p }"
+            @click="ampm = (p as 'AM' | 'PM')"
+          >
+            {{ p === 'AM' ? '上午' : '下午' }}
+          </div>
+        </div>
+      </div>
+
+      <!-- Column 5: Hour -->
       <div
         class="wheel-column"
         @wheel.prevent="onWheel($event, 'hour')"
@@ -99,18 +136,18 @@
         <div class="column-title">时</div>
         <div class="wheel-scroll-list" :style="getScrollStyle('hour')">
           <div
-            v-for="h in hours"
+            v-for="h in displayHours"
             :key="'h-' + h"
             class="wheel-item"
-            :class="{ active: selectedHour === h }"
-            @click="selectValue('hour', h)"
+            :class="{ active: currentDisplayHour === h }"
+            @click="selectHourValue(h)"
           >
             {{ formatNum(h) }}时
           </div>
         </div>
       </div>
 
-      <!-- Column 5: Minute -->
+      <!-- Column 6: Minute -->
       <div
         class="wheel-column"
         @wheel.prevent="onWheel($event, 'minute')"
@@ -136,7 +173,7 @@
 
     <!-- Current Formatted Time Preview Display -->
     <div class="formatted-preview">
-      <Calendar :size="13" class="inline-icon" /> 选中提醒时间: <strong>{{ formattedDisplay }}</strong>
+      <Calendar :size="13" class="inline-icon" /> 提醒时间: <strong>{{ formattedDisplay }}</strong>
     </div>
   </div>
 </template>
@@ -160,8 +197,23 @@ const ITEM_HEIGHT = 36
 const currentYear = new Date().getFullYear()
 const years = computed(() => [currentYear, currentYear + 1, currentYear + 2])
 const months = Array.from({ length: 12 }, (_, i) => i + 1)
-const hours = Array.from({ length: 24 }, (_, i) => i)
+const hours24 = Array.from({ length: 24 }, (_, i) => i)
+const hours12 = Array.from({ length: 12 }, (_, i) => i === 0 ? 12 : i)
 const minutes = Array.from({ length: 60 }, (_, i) => i)
+
+// Detect system 12h vs 24h format
+function detectSystem12Hour(): boolean {
+  try {
+    const d = new Date(2026, 0, 1, 13, 0, 0)
+    const formatted = new Intl.DateTimeFormat(undefined, { hour: 'numeric' }).format(d)
+    return !formatted.includes('13')
+  } catch {
+    return false
+  }
+}
+
+const use12Hour = ref(detectSystem12Hour())
+const ampm = ref<'AM' | 'PM'>('AM')
 
 const selectedYear = ref(currentYear)
 const selectedMonth = ref(new Date().getMonth() + 1)
@@ -169,8 +221,44 @@ const selectedDay = ref(new Date().getDate())
 const selectedHour = ref(new Date().getHours())
 const selectedMinute = ref(new Date().getMinutes())
 
+// Sync ampm with selectedHour
+watch(selectedHour, (h) => {
+  ampm.value = h >= 12 ? 'PM' : 'AM'
+}, { immediate: true })
+
+// Display hours depending on 12h vs 24h mode
+const displayHours = computed(() => use12Hour.value ? hours12 : hours24)
+const currentDisplayHour = computed(() => {
+  if (!use12Hour.value) return selectedHour.value
+  const h = selectedHour.value % 12
+  return h === 0 ? 12 : h
+})
+
+function selectHourValue(h: number) {
+  if (!use12Hour.value) {
+    selectedHour.value = h
+    return
+  }
+  // 12-hour calculation
+  if (ampm.value === 'AM') {
+    selectedHour.value = h === 12 ? 0 : h
+  } else {
+    selectedHour.value = h === 12 ? 12 : h + 12
+  }
+}
+
+watch(ampm, (newAmpm) => {
+  if (!use12Hour.value) return
+  const current12 = currentDisplayHour.value
+  if (newAmpm === 'AM') {
+    selectedHour.value = current12 === 12 ? 0 : current12
+  } else {
+    selectedHour.value = current12 === 12 ? 12 : current12 + 12
+  }
+})
+
 // Drag & Wheel Interaction State
-type ColType = 'year' | 'month' | 'day' | 'hour' | 'minute'
+type ColType = 'year' | 'month' | 'day' | 'hour' | 'minute' | 'ampm'
 const isDragging = ref(false)
 const dragCol = ref<ColType | null>(null)
 const startY = ref(0)
@@ -180,7 +268,8 @@ const wheelAccumulators: Record<ColType, number> = {
   month: 0,
   day: 0,
   hour: 0,
-  minute: 0
+  minute: 0,
+  ampm: 0
 }
 
 // Calculate max days in selected year & month
@@ -192,18 +281,16 @@ const days = computed(() => {
   return Array.from({ length: daysInMonth.value }, (_, i) => i + 1)
 })
 
-// Keep day within valid range when month/year changes
 watch(daysInMonth, (maxDays) => {
   if (selectedDay.value > maxDays) {
     selectedDay.value = maxDays
   }
 })
 
-// Parse incoming v-model string ("YYYY-MM-DDTHH:mm" or "YYYY-MM-DD HH:mm:ss")
 function parseModelValue(val?: string) {
   if (!val) {
     const now = new Date()
-    now.setMinutes(now.getMinutes() + 30) // Default 30 mins later
+    now.setMinutes(now.getMinutes() + 30)
     selectedYear.value = now.getFullYear()
     selectedMonth.value = now.getMonth() + 1
     selectedDay.value = now.getDate()
@@ -222,7 +309,6 @@ function parseModelValue(val?: string) {
   }
 }
 
-// Compute Output Value in ISO datetime-local format ("YYYY-MM-DDTHH:mm")
 const formattedIsoValue = computed(() => {
   const y = selectedYear.value
   const m = String(selectedMonth.value).padStart(2, '0')
@@ -236,9 +322,15 @@ const formattedDisplay = computed(() => {
   const y = selectedYear.value
   const m = String(selectedMonth.value).padStart(2, '0')
   const d = String(selectedDay.value).padStart(2, '0')
-  const h = String(selectedHour.value).padStart(2, '0')
   const min = String(selectedMinute.value).padStart(2, '0')
-  return `${y}年${m}月${d}日 ${h}:${min}`
+
+  if (use12Hour.value) {
+    const period = ampm.value === 'AM' ? '上午' : '下午'
+    const h12 = String(currentDisplayHour.value).padStart(2, '0')
+    return `${y}年${m}月${d}日 ${period} ${h12}:${min}`
+  }
+  const h24 = String(selectedHour.value).padStart(2, '0')
+  return `${y}年${m}月${d}日 ${h24}:${min}`
 })
 
 watch(formattedIsoValue, (newVal) => {
@@ -263,7 +355,6 @@ function formatNum(num: number): string {
   return String(num).padStart(2, '0')
 }
 
-// Compute wheel scroll offset for center alignment
 function getScrollStyle(col: ColType) {
   let index = 0
   if (col === 'year') {
@@ -272,8 +363,10 @@ function getScrollStyle(col: ColType) {
     index = months.indexOf(selectedMonth.value)
   } else if (col === 'day') {
     index = days.value.indexOf(selectedDay.value)
+  } else if (col === 'ampm') {
+    index = ampm.value === 'AM' ? 0 : 1
   } else if (col === 'hour') {
-    index = hours.indexOf(selectedHour.value)
+    index = displayHours.value.indexOf(currentDisplayHour.value)
   } else if (col === 'minute') {
     index = minutes.indexOf(selectedMinute.value)
   }
@@ -304,10 +397,13 @@ function stepValue(col: ColType, delta: number) {
     const idx = days.value.indexOf(selectedDay.value)
     const nextIdx = Math.max(0, Math.min(days.value.length - 1, idx + delta))
     selectedDay.value = days.value[nextIdx]
+  } else if (col === 'ampm') {
+    ampm.value = ampm.value === 'AM' ? 'PM' : 'AM'
   } else if (col === 'hour') {
-    const idx = hours.indexOf(selectedHour.value)
-    const nextIdx = Math.max(0, Math.min(hours.length - 1, idx + delta))
-    selectedHour.value = hours[nextIdx]
+    const list = displayHours.value
+    const idx = list.indexOf(currentDisplayHour.value)
+    const nextIdx = Math.max(0, Math.min(list.length - 1, idx + delta))
+    selectHourValue(list[nextIdx])
   } else if (col === 'minute') {
     const idx = minutes.indexOf(selectedMinute.value)
     const nextIdx = Math.max(0, Math.min(minutes.length - 1, idx + delta))
@@ -315,7 +411,6 @@ function stepValue(col: ColType, delta: number) {
   }
 }
 
-// Handle Mouse Wheel Event with smoothing accumulator
 function onWheel(event: WheelEvent, col: ColType) {
   wheelAccumulators[col] += event.deltaY
   const THRESHOLD = 35
@@ -327,7 +422,6 @@ function onWheel(event: WheelEvent, col: ColType) {
   }
 }
 
-// Dragging Pointer Events
 function onPointerDown(e: PointerEvent, col: ColType) {
   isDragging.value = true
   dragCol.value = col
@@ -361,11 +455,9 @@ function selectValue(col: ColType, val: number) {
   if (col === 'year') selectedYear.value = val
   if (col === 'month') selectedMonth.value = val
   if (col === 'day') selectedDay.value = val
-  if (col === 'hour') selectedHour.value = val
   if (col === 'minute') selectedMinute.value = val
 }
 
-// Apply Quick Presets
 function applyPreset(amount: number, unit: 'minute' | 'hour') {
   const now = new Date()
   if (unit === 'minute') {
@@ -378,6 +470,19 @@ function applyPreset(amount: number, unit: 'minute' | 'hour') {
   selectedDay.value = now.getDate()
   selectedHour.value = now.getHours()
   selectedMinute.value = now.getMinutes()
+}
+
+function setTonight() {
+  const now = new Date()
+  now.setHours(20, 0, 0, 0)
+  if (now.getTime() < Date.now()) {
+    now.setDate(now.getDate() + 1)
+  }
+  selectedYear.value = now.getFullYear()
+  selectedMonth.value = now.getMonth() + 1
+  selectedDay.value = now.getDate()
+  selectedHour.value = 20
+  selectedMinute.value = 0
 }
 
 function setTomorrowMorning() {
@@ -396,12 +501,21 @@ function setTomorrowMorning() {
 .wheel-datetime-picker {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  background-color: var(--bg-app);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-md);
-  padding: 12px;
+  gap: 12px;
+  background-color: var(--bg-surface, #ffffff);
+  border: 1px solid var(--border-color, #e2e8f0);
+  border-radius: 16px;
+  padding: 16px;
   user-select: none;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
+}
+
+.picker-top-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 .quick-presets {
@@ -414,24 +528,46 @@ function setTomorrowMorning() {
 .preset-label {
   font-size: 11px;
   color: var(--text-muted);
-  font-weight: 600;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
 }
 
 .preset-btn {
-  background-color: var(--bg-surface);
-  border: 1px solid var(--border-color);
-  border-radius: 12px;
-  padding: 2px 8px;
+  background-color: var(--bg-app, #f8fafc);
+  border: 1px solid var(--border-color, #e2e8f0);
+  border-radius: 20px;
+  padding: 3px 10px;
   font-size: 11px;
-  color: var(--primary);
+  font-weight: 600;
+  color: var(--primary, #3b82f6);
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.2s ease;
 }
 
 .preset-btn:hover {
-  background-color: var(--primary);
+  background-color: var(--primary, #3b82f6);
   color: #ffffff;
-  border-color: var(--primary);
+  border-color: var(--primary, #3b82f6);
+  transform: translateY(-1px);
+}
+
+.time-format-toggle {
+  background: var(--bg-app, #f1f5f9);
+  border: 1px solid var(--border-color, #e2e8f0);
+  border-radius: 20px;
+  padding: 3px 10px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-main, #334155);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.time-format-toggle:hover {
+  border-color: var(--primary, #3b82f6);
+  color: var(--primary, #3b82f6);
 }
 
 .wheels-container {
@@ -439,11 +575,11 @@ function setTomorrowMorning() {
   display: flex;
   align-items: center;
   justify-content: space-around;
-  height: 180px;
+  height: 190px;
   overflow: hidden;
-  background-color: var(--bg-surface);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-sm);
+  background-color: var(--bg-app, #f8fafc);
+  border: 1px solid var(--border-color, #e2e8f0);
+  border-radius: 12px;
   touch-action: none;
 }
 
@@ -454,10 +590,10 @@ function setTomorrowMorning() {
   right: 6px;
   height: 36px;
   transform: translateY(-50%);
-  background-color: rgba(66, 153, 225, 0.12);
-  border-top: 1.5px solid var(--primary);
-  border-bottom: 1.5px solid var(--primary);
-  border-radius: 6px;
+  background-color: rgba(59, 130, 246, 0.1);
+  border-top: 1.5px solid var(--primary, #3b82f6);
+  border-bottom: 1.5px solid var(--primary, #3b82f6);
+  border-radius: 8px;
   pointer-events: none;
   z-index: 2;
 }
@@ -466,19 +602,19 @@ function setTomorrowMorning() {
   position: absolute;
   left: 0;
   right: 0;
-  height: 70px;
+  height: 75px;
   pointer-events: none;
   z-index: 3;
 }
 
 .top-mask {
   top: 0;
-  background: linear-gradient(to bottom, var(--bg-surface) 10%, transparent 100%);
+  background: linear-gradient(to bottom, var(--bg-app, #f8fafc) 20%, transparent 100%);
 }
 
 .bottom-mask {
   bottom: 0;
-  background: linear-gradient(to top, var(--bg-surface) 10%, transparent 100%);
+  background: linear-gradient(to top, var(--bg-app, #f8fafc) 20%, transparent 100%);
 }
 
 .wheel-column {
@@ -501,14 +637,14 @@ function setTomorrowMorning() {
   top: 4px;
   font-size: 10px;
   color: var(--text-muted);
-  font-weight: 700;
+  font-weight: 800;
   z-index: 4;
 }
 
 .wheel-scroll-list {
   position: absolute;
   top: 50%;
-  margin-top: -18px; /* Offset by half item height */
+  margin-top: -18px;
   width: 100%;
   display: flex;
   flex-direction: column;
@@ -520,7 +656,7 @@ function setTomorrowMorning() {
   height: 36px;
   line-height: 36px;
   font-size: 13px;
-  color: var(--text-muted);
+  color: var(--text-muted, #64748b);
   cursor: pointer;
   transition: all 0.2s;
   opacity: 0.45;
@@ -528,28 +664,20 @@ function setTomorrowMorning() {
 }
 
 .wheel-item.active {
-  color: var(--primary);
-  font-weight: 700;
-  font-size: 14px;
+  color: var(--primary, #3b82f6);
+  font-weight: 800;
+  font-size: 14.5px;
   opacity: 1;
   transform: scale(1.1);
 }
 
-.wheel-divider {
-  font-size: 16px;
-  font-weight: 800;
-  color: var(--primary);
-  z-index: 4;
-  margin-top: 10px;
-}
-
 .formatted-preview {
-  font-size: 12px;
-  color: var(--text-main);
+  font-size: 12.5px;
+  color: var(--text-main, #0f172a);
   text-align: center;
-  padding: 4px 8px;
-  background-color: var(--bg-surface);
-  border-radius: 4px;
-  border: 1px dashed var(--border-color);
+  padding: 8px 12px;
+  background-color: var(--bg-app, #f8fafc);
+  border-radius: 8px;
+  border: 1px dashed var(--border-color, #e2e8f0);
 }
 </style>

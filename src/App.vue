@@ -293,58 +293,88 @@
 
                   <!-- Row 2: Interactive Metadata & Configuration Row (Hover/Click to edit) -->
                   <div class="card-meta-row">
-                    <!-- 1. Priority Selector -->
-                    <div class="meta-item-config" title="鼠标悬浮/点击修改优先级">
-                      <div class="interactive-pill prio-pill" :class="todo.priority">
+                    <!-- 1. Priority Selector with Custom Rounded Dropdown -->
+                    <div class="meta-item-config" @click.stop="toggleMenu('prio-' + todo.id)">
+                      <div class="interactive-pill prio-pill" :class="todo.priority" title="修改优先级">
                         <span class="prio-dot"></span>
                         <span class="prio-text">{{ priorityLabel(todo.priority) }}</span>
-                        <ChevronDown :size="10" class="pill-arrow" />
-                        <select
-                          :value="todo.priority"
-                          @change="(e: any) => updateTodoPriority(todo, e.target.value)"
-                          class="meta-inline-select"
+                        <ChevronDown :size="10" class="pill-arrow" :class="{ rotated: activeMenuId === 'prio-' + todo.id }" />
+                      </div>
+
+                      <!-- Custom Rounded Popover Menu -->
+                      <div v-if="activeMenuId === 'prio-' + todo.id" class="custom-dropdown-menu animate-fade-in" @click.stop>
+                        <button
+                          type="button"
+                          class="dropdown-item"
+                          :class="{ selected: todo.priority === 'high' }"
+                          @click="selectPriority(todo, 'high')"
                         >
-                          <option value="high">🔴 高优</option>
-                          <option value="medium">🟡 中优</option>
-                          <option value="low">🔵 低优</option>
-                        </select>
+                          <span class="dot-prio red"></span>
+                          <span class="item-name">🔴 高优先级</span>
+                          <Check v-if="todo.priority === 'high'" :size="13" class="check-icon" />
+                        </button>
+                        <button
+                          type="button"
+                          class="dropdown-item"
+                          :class="{ selected: todo.priority === 'medium' }"
+                          @click="selectPriority(todo, 'medium')"
+                        >
+                          <span class="dot-prio yellow"></span>
+                          <span class="item-name">🟡 中优先级</span>
+                          <Check v-if="todo.priority === 'medium'" :size="13" class="check-icon" />
+                        </button>
+                        <button
+                          type="button"
+                          class="dropdown-item"
+                          :class="{ selected: todo.priority === 'low' }"
+                          @click="selectPriority(todo, 'low')"
+                        >
+                          <span class="dot-prio blue"></span>
+                          <span class="item-name">🔵 低优先级</span>
+                          <Check v-if="todo.priority === 'low'" :size="13" class="check-icon" />
+                        </button>
                       </div>
                     </div>
 
-                    <!-- 2. Category / Tag Selector -->
-                    <div class="meta-item-config" title="鼠标悬浮/点击修改标签">
-                      <div class="interactive-pill cat-pill">
+                    <!-- 2. Category / Tag Selector with Custom Rounded Dropdown -->
+                    <div class="meta-item-config" @click.stop="toggleMenu('cat-' + todo.id)">
+                      <div class="interactive-pill cat-pill" title="修改标签分类">
                         <Folder :size="12" />
                         <span class="cat-text">{{ todo.category || '默认' }}</span>
-                        <ChevronDown :size="10" class="pill-arrow" />
-                        <select
-                          :value="todo.category || '工作'"
-                          @change="(e: any) => updateTodoCategory(todo, e.target.value)"
-                          class="meta-inline-select"
+                        <ChevronDown :size="10" class="pill-arrow" :class="{ rotated: activeMenuId === 'cat-' + todo.id }" />
+                      </div>
+
+                      <!-- Custom Rounded Popover Menu -->
+                      <div v-if="activeMenuId === 'cat-' + todo.id" class="custom-dropdown-menu animate-fade-in" @click.stop>
+                        <button
+                          v-for="cat in ['工作', '学习', '生活', '常规']"
+                          :key="cat"
+                          type="button"
+                          class="dropdown-item"
+                          :class="{ selected: todo.category === cat }"
+                          @click="selectCategory(todo, cat)"
                         >
-                          <option value="工作">工作</option>
-                          <option value="学习">学习</option>
-                          <option value="生活">生活</option>
-                          <option value="常规">常规</option>
-                        </select>
+                          <Folder :size="13" class="item-icon" />
+                          <span class="item-name">{{ cat }}</span>
+                          <Check v-if="todo.category === cat" :size="13" class="check-icon" />
+                        </button>
                       </div>
                     </div>
 
-                    <!-- 3. Reminder Switch & DateTime Picker -->
-                    <div class="meta-item-config" title="鼠标悬浮/点击设置提醒时间">
-                      <div class="interactive-pill reminder-pill" :class="{ active: !!todo.remind_at }">
+                    <!-- 3. Reminder Switch & Modal Trigger -->
+                    <div class="meta-item-config">
+                      <div
+                        class="interactive-pill reminder-pill"
+                        :class="{ active: !!todo.remind_at }"
+                        @click="openReminderModal(todo)"
+                        title="点击配置提醒时间（支持12/24小时制与快捷设置）"
+                      >
                         <Clock :size="12" />
                         <span v-if="todo.remind_at" class="reminder-text">{{ formatRemindDisplay(todo.remind_at) }}</span>
                         <span v-else class="reminder-text placeholder">设置提醒</span>
-                        <input
-                          type="datetime-local"
-                          class="meta-inline-datetime"
-                          :value="formatInputDateTime(todo.remind_at)"
-                          @change="(e: any) => updateTodoReminder(todo, e.target.value)"
-                          title="选择提醒时间"
-                        />
                         <button
                           v-if="todo.remind_at"
+                          type="button"
                           class="btn-clear-reminder"
                           @click.stop="updateTodoReminder(todo, '')"
                           title="清除提醒"
@@ -547,17 +577,54 @@
             <input type="checkbox" v-model="todoForm.enableReminder" />
             设置定时提醒时间
           </label>
-          <input
-            v-if="todoForm.enableReminder"
-            type="datetime-local"
-            v-model="todoForm.remindAt"
-            class="datetime-picker"
-          />
+          <div v-if="todoForm.enableReminder" class="modal-wheel-picker-wrap">
+            <WheelDateTimePicker v-model="todoForm.remindAt" />
+          </div>
         </div>
 
         <div class="modal-actions">
           <button class="btn" @click="showAddEditModal = false">取消</button>
           <button class="btn btn-primary" @click="saveTodoForm">保存</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Dedicated Task Reminder Picker Modal -->
+    <div v-if="showReminderModal" class="modal-backdrop" @click.self="showReminderModal = false">
+      <div class="modal-card modal-reminder-card animate-fade-in">
+        <div class="modal-header-row">
+          <h2 class="modal-title">
+            <Clock :size="18" class="text-primary" />
+            <span>设置待办提醒时间</span>
+          </h2>
+          <button class="modal-close-btn" @click="showReminderModal = false">
+            <X :size="16" />
+          </button>
+        </div>
+
+        <div class="modal-target-todo-info" v-if="reminderTargetTodo">
+          <span class="target-label">任务:</span>
+          <span class="target-title">{{ reminderTargetTodo.title }}</span>
+        </div>
+
+        <!-- 3D Wheel Picker with 12h/24h System Support -->
+        <WheelDateTimePicker v-model="reminderPickerValue" />
+
+        <div class="modal-actions-space-between">
+          <button
+            v-if="reminderTargetTodo?.remind_at"
+            type="button"
+            class="btn btn-danger-outline"
+            @click="clearModalReminder"
+          >
+            <BellOff :size="14" /> 关闭提醒
+          </button>
+          <div v-else></div>
+
+          <div class="modal-actions-right">
+            <button type="button" class="btn" @click="showReminderModal = false">取消</button>
+            <button type="button" class="btn btn-primary" @click="saveModalReminder">确认设置</button>
+          </div>
         </div>
       </div>
     </div>
@@ -624,7 +691,7 @@
 import { ref, computed, nextTick, onMounted, onUnmounted, watch } from 'vue'
 import {
   CheckSquare, Calendar, Clock, Flame, Settings, Menu, X, Hourglass, Bell,
-  Plus, Edit3, Trash2, Folder, Search, ListTodo, Inbox, LayoutGrid, Check, Square, ChevronDown
+  Plus, Edit3, Trash2, Folder, Search, ListTodo, Inbox, LayoutGrid, Check, Square, ChevronDown, BellOff
 } from 'lucide-vue-next'
 import type { Todo, LlmConfig, FilterType, ThemeType, NavPosition, User } from './types'
 import { showConfirm } from './utils/confirmState'
@@ -637,6 +704,7 @@ import PomodoroTimer from './components/productivity/PomodoroTimer.vue'
 import AlarmCountdown from './components/productivity/AlarmCountdown.vue'
 import SettingsPage from './components/common/SettingsPage.vue'
 import LoginPage from './components/common/LoginPage.vue'
+import WheelDateTimePicker from './components/widgets/WheelDateTimePicker.vue'
 
 // User Auth & Local Mode State
 const currentUser = ref<User | null>(
@@ -659,9 +727,27 @@ function toggleUserMenu(e: Event) {
 }
 void toggleUserMenu
 
+// Popover Menus State
+const activeMenuId = ref<string | null>(null)
+
+function toggleMenu(id: string) {
+  activeMenuId.value = activeMenuId.value === id ? null : id
+}
+
+function selectPriority(todo: Todo, prio: 'high' | 'medium' | 'low') {
+  activeMenuId.value = null
+  updateTodoPriority(todo, prio)
+}
+
+function selectCategory(todo: Todo, cat: string) {
+  activeMenuId.value = null
+  updateTodoCategory(todo, cat)
+}
+
 function closeUserMenu() {
   showUserMenu.value = false
   showMobileNavMenu.value = false
+  activeMenuId.value = null
 }
 
 function toggleMobileNavMenu(e: Event) {
@@ -1036,6 +1122,7 @@ function formatInputDateTime(remindStr?: string | null) {
   if (!remindStr) return ''
   return remindStr.slice(0, 16).replace(' ', 'T')
 }
+void formatInputDateTime
 
 async function updateTodoReminder(todo: Todo, val: string) {
   const remindFormatted = val ? (val.includes('T') ? val.replace('T', ' ') + (val.length === 16 ? ':00' : '') : val) : null
@@ -1054,6 +1141,30 @@ async function updateTodoReminder(todo: Todo, val: string) {
   } catch (err: any) {
     statusMessage.value = `❌ 更新提醒失败: ${err?.message || err}`
   }
+}
+
+// Dedicated Reminder Modal State & Methods
+const showReminderModal = ref(false)
+const reminderTargetTodo = ref<Todo | null>(null)
+const reminderPickerValue = ref('')
+
+function openReminderModal(todo: Todo) {
+  reminderTargetTodo.value = todo
+  reminderPickerValue.value = todo.remind_at ? todo.remind_at.slice(0, 16).replace(' ', 'T') : ''
+  showReminderModal.value = true
+}
+
+async function saveModalReminder() {
+  if (!reminderTargetTodo.value) return
+  const val = reminderPickerValue.value
+  await updateTodoReminder(reminderTargetTodo.value, val)
+  showReminderModal.value = false
+}
+
+async function clearModalReminder() {
+  if (!reminderTargetTodo.value) return
+  await updateTodoReminder(reminderTargetTodo.value, '')
+  showReminderModal.value = false
 }
 
 async function clearCompletedTodos() {
@@ -2041,27 +2152,84 @@ onMounted(() => {
   opacity: 0.7;
 }
 
-.meta-inline-select {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  opacity: 0;
-  cursor: pointer;
-  z-index: 2;
+.pill-arrow.rotated {
+  transform: rotate(180deg);
+  opacity: 1;
 }
 
-.meta-inline-datetime {
+/* Custom Rounded Popover Menus */
+.custom-dropdown-menu {
   position: absolute;
-  top: 0;
+  top: calc(100% + 6px);
   left: 0;
-  width: 100%;
-  height: 100%;
-  opacity: 0;
-  cursor: pointer;
-  z-index: 2;
+  z-index: 100;
+  min-width: 140px;
+  background: var(--bg-surface, #ffffff);
+  border: 1px solid var(--border-color, #e2e8f0);
+  border-radius: 12px;
+  padding: 6px;
+  box-shadow: 0 10px 25px -3px rgba(0, 0, 0, 0.12), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  animation: modalScale 0.15s ease-out;
 }
+
+.dropdown-header {
+  font-size: 10.5px;
+  font-weight: 700;
+  color: var(--text-muted, #94a3b8);
+  padding: 4px 8px;
+  border-bottom: 1px solid var(--border-color, #f1f5f9);
+  margin-bottom: 2px;
+}
+
+.dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  border: none;
+  background: transparent;
+  color: var(--text-main, #334155);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  width: 100%;
+  text-align: left;
+  transition: all 0.15s ease;
+}
+
+.dropdown-item:hover {
+  background: var(--bg-app, #f8fafc);
+  color: var(--primary, #3b82f6);
+}
+
+.dropdown-item.selected {
+  background: rgba(59, 130, 246, 0.08);
+  color: var(--primary, #3b82f6);
+  font-weight: 700;
+}
+
+.dropdown-item .item-icon {
+  color: var(--text-muted, #94a3b8);
+}
+
+.dropdown-item .check-icon {
+  margin-left: auto;
+  color: var(--primary, #3b82f6);
+}
+
+.dot-prio {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.dot-prio.red { background-color: #ef4444; }
+.dot-prio.yellow { background-color: #f59e0b; }
+.dot-prio.blue { background-color: #3b82f6; }
 
 .btn-clear-reminder {
   position: relative;
@@ -2080,6 +2248,122 @@ onMounted(() => {
 
 .btn-clear-reminder:hover {
   color: #ef4444;
+}
+
+/* Modal Reminder Card & Wheel Picker Styles */
+.modal-reminder-card {
+  max-width: 520px;
+  width: 92%;
+  border-radius: 20px;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.modal-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.modal-close-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 8px;
+  transition: all 0.2s;
+}
+
+.modal-close-btn:hover {
+  background: var(--bg-app);
+  color: var(--text-main);
+}
+
+.modal-target-todo-info {
+  background: var(--bg-app, #f8fafc);
+  border: 1px solid var(--border-color, #e2e8f0);
+  border-radius: 10px;
+  padding: 8px 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+}
+
+.modal-target-todo-info .target-label {
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.modal-target-todo-info .target-title {
+  color: var(--text-main);
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.modal-actions-space-between {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 6px;
+}
+
+.modal-actions-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.btn-danger-outline {
+  background: transparent;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  color: #ef4444;
+  border-radius: 10px;
+  padding: 8px 14px;
+  font-size: 12.5px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-danger-outline:hover {
+  background: rgba(239, 68, 68, 0.1);
+  border-color: #ef4444;
+}
+
+.modal-wheel-picker-wrap {
+  margin-top: 8px;
+}
+
+/* Global Rounded Select Styling */
+select {
+  border-radius: 10px !important;
+  padding: 8px 12px;
+  border: 1px solid var(--border-color, #e2e8f0);
+  background-color: var(--bg-surface, #ffffff);
+  color: var(--text-main, #334155);
+  font-family: inherit;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+select:focus {
+  border-color: var(--primary, #3b82f6);
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+}
+
+option {
+  border-radius: 8px;
+  padding: 6px 10px;
 }
 
 .status-tag {
