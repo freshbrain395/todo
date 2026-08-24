@@ -398,26 +398,10 @@
                       </div>
                     </div>
 
-                    <!-- 4. Status Indicator Tag -->
-                    <span class="status-tag" :class="{ finished: todo.completed, pending: !todo.completed }">
-                      <span class="dot"></span>
-                      {{ todo.completed ? '已完成' : '待处理' }}
-                    </span>
                   </div>
                 </div>
 
                 <div class="card-actions">
-                  <button
-                    class="btn-action-primary"
-                    :class="{ done: todo.completed }"
-                    @click="toggleStatus(todo)"
-                    :title="todo.completed ? '标记为未完成' : '标记为已完成'"
-                  >
-                    <Check v-if="todo.completed" :size="14" />
-                    <Square v-else :size="14" />
-                    <span>{{ todo.completed ? '已完成' : '完成' }}</span>
-                  </button>
-
                   <button class="icon-btn-action delete" @click="deleteTodo(todo.id)" title="删除任务">
                     <Trash2 :size="14" />
                   </button>
