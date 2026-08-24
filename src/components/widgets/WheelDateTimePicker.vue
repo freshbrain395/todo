@@ -22,7 +22,7 @@
       </button>
     </div>
 
-    <!-- 3D Wheel Container -->
+    <!-- 3D Wheel Container (Without Year and Month) -->
     <div class="wheels-container">
       <!-- Highlighting Center Line Bar -->
       <div class="wheel-selection-indicator"></div>
@@ -31,76 +31,30 @@
       <div class="wheel-mask top-mask"></div>
       <div class="wheel-mask bottom-mask"></div>
 
-      <!-- Column 1: Year -->
+      <!-- Column 1: Date (Streamlined day/date list) -->
       <div
-        class="wheel-column"
-        @wheel.prevent="onWheel($event, 'year')"
-        @pointerdown="onPointerDown($event, 'year')"
+        class="wheel-column col-date"
+        @wheel.prevent="onWheel($event, 'date')"
+        @pointerdown="onPointerDown($event, 'date')"
         @pointermove="onPointerMove($event)"
         @pointerup="onPointerUp()"
         @pointercancel="onPointerUp()"
       >
-        <div class="column-title">年</div>
-        <div class="wheel-scroll-list" :style="getScrollStyle('year')">
+        <div class="column-title">日期</div>
+        <div class="wheel-scroll-list" :style="getScrollStyle('date')">
           <div
-            v-for="y in years"
-            :key="'y-' + y"
+            v-for="(item, idx) in upcomingDates"
+            :key="'date-' + idx"
             class="wheel-item"
-            :class="{ active: selectedYear === y }"
-            @click="selectValue('year', y)"
+            :class="{ active: selectedDateIndex === idx }"
+            @click="selectDateByIndex(idx)"
           >
-            {{ y }}年
+            {{ item.label }}
           </div>
         </div>
       </div>
 
-      <!-- Column 2: Month -->
-      <div
-        class="wheel-column"
-        @wheel.prevent="onWheel($event, 'month')"
-        @pointerdown="onPointerDown($event, 'month')"
-        @pointermove="onPointerMove($event)"
-        @pointerup="onPointerUp()"
-        @pointercancel="onPointerUp()"
-      >
-        <div class="column-title">月</div>
-        <div class="wheel-scroll-list" :style="getScrollStyle('month')">
-          <div
-            v-for="m in months"
-            :key="'m-' + m"
-            class="wheel-item"
-            :class="{ active: selectedMonth === m }"
-            @click="selectValue('month', m)"
-          >
-            {{ formatNum(m) }}月
-          </div>
-        </div>
-      </div>
-
-      <!-- Column 3: Day -->
-      <div
-        class="wheel-column"
-        @wheel.prevent="onWheel($event, 'day')"
-        @pointerdown="onPointerDown($event, 'day')"
-        @pointermove="onPointerMove($event)"
-        @pointerup="onPointerUp()"
-        @pointercancel="onPointerUp()"
-      >
-        <div class="column-title">日</div>
-        <div class="wheel-scroll-list" :style="getScrollStyle('day')">
-          <div
-            v-for="d in days"
-            :key="'d-' + d"
-            class="wheel-item"
-            :class="{ active: selectedDay === d }"
-            @click="selectValue('day', d)"
-          >
-            {{ formatNum(d) }}日
-          </div>
-        </div>
-      </div>
-
-      <!-- Column 4 (Optional in 12h mode): AM / PM -->
+      <!-- Column 2 (Optional in 12h mode): AM / PM -->
       <div
         v-if="use12Hour"
         class="wheel-column col-ampm"
@@ -124,9 +78,9 @@
         </div>
       </div>
 
-      <!-- Column 5: Hour -->
+      <!-- Column 3: Hour -->
       <div
-        class="wheel-column"
+        class="wheel-column col-hour"
         @wheel.prevent="onWheel($event, 'hour')"
         @pointerdown="onPointerDown($event, 'hour')"
         @pointermove="onPointerMove($event)"
@@ -147,9 +101,9 @@
         </div>
       </div>
 
-      <!-- Column 6: Minute -->
+      <!-- Column 4: Minute -->
       <div
-        class="wheel-column"
+        class="wheel-column col-minute"
         @wheel.prevent="onWheel($event, 'minute')"
         @pointerdown="onPointerDown($event, 'minute')"
         @pointermove="onPointerMove($event)"
@@ -163,7 +117,7 @@
             :key="'min-' + min"
             class="wheel-item"
             :class="{ active: selectedMinute === min }"
-            @click="selectValue('minute', min)"
+            @click="selectedMinute = min"
           >
             {{ formatNum(min) }}分
           </div>
@@ -193,10 +147,38 @@ const emit = defineEmits<{
 // Item height in pixels
 const ITEM_HEIGHT = 36
 
-// Date state
-const currentYear = new Date().getFullYear()
-const years = computed(() => [currentYear, currentYear + 1, currentYear + 2])
-const months = Array.from({ length: 12 }, (_, i) => i + 1)
+interface DateItem {
+  year: number
+  month: number
+  day: number
+  label: string
+}
+
+// Generate next 30 days of selectable dates
+const upcomingDates = computed<DateItem[]>(() => {
+  const list: DateItem[] = []
+  const now = new Date()
+  const weekdays = ['周日', '周一', '周二', '周三', '周四', '周五', '周六']
+  for (let i = 0; i < 35; i++) {
+    const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() + i)
+    let label = ''
+    if (i === 0) label = `今天 (${d.getMonth() + 1}/${d.getDate()})`
+    else if (i === 1) label = `明天 (${d.getMonth() + 1}/${d.getDate()})`
+    else if (i === 2) label = `后天 (${d.getMonth() + 1}/${d.getDate()})`
+    else label = `${d.getMonth() + 1}月${d.getDate()}日 ${weekdays[d.getDay()]}`
+
+    list.push({
+      year: d.getFullYear(),
+      month: d.getMonth() + 1,
+      day: d.getDate(),
+      label
+    })
+  }
+  return list
+})
+
+const selectedDateIndex = ref(0)
+
 const hours24 = Array.from({ length: 24 }, (_, i) => i)
 const hours12 = Array.from({ length: 12 }, (_, i) => i === 0 ? 12 : i)
 const minutes = Array.from({ length: 60 }, (_, i) => i)
@@ -215,11 +197,20 @@ function detectSystem12Hour(): boolean {
 const use12Hour = ref(detectSystem12Hour())
 const ampm = ref<'AM' | 'PM'>('AM')
 
-const selectedYear = ref(currentYear)
+const selectedYear = ref(new Date().getFullYear())
 const selectedMonth = ref(new Date().getMonth() + 1)
 const selectedDay = ref(new Date().getDate())
 const selectedHour = ref(new Date().getHours())
 const selectedMinute = ref(new Date().getMinutes())
+
+function selectDateByIndex(idx: number) {
+  if (idx < 0 || idx >= upcomingDates.value.length) return
+  selectedDateIndex.value = idx
+  const item = upcomingDates.value[idx]
+  selectedYear.value = item.year
+  selectedMonth.value = item.month
+  selectedDay.value = item.day
+}
 
 // Sync ampm with selectedHour
 watch(selectedHour, (h) => {
@@ -258,34 +249,17 @@ watch(ampm, (newAmpm) => {
 })
 
 // Drag & Wheel Interaction State
-type ColType = 'year' | 'month' | 'day' | 'hour' | 'minute' | 'ampm'
+type ColType = 'date' | 'hour' | 'minute' | 'ampm'
 const isDragging = ref(false)
 const dragCol = ref<ColType | null>(null)
 const startY = ref(0)
 const dragOffset = ref(0)
 const wheelAccumulators: Record<ColType, number> = {
-  year: 0,
-  month: 0,
-  day: 0,
+  date: 0,
   hour: 0,
   minute: 0,
   ampm: 0
 }
-
-// Calculate max days in selected year & month
-const daysInMonth = computed(() => {
-  return new Date(selectedYear.value, selectedMonth.value, 0).getDate()
-})
-
-const days = computed(() => {
-  return Array.from({ length: daysInMonth.value }, (_, i) => i + 1)
-})
-
-watch(daysInMonth, (maxDays) => {
-  if (selectedDay.value > maxDays) {
-    selectedDay.value = maxDays
-  }
-})
 
 function parseModelValue(val?: string) {
   if (!val) {
@@ -296,6 +270,7 @@ function parseModelValue(val?: string) {
     selectedDay.value = now.getDate()
     selectedHour.value = now.getHours()
     selectedMinute.value = now.getMinutes()
+    syncDateIndex()
     return
   }
 
@@ -306,6 +281,18 @@ function parseModelValue(val?: string) {
     selectedDay.value = d.getDate()
     selectedHour.value = d.getHours()
     selectedMinute.value = d.getMinutes()
+    syncDateIndex()
+  }
+}
+
+function syncDateIndex() {
+  const matchIdx = upcomingDates.value.findIndex(
+    item => item.year === selectedYear.value && item.month === selectedMonth.value && item.day === selectedDay.value
+  )
+  if (matchIdx >= 0) {
+    selectedDateIndex.value = matchIdx
+  } else {
+    selectedDateIndex.value = 0
   }
 }
 
@@ -357,12 +344,8 @@ function formatNum(num: number): string {
 
 function getScrollStyle(col: ColType) {
   let index = 0
-  if (col === 'year') {
-    index = years.value.indexOf(selectedYear.value)
-  } else if (col === 'month') {
-    index = months.indexOf(selectedMonth.value)
-  } else if (col === 'day') {
-    index = days.value.indexOf(selectedDay.value)
+  if (col === 'date') {
+    index = selectedDateIndex.value
   } else if (col === 'ampm') {
     index = ampm.value === 'AM' ? 0 : 1
   } else if (col === 'hour') {
@@ -385,18 +368,9 @@ function getScrollStyle(col: ColType) {
 }
 
 function stepValue(col: ColType, delta: number) {
-  if (col === 'year') {
-    const idx = years.value.indexOf(selectedYear.value)
-    const nextIdx = Math.max(0, Math.min(years.value.length - 1, idx + delta))
-    selectedYear.value = years.value[nextIdx]
-  } else if (col === 'month') {
-    const idx = months.indexOf(selectedMonth.value)
-    const nextIdx = Math.max(0, Math.min(months.length - 1, idx + delta))
-    selectedMonth.value = months[nextIdx]
-  } else if (col === 'day') {
-    const idx = days.value.indexOf(selectedDay.value)
-    const nextIdx = Math.max(0, Math.min(days.value.length - 1, idx + delta))
-    selectedDay.value = days.value[nextIdx]
+  if (col === 'date') {
+    const nextIdx = Math.max(0, Math.min(upcomingDates.value.length - 1, selectedDateIndex.value + delta))
+    selectDateByIndex(nextIdx)
   } else if (col === 'ampm') {
     ampm.value = ampm.value === 'AM' ? 'PM' : 'AM'
   } else if (col === 'hour') {
@@ -451,13 +425,6 @@ function onPointerUp() {
   }
 }
 
-function selectValue(col: ColType, val: number) {
-  if (col === 'year') selectedYear.value = val
-  if (col === 'month') selectedMonth.value = val
-  if (col === 'day') selectedDay.value = val
-  if (col === 'minute') selectedMinute.value = val
-}
-
 function applyPreset(amount: number, unit: 'minute' | 'hour') {
   const now = new Date()
   if (unit === 'minute') {
@@ -470,6 +437,7 @@ function applyPreset(amount: number, unit: 'minute' | 'hour') {
   selectedDay.value = now.getDate()
   selectedHour.value = now.getHours()
   selectedMinute.value = now.getMinutes()
+  syncDateIndex()
 }
 
 function setTonight() {
@@ -483,6 +451,7 @@ function setTonight() {
   selectedDay.value = now.getDate()
   selectedHour.value = 20
   selectedMinute.value = 0
+  syncDateIndex()
 }
 
 function setTomorrowMorning() {
@@ -494,6 +463,7 @@ function setTomorrowMorning() {
   selectedDay.value = tomorrow.getDate()
   selectedHour.value = 9
   selectedMinute.value = 0
+  syncDateIndex()
 }
 </script>
 
@@ -628,6 +598,22 @@ function setTomorrowMorning() {
   touch-action: none;
 }
 
+.wheel-column.col-date {
+  flex: 1.6;
+}
+
+.wheel-column.col-ampm {
+  flex: 0.9;
+}
+
+.wheel-column.col-hour {
+  flex: 1;
+}
+
+.wheel-column.col-minute {
+  flex: 1;
+}
+
 .wheel-column:active {
   cursor: grabbing;
 }
@@ -661,14 +647,15 @@ function setTomorrowMorning() {
   transition: all 0.2s;
   opacity: 0.45;
   transform: scale(0.9);
+  white-space: nowrap;
 }
 
 .wheel-item.active {
   color: var(--primary, #3b82f6);
   font-weight: 800;
-  font-size: 14.5px;
+  font-size: 14px;
   opacity: 1;
-  transform: scale(1.1);
+  transform: scale(1.08);
 }
 
 .formatted-preview {
