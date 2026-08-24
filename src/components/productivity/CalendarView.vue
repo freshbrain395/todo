@@ -203,153 +203,6 @@
           </div>
         </div>
       </div>
-
-      <!-- Bottom Section: Selected Date Schedule & Todo List -->
-      <div class="calendar-schedule-section">
-        <div class="pane-header">
-          <div class="header-title">
-            <Clock :size="18" class="icon-primary" />
-            <span>{{ formattedSelectedDate }} 待办日程 (农历 {{ selectedLunarInfo.fullText }})</span>
-          </div>
-          <button class="btn btn-sm btn-primary" @click="openQuickAdd">
-            <Plus :size="14" /> 记一笔
-          </button>
-        </div>
-
-        <!-- Selected Date Info Summary Banner -->
-        <div class="selected-date-card">
-          <div class="date-big-num">{{ selectedDate.getDate() }}</div>
-          <div class="date-details">
-            <div class="full-date-str">{{ formattedFullDate }} 星期{{ weekDayLabel(selectedDate.getDay()) }}</div>
-            <div class="lunar-detail-str">农历 {{ selectedLunarInfo.fullText }}</div>
-            <div class="holiday-status-row" v-if="selectedHolidayInfo">
-              <span class="pill-badge" :class="selectedHolidayInfo.isHoliday ? 'holiday' : selectedHolidayInfo.isCompensate ? 'compensate' : 'normal'">
-                {{ selectedHolidayInfo.badge ? selectedHolidayInfo.badge : '节' }} {{ selectedHolidayInfo.label }}
-              </span>
-              <span v-if="selectedHolidayInfo.isCompensate" class="compensate-tip">（工作日调休补班）</span>
-              <span v-else-if="selectedHolidayInfo.isHoliday" class="compensate-tip holiday">（法定休假日）</span>
-            </div>
-          </div>
-        </div>
-
-        <!-- Quick Add Event Form -->
-        <div v-if="showQuickAdd" class="quick-add-box animate-fade-in">
-          <div class="quick-add-header">
-            <span class="quick-add-title-text"><CalendarPlus :size="14" /> 新增日程记录与提醒</span>
-            <button class="icon-btn-close-sm" @click="showQuickAdd = false" title="关闭"><X :size="12" /></button>
-          </div>
-
-          <div class="form-group-sm">
-            <label class="form-label-sm">记录名称 *</label>
-            <input
-              type="text"
-              v-model="newEventTitle"
-              class="text-input input-sm"
-              placeholder="如: 部门周例会 / 提交项目报告..."
-              @keyup.enter="saveQuickEvent"
-            />
-          </div>
-
-          <div class="form-group-sm">
-            <div class="label-with-presets">
-              <label class="form-label-sm">记录执行时间</label>
-              <div class="quick-time-chips">
-                <button type="button" class="chip-btn" @click="newEventTime = '09:00'">09:00</button>
-                <button type="button" class="chip-btn" @click="newEventTime = '12:00'">12:00</button>
-                <button type="button" class="chip-btn" @click="newEventTime = '15:00'">15:00</button>
-                <button type="button" class="chip-btn" @click="newEventTime = '18:00'">18:00</button>
-              </div>
-            </div>
-            <input
-              type="time"
-              v-model="newEventTime"
-              class="text-input input-sm time-input-custom"
-            />
-          </div>
-
-          <div class="form-group-sm">
-            <div class="reminder-setting-row">
-              <label class="checkbox-option-sm">
-                <input type="checkbox" v-model="newEventEnableReminder" />
-                <span>开启定时提醒</span>
-              </label>
-
-              <select
-                v-if="newEventEnableReminder"
-                v-model="newEventRemindOffset"
-                class="select-input-sm"
-              >
-                <option value="0">准时提醒 ({{ newEventTime || '09:00' }})</option>
-                <option value="10">提前 10 分钟提醒</option>
-                <option value="30">提前 30 分钟提醒</option>
-                <option value="60">提前 1 小时提醒</option>
-              </select>
-            </div>
-          </div>
-
-          <div class="form-row-sm">
-            <div class="form-group-sm flex-1">
-              <label class="form-label-sm">分类</label>
-              <input
-                type="text"
-                v-model="newEventCategory"
-                class="text-input input-sm"
-                placeholder="如: 会议 / 个人"
-              />
-            </div>
-
-            <div class="form-group-sm flex-1">
-              <label class="form-label-sm">优先级</label>
-              <select v-model="newEventPriority" class="select-input-sm">
-                <option value="high">高优 (High)</option>
-                <option value="medium">中优 (Medium)</option>
-                <option value="low">低优 (Low)</option>
-              </select>
-            </div>
-          </div>
-
-          <div class="quick-add-actions">
-            <button class="btn btn-sm btn-outline" @click="showQuickAdd = false">取消</button>
-            <button class="btn btn-sm btn-primary" @click="saveQuickEvent">
-              <Check :size="13" /> 保存日程记录
-            </button>
-          </div>
-        </div>
-
-        <!-- Schedule Items List -->
-        <div class="schedule-list-scroll">
-          <div v-if="selectedDayEvents.length === 0" class="empty-schedule-state">
-            <div class="empty-icon"><CalendarIcon :size="36" :stroke-width="1.5" /></div>
-            <p class="empty-text">该日期暂无安排，点击右上角 "记一笔" 快捷创建任务提醒吧！</p>
-          </div>
-
-          <div v-else class="schedule-items-stack">
-            <div
-              v-for="ev in selectedDayEvents"
-              :key="ev.id"
-              class="schedule-item-row"
-              :class="{ completed: ev.completed }"
-            >
-              <div class="item-icon">
-                <CheckSquare v-if="ev.type === 'todo'" :size="16" class="icon-todo" />
-                <Bell v-else :size="16" class="icon-alarm" />
-              </div>
-
-              <div class="item-body">
-                <div class="item-title" :class="{ strike: ev.completed }">{{ ev.title }}</div>
-                <div class="item-meta">
-                  <span class="tag tag-time" v-if="ev.time"><Clock :size="10" /> {{ ev.time }}</span>
-                  <span class="tag tag-cat" v-if="ev.category"><Folder :size="10" /> {{ ev.category }}</span>
-                </div>
-              </div>
-
-              <button class="icon-btn delete-btn-sm" @click.stop="deleteCalendarEvent(ev)" title="删除日程任务">
-                <Trash2 :size="14" />
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
     </div>
   </div>
 </template>
@@ -358,8 +211,7 @@
 import { ref, computed } from 'vue'
 import {
   Calendar as CalendarIcon, ChevronLeft, ChevronRight,
-  Clock, Plus, CheckSquare, Bell, Trash2, X, Check,
-  CalendarCheck, Sun, Briefcase, CalendarPlus, Folder
+  Clock, CalendarCheck, Sun, Briefcase
 } from 'lucide-vue-next'
 import type { Todo } from '../../types'
 import { getLunar, type LunarResult } from '../../utils/lunar'
@@ -368,32 +220,12 @@ const props = defineProps<{
   todos?: Todo[]
 }>()
 
-const emit = defineEmits<{
-  (e: 'add-todo', payload: any): void
-  (e: 'delete-todo', id: number): void
-}>()
-
 const weekDays = ['一', '二', '三', '四', '五', '六', '日']
 
 const today = new Date()
 const currentYear = ref(today.getFullYear())
 const currentMonth = ref(today.getMonth()) // 0 - 11
 const selectedDate = ref<Date>(new Date(today.getFullYear(), today.getMonth(), today.getDate()))
-
-const showQuickAdd = ref(false)
-const newEventTitle = ref('')
-const newEventTime = ref('09:00')
-const newEventCategory = ref('日历日程')
-const newEventPriority = ref<'high' | 'medium' | 'low'>('medium')
-const newEventEnableReminder = ref(true)
-const newEventRemindOffset = ref('0')
-
-async function deleteCalendarEvent(ev: { id: string | number; title: string }) {
-  const targetId = Number(ev.id)
-  if (!isNaN(targetId)) {
-    emit('delete-todo', targetId)
-  }
-}
 
 interface HolidayInfo {
   badge?: string
@@ -501,18 +333,6 @@ const isCurrentMonthToday = computed(() => {
   return today.getFullYear() === currentYear.value && today.getMonth() === currentMonth.value
 })
 
-const formattedSelectedDate = computed(() => {
-  return `${selectedDate.value.getMonth() + 1}月${selectedDate.value.getDate()}日`
-})
-
-const formattedFullDate = computed(() => {
-  return `${selectedDate.value.getFullYear()}年${selectedDate.value.getMonth() + 1}月${selectedDate.value.getDate()}日`
-})
-
-const selectedHolidayInfo = computed(() => {
-  return getHolidayInfo(selectedDate.value)
-})
-
 const currentMonthSummary = computed(() => {
   const year = currentYear.value
   const month = currentMonth.value
@@ -539,11 +359,6 @@ const currentMonthSummary = computed(() => {
 
   return { holidayDays, compensateDays, list }
 })
-
-function weekDayLabel(dayIdx: number): string {
-  const map: Record<number, string> = { 1: '一', 2: '二', 3: '三', 4: '四', 5: '五', 6: '六', 0: '日' }
-  return map[dayIdx] || '日'
-}
 
 // Compute 6x7 Calendar Cells
 interface CalendarCell {
@@ -665,14 +480,6 @@ function createCellObj(d: Date, isCurrentMonth: boolean): CalendarCell {
     isSolarTerm: !!lunar.solarTerm
   }
 }
-
-const selectedLunarInfo = computed(() => {
-  return getLunar(selectedDate.value)
-})
-
-const selectedDayEvents = computed(() => {
-  return getEventsForDate(selectedDate.value)
-})
 
 type CalendarMode = 'day' | 'week' | 'month' | 'year'
 const calendarMode = ref<CalendarMode>('month')
@@ -822,55 +629,6 @@ function selectDate(d: Date) {
   selectedDate.value = d
   currentYear.value = d.getFullYear()
   currentMonth.value = d.getMonth()
-  showQuickAdd.value = false
-}
-
-function openQuickAdd() {
-  showQuickAdd.value = true
-  newEventTitle.value = ''
-  newEventTime.value = '09:00'
-  newEventCategory.value = '日历日程'
-  newEventPriority.value = 'medium'
-  newEventEnableReminder.value = true
-  newEventRemindOffset.value = '0'
-}
-
-function saveQuickEvent() {
-  if (!newEventTitle.value.trim()) return
-
-  const dateKey = formatDateKey(selectedDate.value)
-  const timePart = newEventTime.value || '09:00'
-  const fullDateStr = `${dateKey} ${timePart}:00`
-
-  let remindAtStr: string | null = fullDateStr
-  if (newEventEnableReminder.value) {
-    if (newEventRemindOffset.value !== '0') {
-      const offsetMin = parseInt(newEventRemindOffset.value, 10) || 0
-      const [h, m] = timePart.split(':').map(Number)
-      const eventDate = new Date(selectedDate.value.getFullYear(), selectedDate.value.getMonth(), selectedDate.value.getDate(), h, m)
-      eventDate.setMinutes(eventDate.getMinutes() - offsetMin)
-
-      const ry = eventDate.getFullYear()
-      const rm = String(eventDate.getMonth() + 1).padStart(2, '0')
-      const rd = String(eventDate.getDate()).padStart(2, '0')
-      const rh = String(eventDate.getHours()).padStart(2, '0')
-      const rmin = String(eventDate.getMinutes()).padStart(2, '0')
-      remindAtStr = `${ry}-${rm}-${rd} ${rh}:${rmin}:00`
-    }
-  } else {
-    remindAtStr = null
-  }
-
-  emit('add-todo', {
-    title: newEventTitle.value.trim(),
-    dateStr: fullDateStr,
-    remindAt: remindAtStr,
-    priority: newEventPriority.value,
-    category: newEventCategory.value.trim() || '日历日程'
-  })
-
-  newEventTitle.value = ''
-  showQuickAdd.value = false
 }
 </script>
 

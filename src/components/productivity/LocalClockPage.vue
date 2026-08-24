@@ -10,36 +10,27 @@
         <span class="title-subtext">实时本地时间、时区与天文农历看板</span>
       </div>
 
-      <!-- Feature Controls: Visual Mode, Seconds, Milliseconds, 12/24H, Zen Mode -->
+      <!-- Feature Controls: Visual Mode (Analog / Digital), Seconds, Milliseconds, 12/24H, Zen Mode -->
       <div class="toolbar-right">
-        <!-- Display Mode Toggle (Dual / Digital / Analog) -->
+        <!-- Display Mode Toggle (Analog / Digital) -->
         <div class="mode-toggle-group">
           <button
             class="mode-btn"
-            :class="{ active: displayMode === 'dual' }"
-            @click="displayMode = 'dual'"
-            title="双视图模式"
+            :class="{ active: displayMode === 'analog' }"
+            @click="setDisplayMode('analog')"
+            title="模拟表盘模式"
           >
-            <Columns :size="13" />
-            <span>双视角</span>
+            <Disc :size="14" />
+            <span>表盘</span>
           </button>
           <button
             class="mode-btn"
             :class="{ active: displayMode === 'digital' }"
-            @click="displayMode = 'digital'"
+            @click="setDisplayMode('digital')"
             title="纯数字大屏"
           >
-            <Tv :size="13" />
+            <Tv :size="14" />
             <span>数字</span>
-          </button>
-          <button
-            class="mode-btn"
-            :class="{ active: displayMode === 'analog' }"
-            @click="displayMode = 'analog'"
-            title="模拟表盘模式"
-          >
-            <Disc :size="13" />
-            <span>表盘</span>
           </button>
         </div>
 
@@ -93,102 +84,102 @@
         <!-- Ambient Breathing Glow -->
         <div class="clock-ambient-glow"></div>
 
-        <div class="clock-main-stage">
-          <!-- 1. Analog Clock Visual (Rendered if mode is analog or dual) -->
-          <div v-if="displayMode === 'analog' || displayMode === 'dual'" class="analog-clock-wrapper">
-            <svg class="analog-clock-svg" viewBox="0 0 240 240">
+        <!-- 1. Analog Clock View -->
+        <div v-if="displayMode === 'analog'" class="analog-stage animate-fade-in">
+          <div class="analog-clock-wrapper">
+            <svg class="analog-clock-svg" viewBox="0 0 280 280">
               <defs>
                 <linearGradient id="bezelGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                  <stop offset="0%" stop-color="rgba(255,255,255,0.25)" />
-                  <stop offset="50%" stop-color="rgba(99,102,241,0.15)" />
-                  <stop offset="100%" stop-color="rgba(0,0,0,0.15)" />
+                  <stop offset="0%" stop-color="rgba(255,255,255,0.4)" />
+                  <stop offset="50%" stop-color="rgba(99,102,241,0.2)" />
+                  <stop offset="100%" stop-color="rgba(15,23,42,0.3)" />
                 </linearGradient>
                 <filter id="handShadow" x="-20%" y="-20%" width="140%" height="140%">
-                  <feDropShadow dx="0" dy="2" stdDeviation="2" flood-opacity="0.25" />
+                  <feDropShadow dx="0" dy="3" stdDeviation="3" flood-opacity="0.35" />
                 </filter>
               </defs>
 
-              <circle cx="120" cy="120" r="114" class="clock-outer-bezel" fill="url(#bezelGrad)" />
-              <circle cx="120" cy="120" r="108" class="clock-dial-bg" />
+              <!-- Outer Bezel & Dial Background -->
+              <circle cx="140" cy="140" r="134" class="clock-outer-bezel" fill="url(#bezelGrad)" />
+              <circle cx="140" cy="140" r="126" class="clock-dial-bg" />
 
+              <!-- Ticks -->
               <g class="clock-ticks">
                 <line
                   v-for="n in 60"
                   :key="'m' + n"
-                  x1="120"
-                  y1="18"
-                  x2="120"
-                  y2="22"
-                  :transform="`rotate(${n * 6} 120 120)`"
+                  x1="140"
+                  y1="20"
+                  x2="140"
+                  y2="26"
+                  :transform="`rotate(${n * 6} 140 140)`"
                   class="minute-tick"
                 />
                 <line
                   v-for="n in 12"
                   :key="'h' + n"
-                  x1="120"
+                  x1="140"
                   y1="18"
-                  x2="120"
-                  y2="27"
-                  :transform="`rotate(${n * 30} 120 120)`"
+                  x2="140"
+                  y2="30"
+                  :transform="`rotate(${n * 30} 140 140)`"
                   class="hour-tick"
                 />
               </g>
 
-              <text x="120" y="46" class="clock-number" text-anchor="middle">12</text>
-              <text x="198" y="126" class="clock-number" text-anchor="middle">3</text>
-              <text x="120" y="206" class="clock-number" text-anchor="middle">6</text>
-              <text x="42" y="126" class="clock-number" text-anchor="middle">9</text>
+              <!-- 12 Hours Numbers -->
+              <text x="140" y="52" class="clock-number" text-anchor="middle">12</text>
+              <text x="230" y="146" class="clock-number" text-anchor="middle">3</text>
+              <text x="140" y="240" class="clock-number" text-anchor="middle">6</text>
+              <text x="50" y="146" class="clock-number" text-anchor="middle">9</text>
 
+              <!-- Hour Hand (时针) -->
               <line
-                x1="120"
-                y1="120"
-                x2="120"
-                y2="64"
-                :transform="`rotate(${analogAngles.hour} 120 120)`"
+                x1="140"
+                y1="140"
+                x2="140"
+                y2="76"
+                :transform="`rotate(${analogAngles.hour} 140 140)`"
                 class="hand hour-hand"
                 filter="url(#handShadow)"
               />
+
+              <!-- Minute Hand (分针) -->
               <line
-                x1="120"
-                y1="120"
-                x2="120"
-                y2="42"
-                :transform="`rotate(${analogAngles.minute} 120 120)`"
+                x1="140"
+                y1="140"
+                x2="140"
+                y2="50"
+                :transform="`rotate(${analogAngles.minute} 140 140)`"
                 class="hand minute-hand"
                 filter="url(#handShadow)"
               />
-              <line
-                x1="120"
-                y1="134"
-                x2="120"
-                y2="30"
-                :transform="`rotate(${analogAngles.second} 120 120)`"
-                class="hand second-hand"
-                filter="url(#handShadow)"
-              />
-              <circle cx="120" cy="120" r="5" class="center-pin" />
-              <circle cx="120" cy="120" r="2" class="center-jewel" />
+
+              <!-- Second Hand (秒针) -->
+              <g v-if="showSeconds" :transform="`rotate(${analogAngles.second} 140 140)`">
+                <line
+                  x1="140"
+                  y1="160"
+                  x2="140"
+                  y2="36"
+                  class="hand second-hand"
+                  filter="url(#handShadow)"
+                />
+                <circle cx="140" cy="160" r="4.5" class="second-tail" />
+              </g>
+
+              <!-- Center Hub / Cap -->
+              <circle cx="140" cy="140" r="7" class="center-pin" />
+              <circle cx="140" cy="140" r="3" class="center-jewel" />
             </svg>
           </div>
 
-          <!-- 2. Digital Clock & Lunar Calendar Display -->
-          <div v-if="displayMode === 'digital' || displayMode === 'dual'" class="digital-clock-wrapper">
+          <!-- Bottom Status under Analog Clock -->
+          <div class="analog-info-footer">
             <div class="time-header-pill">
               <span class="pulse-indicator"></span>
               <span class="tz-label">{{ localTzName }}</span>
               <span class="tz-offset">{{ localOffsetStr }}</span>
-            </div>
-
-            <div class="hero-digital-time">
-              <div class="digits-group">
-                <span class="digit-hours">{{ formattedLocalTime.hours }}</span>
-                <span class="digit-colon">:</span>
-                <span class="digit-minutes">{{ formattedLocalTime.minutes }}</span>
-                <span v-if="showSeconds" class="digit-colon">:</span>
-                <span v-if="showSeconds" class="digit-seconds">{{ formattedLocalTime.seconds }}</span>
-                <span v-if="showMilliseconds" class="digit-milliseconds">.{{ formattedLocalTime.milliseconds }}</span>
-              </div>
-              <span v-if="use12Hour" class="digit-ampm">{{ formattedLocalTime.ampm }}</span>
             </div>
 
             <div class="calendar-detail-row">
@@ -214,6 +205,49 @@
             </div>
           </div>
         </div>
+
+        <!-- 2. Digital Clock View -->
+        <div v-else-if="displayMode === 'digital'" class="digital-stage animate-fade-in">
+          <div class="time-header-pill">
+            <span class="pulse-indicator"></span>
+            <span class="tz-label">{{ localTzName }}</span>
+            <span class="tz-offset">{{ localOffsetStr }}</span>
+          </div>
+
+          <div class="hero-digital-time">
+            <div class="digits-group">
+              <span class="digit-hours">{{ formattedLocalTime.hours }}</span>
+              <span class="digit-colon">:</span>
+              <span class="digit-minutes">{{ formattedLocalTime.minutes }}</span>
+              <span v-if="showSeconds" class="digit-colon">:</span>
+              <span v-if="showSeconds" class="digit-seconds">{{ formattedLocalTime.seconds }}</span>
+              <span v-if="showMilliseconds" class="digit-milliseconds">.{{ formattedLocalTime.milliseconds }}</span>
+            </div>
+            <span v-if="use12Hour" class="digit-ampm">{{ formattedLocalTime.ampm }}</span>
+          </div>
+
+          <div class="calendar-detail-row">
+            <div class="detail-pill date-pill">
+              <Calendar :size="15" class="icon-accent" />
+              <span>{{ formattedLocalTime.fullDateStr }}</span>
+              <span class="weekday-tag">{{ formattedLocalTime.weekday }}</span>
+            </div>
+            <div class="detail-pill lunar-pill">
+              <Sparkles :size="14" class="icon-lunar" />
+              <span>{{ lunarText }}</span>
+            </div>
+          </div>
+
+          <div class="day-progress-section">
+            <div class="progress-info-row">
+              <span class="greeting-text">{{ greetingText }}</span>
+              <span class="progress-percent">今日进度 {{ dayProgressPercent }}%</span>
+            </div>
+            <div class="day-progress-track">
+              <div class="day-progress-bar" :style="{ width: `${dayProgressPercent}%` }"></div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -226,7 +260,6 @@ import {
   Zap,
   Activity,
   Calendar,
-  Columns,
   Tv,
   Disc,
   Sparkles,
@@ -239,7 +272,7 @@ const now = ref<Date>(new Date())
 const showSeconds = ref<boolean>(true)
 const showMilliseconds = ref<boolean>(false)
 const use12Hour = ref<boolean>(false)
-const displayMode = ref<'dual' | 'digital' | 'analog'>('dual')
+const displayMode = ref<'analog' | 'digital'>('analog')
 const isZenMode = ref<boolean>(false)
 
 let animationFrameId: number | null = null
@@ -251,14 +284,19 @@ function handleKeyDown(e: KeyboardEvent) {
 
 function updateTime() {
   now.value = new Date()
-  if (showMilliseconds.value || animationFrameId !== null) {
+  if (showMilliseconds.value || displayMode.value === 'analog') {
     animationFrameId = requestAnimationFrame(updateTime)
   }
 }
 
+function setDisplayMode(mode: 'analog' | 'digital') {
+  displayMode.value = mode
+  startClockLoop()
+}
+
 function startClockLoop() {
   stopClockLoop()
-  if (showMilliseconds.value || displayMode.value !== 'digital') {
+  if (showMilliseconds.value || displayMode.value === 'analog') {
     animationFrameId = requestAnimationFrame(updateTime)
   } else {
     intervalTimerId = setInterval(() => { now.value = new Date() }, 1000)
@@ -299,8 +337,15 @@ const formattedLocalTime = computed(() => {
 
 const analogAngles = computed(() => {
   const d = now.value
-  const ms = d.getMilliseconds(), sec = d.getSeconds() + ms / 1000
-  return { second: sec * 6, minute: (d.getMinutes() + sec / 60) * 6, hour: ((d.getHours() % 12) + (d.getMinutes() + sec / 60) / 60) * 30 }
+  const ms = d.getMilliseconds()
+  const sec = d.getSeconds() + (showMilliseconds.value || displayMode.value === 'analog' ? ms / 1000 : 0)
+  const min = d.getMinutes() + sec / 60
+  const hr = (d.getHours() % 12) + min / 60
+  return {
+    second: sec * 6,
+    minute: min * 6,
+    hour: hr * 30
+  }
 })
 
 const lunarText = computed(() => {
@@ -511,11 +556,11 @@ onUnmounted(() => { stopClockLoop(); window.removeEventListener('keydown', handl
 .clock-showcase-card {
   position: relative;
   width: 100%;
-  max-width: 960px;
+  max-width: 860px;
   background: var(--bg-card, #ffffff);
   border: 1px solid var(--border-color, #e2e8f0);
   border-radius: 28px;
-  padding: 48px 40px;
+  padding: 40px 36px;
   box-shadow: 0 20px 48px -12px rgba(0, 0, 0, 0.06), 0 0 1px 1px rgba(255, 255, 255, 0.6) inset;
   display: flex;
   flex-direction: column;
@@ -525,7 +570,7 @@ onUnmounted(() => { stopClockLoop(); window.removeEventListener('keydown', handl
 }
 
 .zen-fullscreen .clock-showcase-card {
-  max-width: 1100px;
+  max-width: 1000px;
   border: none;
   background: transparent;
   box-shadow: none;
@@ -549,33 +594,32 @@ onUnmounted(() => { stopClockLoop(); window.removeEventListener('keydown', handl
   50% { transform: translate(-50%, -50%) scale(1.18); opacity: 1; }
 }
 
-.clock-main-stage {
+/* Analog Stage & SVG Hands */
+.analog-stage {
   position: relative;
   z-index: 1;
   width: 100%;
   display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: center;
-  gap: 48px;
+  gap: 28px;
 }
 
-/* Analog Clock SVG Styles */
 .analog-clock-wrapper {
-  flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
 .analog-clock-svg {
-  width: 240px;
-  height: 240px;
-  filter: drop-shadow(0 12px 28px rgba(0, 0, 0, 0.08));
+  width: 280px;
+  height: 280px;
+  filter: drop-shadow(0 14px 32px rgba(0, 0, 0, 0.12));
 }
 
 .clock-outer-bezel {
   stroke: var(--border-color, #cbd5e1);
-  stroke-width: 2;
+  stroke-width: 2.5;
 }
 
 .clock-dial-bg {
@@ -588,63 +632,74 @@ onUnmounted(() => { stopClockLoop(); window.removeEventListener('keydown', handl
   stroke: var(--text-muted, #94a3b8);
   stroke-width: 1.5;
   stroke-linecap: round;
-  opacity: 0.45;
+  opacity: 0.5;
 }
 
 .hour-tick {
   stroke: var(--text-main, #0f172a);
-  stroke-width: 3;
+  stroke-width: 3.5;
   stroke-linecap: round;
-  opacity: 0.85;
+  opacity: 0.9;
 }
 
 .clock-number {
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, sans-serif;
-  font-size: 15px;
+  font-size: 17px;
   font-weight: 800;
-  fill: var(--text-main, #1e293b);
+  fill: var(--text-main, #0f172a);
 }
 
 .hand {
   stroke-linecap: round;
-  transform-origin: 120px 120px;
-  transition: transform 0.05s linear;
+  transform-origin: 140px 140px;
 }
 
 .hour-hand {
-  stroke: var(--primary, #3b82f6);
-  stroke-width: 5;
+  stroke: var(--text-main, #0f172a);
+  stroke-width: 6;
 }
 
 .minute-hand {
-  stroke: var(--text-main, #0f172a);
-  stroke-width: 3.5;
+  stroke: var(--primary, #3b82f6);
+  stroke-width: 4.5;
 }
 
 .second-hand {
-  stroke: #ec4899;
-  stroke-width: 2;
+  stroke: #ef4444;
+  stroke-width: 2.5;
+}
+
+.second-tail {
+  fill: #ef4444;
 }
 
 .center-pin {
-  fill: #0f172a;
+  fill: var(--text-main, #0f172a);
 }
 
 .center-jewel {
-  fill: #ec4899;
+  fill: #ef4444;
 }
 
-/* Digital Clock Wrapper Styles */
-.digital-clock-wrapper {
-  flex: 1;
+.analog-info-footer {
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
-  gap: 20px;
+  align-items: center;
+  gap: 16px;
+  width: 100%;
+  max-width: 520px;
 }
 
-.clock-showcase-card.digital .digital-clock-wrapper {
+/* Digital Stage */
+.digital-stage {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
   align-items: center;
+  gap: 22px;
+  max-width: 640px;
 }
 
 .time-header-pill {
