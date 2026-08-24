@@ -1,23 +1,23 @@
 <template>
-  <div class="local-clock-container animate-fade-in">
-    <!-- Header Control Toolbar -->
-    <div class="clock-toolbar">
+  <div class="local-clock-container animate-fade-in" :class="{ 'zen-fullscreen': isZenMode }">
+    <!-- Header Control Toolbar (Hidden in Zen Mode) -->
+    <div v-if="!isZenMode" class="clock-toolbar">
       <div class="toolbar-left">
         <div class="page-title">
           <Clock :size="22" class="icon-primary" />
           <h2>本地高精度时钟</h2>
         </div>
-        <span class="title-subtext">显示本地精确时间、时区以及全球多城市时钟</span>
+        <span class="title-subtext">实时本地时间、时区与天文农历看板</span>
       </div>
 
-      <!-- Feature Controls: Visual Mode, Seconds, Milliseconds, 12/24H, Add City -->
+      <!-- Feature Controls: Visual Mode, Seconds, Milliseconds, 12/24H, Zen Mode -->
       <div class="toolbar-right">
         <!-- Display Mode Toggle (Dual / Digital / Analog) -->
         <div class="mode-toggle-group">
           <button
             class="mode-btn"
             :class="{ active: displayMode === 'dual' }"
-            @click="setDisplayMode('dual')"
+            @click="displayMode = 'dual'"
             title="双视图模式"
           >
             <Columns :size="13" />
@@ -26,7 +26,7 @@
           <button
             class="mode-btn"
             :class="{ active: displayMode === 'digital' }"
-            @click="setDisplayMode('digital')"
+            @click="displayMode = 'digital'"
             title="纯数字大屏"
           >
             <Tv :size="13" />
@@ -35,7 +35,7 @@
           <button
             class="mode-btn"
             :class="{ active: displayMode === 'analog' }"
-            @click="setDisplayMode('analog')"
+            @click="displayMode = 'analog'"
             title="模拟表盘模式"
           >
             <Disc :size="13" />
@@ -43,7 +43,6 @@
           </button>
         </div>
 
-        <!-- Toggle Seconds -->
         <button
           class="control-btn"
           :class="{ active: showSeconds }"
@@ -54,7 +53,6 @@
           <span>秒 ({{ showSeconds ? '开' : '关' }})</span>
         </button>
 
-        <!-- Toggle Milliseconds -->
         <button
           class="control-btn"
           :class="{ active: showMilliseconds }"
@@ -65,7 +63,6 @@
           <span>毫秒 ({{ showMilliseconds ? '开' : '关' }})</span>
         </button>
 
-        <!-- 12/24 Hour Format -->
         <button
           class="control-btn"
           :class="{ active: use12Hour }"
@@ -76,222 +73,149 @@
           <span>{{ use12Hour ? '12小时制' : '24小时制' }}</span>
         </button>
 
-        <!-- Add City Button -->
-        <button class="btn-primary-sm" @click="showAddCityModal = true">
-          <Plus :size="14" />
-          <span>添加城市</span>
+        <!-- Zen Fullscreen Immersion Button -->
+        <button class="control-btn btn-zen" @click="isZenMode = true" title="进入全屏沉浸大钟模式">
+          <Maximize2 :size="14" />
+          <span>沉浸模式</span>
         </button>
       </div>
     </div>
 
-    <!-- Main Scroll Content Area -->
-    <div class="clock-content-scroll">
-      <!-- 1. Hero Main Clock Display Card -->
-      <div class="hero-clock-card" :class="displayMode">
-        <div class="hero-card-badge">
-          <span class="badge-flag"><Home :size="14" /></span>
-          <span class="badge-text">本地时间 (Local Time)</span>
-          <span class="badge-offset">{{ localOffsetStr }}</span>
-        </div>
+    <!-- Exit Zen Mode Floating Button -->
+    <button v-if="isZenMode" class="btn-exit-zen" @click="isZenMode = false" title="退出沉浸模式 (ESC)">
+      <Minimize2 :size="16" />
+      <span>退出沉浸</span>
+    </button>
 
-        <div class="hero-main-content">
-          <!-- Analog Clock Visual (Rendered if mode is analog or dual) -->
+    <!-- Main Clock Stage Area -->
+    <div class="clock-stage-wrapper">
+      <div class="clock-showcase-card" :class="displayMode">
+        <!-- Ambient Breathing Glow -->
+        <div class="clock-ambient-glow"></div>
+
+        <div class="clock-main-stage">
+          <!-- 1. Analog Clock Visual (Rendered if mode is analog or dual) -->
           <div v-if="displayMode === 'analog' || displayMode === 'dual'" class="analog-clock-wrapper">
-            <svg class="analog-clock-svg" viewBox="0 0 200 200">
-              <!-- Outer Ring -->
-              <circle cx="100" cy="100" r="95" class="clock-outer-circle" />
-              <circle cx="100" cy="100" r="88" class="clock-inner-circle" />
+            <svg class="analog-clock-svg" viewBox="0 0 240 240">
+              <defs>
+                <linearGradient id="bezelGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stop-color="rgba(255,255,255,0.25)" />
+                  <stop offset="50%" stop-color="rgba(99,102,241,0.15)" />
+                  <stop offset="100%" stop-color="rgba(0,0,0,0.15)" />
+                </linearGradient>
+                <filter id="handShadow" x="-20%" y="-20%" width="140%" height="140%">
+                  <feDropShadow dx="0" dy="2" stdDeviation="2" flood-opacity="0.25" />
+                </filter>
+              </defs>
 
-              <!-- Ticks -->
+              <circle cx="120" cy="120" r="114" class="clock-outer-bezel" fill="url(#bezelGrad)" />
+              <circle cx="120" cy="120" r="108" class="clock-dial-bg" />
+
               <g class="clock-ticks">
-                <line
-                  v-for="n in 12"
-                  :key="n"
-                  x1="100"
-                  y1="12"
-                  x2="100"
-                  y2="20"
-                  :transform="`rotate(${n * 30} 100 100)`"
-                  class="hour-tick"
-                />
                 <line
                   v-for="n in 60"
                   :key="'m' + n"
-                  x1="100"
-                  y1="12"
-                  x2="100"
-                  y2="15"
-                  :transform="`rotate(${n * 6} 100 100)`"
+                  x1="120"
+                  y1="18"
+                  x2="120"
+                  y2="22"
+                  :transform="`rotate(${n * 6} 120 120)`"
                   class="minute-tick"
+                />
+                <line
+                  v-for="n in 12"
+                  :key="'h' + n"
+                  x1="120"
+                  y1="18"
+                  x2="120"
+                  y2="27"
+                  :transform="`rotate(${n * 30} 120 120)`"
+                  class="hour-tick"
                 />
               </g>
 
-              <!-- Numbers 12, 3, 6, 9 -->
-              <text x="100" y="36" class="clock-number" text-anchor="middle">12</text>
-              <text x="168" y="105" class="clock-number" text-anchor="middle">3</text>
-              <text x="100" y="174" class="clock-number" text-anchor="middle">6</text>
-              <text x="32" y="105" class="clock-number" text-anchor="middle">9</text>
+              <text x="120" y="46" class="clock-number" text-anchor="middle">12</text>
+              <text x="198" y="126" class="clock-number" text-anchor="middle">3</text>
+              <text x="120" y="206" class="clock-number" text-anchor="middle">6</text>
+              <text x="42" y="126" class="clock-number" text-anchor="middle">9</text>
 
-              <!-- Hour Hand -->
               <line
-                x1="100"
-                y1="100"
-                x2="100"
-                y2="52"
-                :transform="`rotate(${analogAngles.hour} 100 100)`"
+                x1="120"
+                y1="120"
+                x2="120"
+                y2="64"
+                :transform="`rotate(${analogAngles.hour} 120 120)`"
                 class="hand hour-hand"
+                filter="url(#handShadow)"
               />
-
-              <!-- Minute Hand -->
               <line
-                x1="100"
-                y1="100"
-                x2="100"
-                y2="32"
-                :transform="`rotate(${analogAngles.minute} 100 100)`"
+                x1="120"
+                y1="120"
+                x2="120"
+                y2="42"
+                :transform="`rotate(${analogAngles.minute} 120 120)`"
                 class="hand minute-hand"
+                filter="url(#handShadow)"
               />
-
-              <!-- Second Hand -->
               <line
-                x1="100"
-                y1="108"
-                x2="100"
-                y2="24"
-                :transform="`rotate(${analogAngles.second} 100 100)`"
+                x1="120"
+                y1="134"
+                x2="120"
+                y2="30"
+                :transform="`rotate(${analogAngles.second} 120 120)`"
                 class="hand second-hand"
+                filter="url(#handShadow)"
               />
-
-              <!-- Center Pin -->
-              <circle cx="100" cy="100" r="4" class="center-pin" />
-              <circle cx="100" cy="100" r="1.5" class="center-dot" />
+              <circle cx="120" cy="120" r="5" class="center-pin" />
+              <circle cx="120" cy="120" r="2" class="center-jewel" />
             </svg>
           </div>
 
-          <!-- Digital Clock Display (Rendered if mode is digital or dual) -->
+          <!-- 2. Digital Clock & Lunar Calendar Display -->
           <div v-if="displayMode === 'digital' || displayMode === 'dual'" class="digital-clock-wrapper">
-            <div class="hero-time-display">
-              <span class="time-main">{{ formattedLocalTime.hours }}:{{ formattedLocalTime.minutes }}</span>
-              <span v-if="showSeconds" class="time-seconds">:{{ formattedLocalTime.seconds }}</span>
-              <span v-if="showMilliseconds" class="time-milliseconds">.{{ formattedLocalTime.milliseconds }}</span>
-              <span v-if="use12Hour" class="time-ampm">{{ formattedLocalTime.ampm }}</span>
+            <div class="time-header-pill">
+              <span class="pulse-indicator"></span>
+              <span class="tz-label">{{ localTzName }}</span>
+              <span class="tz-offset">{{ localOffsetStr }}</span>
             </div>
 
-            <div class="hero-date-info">
-              <Calendar :size="16" class="icon-muted" />
-              <span>{{ formattedLocalTime.fullDateStr }}</span>
-              <span class="week-pill">{{ formattedLocalTime.weekday }}</span>
+            <div class="hero-digital-time">
+              <div class="digits-group">
+                <span class="digit-hours">{{ formattedLocalTime.hours }}</span>
+                <span class="digit-colon">:</span>
+                <span class="digit-minutes">{{ formattedLocalTime.minutes }}</span>
+                <span v-if="showSeconds" class="digit-colon">:</span>
+                <span v-if="showSeconds" class="digit-seconds">{{ formattedLocalTime.seconds }}</span>
+                <span v-if="showMilliseconds" class="digit-milliseconds">.{{ formattedLocalTime.milliseconds }}</span>
+              </div>
+              <span v-if="use12Hour" class="digit-ampm">{{ formattedLocalTime.ampm }}</span>
             </div>
-          </div>
-        </div>
-      </div>
 
-      <!-- 2. World Cities Section -->
-      <div class="section-header">
-        <div class="section-title">
-          <Globe :size="18" class="icon-primary" />
-          <h3>关注的世界城市时钟</h3>
-          <span class="city-count-badge">{{ activeCities.length }} 个城市</span>
-        </div>
-        <button class="text-btn" @click="resetDefaultCities">重置默认城市</button>
-      </div>
-
-      <!-- 3. World Cities Grid Cards -->
-      <div class="world-cities-grid">
-        <div
-          v-for="city in activeCities"
-          :key="city.id"
-          class="city-clock-card animate-scale-up"
-        >
-          <button
-            class="remove-city-btn"
-            @click="removeCity(city.id)"
-            title="移除此城市"
-          >
-            <X :size="14" />
-          </button>
-
-          <div class="city-header">
-            <span class="city-flag">{{ city.flag }}</span>
-            <div class="city-name-box">
-              <h4 class="city-name">{{ city.name }}</h4>
-              <span class="city-tz">{{ city.timeZone }}</span>
+            <div class="calendar-detail-row">
+              <div class="detail-pill date-pill">
+                <Calendar :size="15" class="icon-accent" />
+                <span>{{ formattedLocalTime.fullDateStr }}</span>
+                <span class="weekday-tag">{{ formattedLocalTime.weekday }}</span>
+              </div>
+              <div class="detail-pill lunar-pill">
+                <Sparkles :size="14" class="icon-lunar" />
+                <span>{{ lunarText }}</span>
+              </div>
             </div>
-          </div>
 
-          <div class="city-time-display">
-            <span class="city-time-text">{{ getCityTimeString(city.timeZone) }}</span>
-          </div>
-
-          <div class="city-footer">
-            <span class="city-offset-tag">{{ getCityOffsetString(city.timeZone) }}</span>
-            <span class="city-date-tag">{{ getCityDateString(city.timeZone) }}</span>
+            <div class="day-progress-section">
+              <div class="progress-info-row">
+                <span class="greeting-text">{{ greetingText }}</span>
+                <span class="progress-percent">今日进度 {{ dayProgressPercent }}%</span>
+              </div>
+              <div class="day-progress-track">
+                <div class="day-progress-bar" :style="{ width: `${dayProgressPercent}%` }"></div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
     </div>
-
-    <!-- 4. Add City Modal -->
-    <Transition name="fade">
-      <div v-if="showAddCityModal" class="modal-backdrop" @click.self="showAddCityModal = false">
-        <div class="modal-card">
-          <div class="modal-header">
-            <div class="modal-title">
-              <Globe :size="18" class="icon-primary" />
-              <h3>添加关注城市时钟</h3>
-            </div>
-            <button class="close-btn" @click="showAddCityModal = false">
-              <X :size="16" />
-            </button>
-          </div>
-
-          <div class="modal-body">
-            <div class="search-input-wrapper">
-              <Search :size="15" class="search-icon" />
-              <input
-                type="text"
-                v-model="citySearchQuery"
-                placeholder="搜索城市名称或英文名 (如: 伦敦, New York)..."
-                class="search-input"
-              />
-            </div>
-
-            <div class="available-cities-list">
-              <div
-                v-for="city in filteredAvailableCities"
-                :key="city.id"
-                class="available-city-item"
-              >
-                <div class="city-info-left">
-                  <span class="flag-lg">{{ city.flag }}</span>
-                  <div class="name-meta">
-                    <span class="c-name">{{ city.name }}</span>
-                    <span class="c-tz">{{ city.timeZone }}</span>
-                  </div>
-                </div>
-
-                <div class="city-action-right">
-                  <span class="live-preview-time">{{ getCityTimeString(city.timeZone) }}</span>
-                  <button
-                    class="btn-add-action"
-                    :disabled="isCityAdded(city.id)"
-                    @click="addCity(city.id)"
-                  >
-                    <Check v-if="isCityAdded(city.id)" :size="12" />
-                    <Plus v-else :size="12" />
-                    <span>{{ isCityAdded(city.id) ? '已添加' : '添加' }}</span>
-                  </button>
-                </div>
-              </div>
-
-              <div v-if="filteredAvailableCities.length === 0" class="empty-search">
-                未找到匹配的城市
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </Transition>
   </div>
 </template>
 
@@ -299,311 +223,107 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import {
   Clock,
-  Globe,
   Zap,
   Activity,
-  Plus,
-  X,
   Calendar,
-  Search,
   Columns,
   Tv,
   Disc,
-  Home,
-  Check
+  Sparkles,
+  Maximize2,
+  Minimize2
 } from 'lucide-vue-next'
-import { invoke } from '@tauri-apps/api/core'
+import { getLunar } from '../../utils/lunar'
 
-interface CityItem {
-  id: string
-  name: string
-  flag: string
-  timeZone: string
-}
-
-const ALL_CITIES: CityItem[] = [
-  { id: 'beijing', name: '北京 (Beijing)', flag: '🇨🇳', timeZone: 'Asia/Shanghai' },
-  { id: 'tokyo', name: '东京 (Tokyo)', flag: '🇯🇵', timeZone: 'Asia/Tokyo' },
-  { id: 'london', name: '伦敦 (London)', flag: '🇬🇧', timeZone: 'Europe/London' },
-  { id: 'newyork', name: '纽约 (New York)', flag: '🇺🇸', timeZone: 'America/New_York' },
-  { id: 'paris', name: '巴黎 (Paris)', flag: '🇫🇷', timeZone: 'Europe/Paris' },
-  { id: 'sydney', name: '悉尼 (Sydney)', flag: '🇦🇺', timeZone: 'Australia/Sydney' },
-  { id: 'dubai', name: '迪拜 (Dubai)', flag: '🇦🇪', timeZone: 'Asia/Dubai' },
-  { id: 'singapore', name: '新加坡 (Singapore)', flag: '🇸🇬', timeZone: 'Asia/Singapore' },
-  { id: 'moscow', name: '莫斯科 (Moscow)', flag: '🇷🇺', timeZone: 'Europe/Moscow' },
-  { id: 'losangeles', name: '洛杉矶 (Los Angeles)', flag: '🇺🇸', timeZone: 'America/Los_Angeles' },
-  { id: 'bangkok', name: '曼谷 (Bangkok)', flag: '🇹🇭', timeZone: 'Asia/Bangkok' },
-  { id: 'berlin', name: '柏林 (Berlin)', flag: '🇩🇪', timeZone: 'Europe/Berlin' }
-]
-
-const DEFAULT_CITY_IDS = ['tokyo', 'london', 'newyork', 'paris', 'sydney']
-
-// Reactive States
 const now = ref<Date>(new Date())
 const showSeconds = ref<boolean>(true)
 const showMilliseconds = ref<boolean>(false)
 const use12Hour = ref<boolean>(false)
 const displayMode = ref<'dual' | 'digital' | 'analog'>('dual')
-const activeCityIds = ref<string[]>([...DEFAULT_CITY_IDS])
-
-const showAddCityModal = ref<boolean>(false)
-const citySearchQuery = ref<string>('')
+const isZenMode = ref<boolean>(false)
 
 let animationFrameId: number | null = null
 let intervalTimerId: any = null
 
-// Calculations & Formatting
+function handleKeyDown(e: KeyboardEvent) {
+  if (e.key === 'Escape' && isZenMode.value) isZenMode.value = false
+}
+
+function updateTime() {
+  now.value = new Date()
+  if (showMilliseconds.value || animationFrameId !== null) {
+    animationFrameId = requestAnimationFrame(updateTime)
+  }
+}
+
+function startClockLoop() {
+  stopClockLoop()
+  if (showMilliseconds.value || displayMode.value !== 'digital') {
+    animationFrameId = requestAnimationFrame(updateTime)
+  } else {
+    intervalTimerId = setInterval(() => { now.value = new Date() }, 1000)
+  }
+}
+
+function stopClockLoop() {
+  if (animationFrameId !== null) { cancelAnimationFrame(animationFrameId); animationFrameId = null }
+  if (intervalTimerId !== null) { clearInterval(intervalTimerId); intervalTimerId = null }
+}
+
+function toggleSeconds() { showSeconds.value = !showSeconds.value }
+function toggleMilliseconds() { showMilliseconds.value = !showMilliseconds.value; startClockLoop() }
+function toggle12Hour() { use12Hour.value = !use12Hour.value }
+
+const localTzName = computed(() => Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Shanghai')
 const localOffsetStr = computed(() => {
-  const offsetMinutes = -now.value.getTimezoneOffset()
-  const sign = offsetMinutes >= 0 ? '+' : '-'
-  const abs = Math.abs(offsetMinutes)
-  const h = String(Math.floor(abs / 60)).padStart(2, '0')
-  const m = String(abs % 60).padStart(2, '0')
-  return `UTC${sign}${h}:${m}`
+  const offset = -now.value.getTimezoneOffset()
+  const sign = offset >= 0 ? '+' : '-'
+  const abs = Math.abs(offset)
+  return `UTC${sign}${String(Math.floor(abs/60)).padStart(2,'0')}:${String(abs%60).padStart(2,'0')}`
 })
 
 const formattedLocalTime = computed(() => {
   const d = now.value
-  let hoursNum = d.getHours()
-  let ampm = ''
-
-  if (use12Hour.value) {
-    ampm = hoursNum >= 12 ? 'PM' : 'AM'
-    hoursNum = hoursNum % 12 || 12
-  }
-
-  const hours = String(hoursNum).padStart(2, '0')
-  const minutes = String(d.getMinutes()).padStart(2, '0')
-  const seconds = String(d.getSeconds()).padStart(2, '0')
-  const milliseconds = String(d.getMilliseconds()).padStart(3, '0')
-
-  const weekdays = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六']
-  const weekday = weekdays[d.getDay()]
-
-  const year = d.getFullYear()
-  const month = String(d.getMonth() + 1).padStart(2, '0')
-  const day = String(d.getDate()).padStart(2, '0')
-
+  let h = d.getHours(), ampm = ''
+  if (use12Hour.value) { ampm = h >= 12 ? 'PM' : 'AM'; h = h % 12 || 12 }
   return {
-    hours,
-    minutes,
-    seconds,
-    milliseconds,
+    hours: String(h).padStart(2, '0'),
+    minutes: String(d.getMinutes()).padStart(2, '0'),
+    seconds: String(d.getSeconds()).padStart(2, '0'),
+    milliseconds: String(Math.floor(d.getMilliseconds() / 10)).padStart(2, '0'),
     ampm,
-    weekday,
-    fullDateStr: `${year}年${month}月${day}日`
+    weekday: ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'][d.getDay()],
+    fullDateStr: `${d.getFullYear()}年${String(d.getMonth() + 1).padStart(2, '0')}月${String(d.getDate()).padStart(2, '0')}日`
   }
 })
 
 const analogAngles = computed(() => {
   const d = now.value
-  const ms = d.getMilliseconds()
-  const sec = d.getSeconds() + (showMilliseconds.value ? ms / 1000 : 0)
-  const min = d.getMinutes() + sec / 60
-  const hour = (d.getHours() % 12) + min / 60
-
-  return {
-    second: sec * 6,
-    minute: min * 6,
-    hour: hour * 30
-  }
+  const ms = d.getMilliseconds(), sec = d.getSeconds() + ms / 1000
+  return { second: sec * 6, minute: (d.getMinutes() + sec / 60) * 6, hour: ((d.getHours() % 12) + (d.getMinutes() + sec / 60) / 60) * 30 }
 })
 
-const activeCities = computed(() => {
-  return ALL_CITIES.filter((c) => activeCityIds.value.includes(c.id))
+const lunarText = computed(() => {
+  try {
+    const l = getLunar(now.value)
+    return l ? `农历 ${l.fullText}${l.solarTerm ? ' · ' + l.solarTerm : ''}` : '农历吉祥 · 岁月静好'
+  } catch { return '农历吉祥 · 岁月静好' }
 })
 
-const filteredAvailableCities = computed(() => {
-  const q = citySearchQuery.value.trim().toLowerCase()
-  if (!q) return ALL_CITIES
-  return ALL_CITIES.filter(
-    (c) => c.name.toLowerCase().includes(q) || c.timeZone.toLowerCase().includes(q)
-  )
+const greetingText = computed(() => {
+  const h = now.value.getHours()
+  if (h < 5) return '✨ 夜深了 · 早点休息'
+  if (h < 9) return '🌅 晨光破晓 · 新的一天开启'
+  if (h < 12) return '☀️ 早上好 · 保持专注与高效'
+  if (h < 14) return '🍲 中午好 · 记得享用午餐'
+  if (h < 18) return '☕ 下午好 · 专注投入收获满满'
+  return '🌙 晚上好 · 享受惬意时光'
 })
 
-// World City Helper Functions
-function getCityTimeString(timeZone: string): string {
-  try {
-    const options: Intl.DateTimeFormatOptions = {
-      timeZone,
-      hour: '2-digit',
-      minute: '2-digit',
-      second: showSeconds.value ? '2-digit' : undefined,
-      hour12: use12Hour.value
-    }
-    return new Intl.DateTimeFormat('zh-CN', options).format(now.value)
-  } catch (e) {
-    return '--:--'
-  }
-}
+const dayProgressPercent = computed(() => (((now.value.getHours() * 3600 + now.value.getMinutes() * 60 + now.value.getSeconds()) / 86400) * 100).toFixed(1))
 
-function getCityDateString(timeZone: string): string {
-  try {
-    const options: Intl.DateTimeFormatOptions = {
-      timeZone,
-      month: '2-digit',
-      day: '2-digit',
-      weekday: 'short'
-    }
-    return new Intl.DateTimeFormat('zh-CN', options).format(now.value)
-  } catch (e) {
-    return ''
-  }
-}
-
-function getCityOffsetString(timeZone: string): string {
-  try {
-    const nowLocal = new Date()
-    const cityDateStr = nowLocal.toLocaleString('en-US', { timeZone })
-    const cityDate = new Date(cityDateStr)
-    const diffHours = (cityDate.getTime() - nowLocal.getTime()) / (1000 * 60 * 60)
-    const rounded = Math.round(diffHours * 10) / 10
-    if (rounded === 0) return '与本地相同'
-    return rounded > 0 ? `比本地快 ${rounded} 小时` : `比本地慢 ${Math.abs(rounded)} 小时`
-  } catch (e) {
-    return ''
-  }
-}
-
-function isCityAdded(cityId: string): boolean {
-  return activeCityIds.value.includes(cityId)
-}
-
-function addCity(cityId: string) {
-  if (!activeCityIds.value.includes(cityId)) {
-    activeCityIds.value.push(cityId)
-    persistConfig()
-  }
-}
-
-function removeCity(cityId: string) {
-  activeCityIds.value = activeCityIds.value.filter((id) => id !== cityId)
-  persistConfig()
-}
-
-function resetDefaultCities() {
-  activeCityIds.value = [...DEFAULT_CITY_IDS]
-  persistConfig()
-}
-
-// User Actions
-function toggleSeconds() {
-  showSeconds.value = !showSeconds.value
-  persistConfig()
-}
-
-function toggleMilliseconds() {
-  showMilliseconds.value = !showMilliseconds.value
-  restartTimerLoop()
-  persistConfig()
-}
-
-function toggle12Hour() {
-  use12Hour.value = !use12Hour.value
-  persistConfig()
-}
-
-function setDisplayMode(mode: 'dual' | 'digital' | 'analog') {
-  displayMode.value = mode
-  persistConfig()
-}
-
-// Persistence (Rust Backend + LocalStorage fallback)
-async function loadConfig() {
-  try {
-    const res = await invoke<string | null>('get_clock_config')
-    if (res) {
-      const parsed = JSON.parse(res)
-      if (typeof parsed.showSeconds === 'boolean') showSeconds.value = parsed.showSeconds
-      if (typeof parsed.showMilliseconds === 'boolean') showMilliseconds.value = parsed.showMilliseconds
-      if (typeof parsed.use12Hour === 'boolean') use12Hour.value = parsed.use12Hour
-      if (['dual', 'digital', 'analog'].includes(parsed.displayMode)) displayMode.value = parsed.displayMode
-      if (Array.isArray(parsed.activeCityIds)) activeCityIds.value = parsed.activeCityIds
-      return
-    }
-  } catch (err) {
-    // Web fallback
-  }
-
-  // LocalStorage fallback
-  const localMs = localStorage.getItem('local_clock_ms') === 'true'
-  const localSec = localStorage.getItem('local_clock_sec') !== 'false'
-  const local12h = localStorage.getItem('local_clock_12h') === 'true'
-  const localMode = localStorage.getItem('local_clock_mode') as 'dual' | 'digital' | 'analog'
-  const localCitiesStr = localStorage.getItem('local_clock_cities')
-
-  showMilliseconds.value = localMs
-  showSeconds.value = localSec
-  use12Hour.value = local12h
-  if (['dual', 'digital', 'analog'].includes(localMode)) displayMode.value = localMode
-  if (localCitiesStr) {
-    try {
-      activeCityIds.value = JSON.parse(localCitiesStr)
-    } catch (_) {}
-  }
-}
-
-async function persistConfig() {
-  const config = {
-    showSeconds: showSeconds.value,
-    showMilliseconds: showMilliseconds.value,
-    use12Hour: use12Hour.value,
-    displayMode: displayMode.value,
-    activeCityIds: activeCityIds.value
-  }
-
-  const jsonStr = JSON.stringify(config)
-
-  // LocalStorage fallback update
-  localStorage.setItem('local_clock_ms', String(showMilliseconds.value))
-  localStorage.setItem('local_clock_sec', String(showSeconds.value))
-  localStorage.setItem('local_clock_12h', String(use12Hour.value))
-  localStorage.setItem('local_clock_mode', displayMode.value)
-  localStorage.setItem('local_clock_cities', JSON.stringify(activeCityIds.value))
-
-  try {
-    await invoke('save_clock_config', { configJson: jsonStr })
-  } catch (err) {
-    // Ignore web fallback errors
-  }
-}
-
-// High Precision Animation Loop
-function updateTime() {
-  now.value = new Date()
-  if (showMilliseconds.value || displayMode.value === 'analog' || displayMode.value === 'dual') {
-    animationFrameId = requestAnimationFrame(updateTime)
-  }
-}
-
-function restartTimerLoop() {
-  if (animationFrameId) {
-    cancelAnimationFrame(animationFrameId)
-    animationFrameId = null
-  }
-  if (intervalTimerId) {
-    clearInterval(intervalTimerId)
-    intervalTimerId = null
-  }
-
-  if (showMilliseconds.value || displayMode.value === 'analog' || displayMode.value === 'dual') {
-    animationFrameId = requestAnimationFrame(updateTime)
-  } else {
-    intervalTimerId = setInterval(() => {
-      now.value = new Date()
-    }, 1000)
-  }
-}
-
-onMounted(async () => {
-  await loadConfig()
-  restartTimerLoop()
-})
-
-onUnmounted(() => {
-  if (animationFrameId) cancelAnimationFrame(animationFrameId)
-  if (intervalTimerId) clearInterval(intervalTimerId)
-})
+onMounted(() => { startClockLoop(); window.addEventListener('keydown', handleKeyDown) })
+onUnmounted(() => { stopClockLoop(); window.removeEventListener('keydown', handleKeyDown) })
 </script>
 
 <style scoped>
@@ -611,20 +331,60 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   height: 100%;
-  padding: 24px;
+  padding: 20px 24px;
+  gap: 20px;
   box-sizing: border-box;
-  background: var(--bg-app);
-  color: var(--text-main);
-  overflow: hidden;
+  overflow-y: auto;
 }
 
+/* Zen Fullscreen Mode */
+.local-clock-container.zen-fullscreen {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  padding: 0;
+  z-index: 99999;
+  background: var(--bg-app, #0f172a);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-exit-zen {
+  position: fixed;
+  top: 24px;
+  right: 24px;
+  z-index: 100000;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background: rgba(15, 23, 42, 0.75);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 20px;
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+}
+
+.btn-exit-zen:hover {
+  background: var(--primary, #3b82f6);
+  transform: translateY(-2px);
+}
+
+/* Header Control Toolbar */
 .clock-toolbar {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  margin-bottom: 20px;
-  flex-wrap: wrap;
+  justify-content: space-between;
   gap: 16px;
+  flex-wrap: wrap;
 }
 
 .toolbar-left {
@@ -636,38 +396,38 @@ onUnmounted(() => {
 .page-title {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
 }
 
 .page-title h2 {
-  margin: 0;
-  font-size: 1.4rem;
+  font-size: 20px;
   font-weight: 700;
-  letter-spacing: -0.02em;
+  color: var(--text-main, #0f172a);
+  margin: 0;
 }
 
 .icon-primary {
-  color: var(--primary);
+  color: var(--primary, #3b82f6);
 }
 
 .title-subtext {
-  font-size: 0.85rem;
-  color: var(--text-muted);
+  font-size: 12.5px;
+  color: var(--text-muted, #64748b);
 }
 
 .toolbar-right {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   flex-wrap: wrap;
 }
 
 .mode-toggle-group {
   display: flex;
-  background: var(--bg-surface);
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
-  padding: 3px;
+  background: var(--bg-surface, #ffffff);
+  border: 1px solid var(--border-color, #e2e8f0);
+  border-radius: 10px;
+  padding: 2px;
   gap: 2px;
 }
 
@@ -675,578 +435,388 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   gap: 5px;
-  background: transparent;
-  border: none;
-  color: var(--text-muted);
   padding: 5px 10px;
-  border-radius: 6px;
-  font-size: 0.8rem;
+  border-radius: 8px;
+  border: none;
+  background: transparent;
+  color: var(--text-muted, #64748b);
+  font-size: 12px;
+  font-weight: 600;
   cursor: pointer;
   transition: all 0.2s ease;
 }
 
 .mode-btn:hover {
-  color: var(--text-main);
-  background: var(--bg-hover);
+  color: var(--text-main, #0f172a);
 }
 
 .mode-btn.active {
-  background: var(--primary);
+  background: var(--primary, #3b82f6);
   color: #ffffff;
-  font-weight: 600;
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
 }
 
 .control-btn {
   display: flex;
   align-items: center;
   gap: 6px;
-  background: var(--bg-surface);
-  border: 1px solid var(--border-color);
-  color: var(--text-main);
   padding: 6px 12px;
-  border-radius: 8px;
-  font-size: 0.82rem;
+  background: var(--bg-surface, #ffffff);
+  border: 1px solid var(--border-color, #e2e8f0);
+  border-radius: 10px;
+  color: var(--text-muted, #64748b);
+  font-size: 12px;
+  font-weight: 600;
   cursor: pointer;
   transition: all 0.2s ease;
 }
 
 .control-btn:hover {
-  background: var(--bg-hover);
-  border-color: var(--border-color-focus);
+  border-color: var(--primary, #3b82f6);
+  color: var(--primary, #3b82f6);
 }
 
 .control-btn.active {
-  border-color: var(--primary);
-  color: var(--primary);
-  background: rgba(var(--primary-rgb), 0.1);
+  background: rgba(59, 130, 246, 0.08);
+  border-color: var(--primary, #3b82f6);
+  color: var(--primary, #3b82f6);
 }
 
-.btn-primary-sm {
+.btn-zen {
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(168, 85, 247, 0.1));
+  border-color: rgba(99, 102, 241, 0.3);
+  color: #6366f1;
+}
+
+.btn-zen:hover {
+  background: linear-gradient(135deg, #6366f1, #a855f7);
+  color: #ffffff;
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.35);
+}
+
+/* Main Clock Showcase Stage */
+.clock-stage-wrapper {
+  flex: 1;
   display: flex;
   align-items: center;
-  gap: 6px;
-  background: var(--primary);
-  color: #fff;
-  border: none;
-  padding: 7px 14px;
-  border-radius: 8px;
-  font-size: 0.83rem;
-  font-weight: 600;
-  cursor: pointer;
-  box-shadow: var(--shadow-sm);
-  transition: all 0.2s ease;
+  justify-content: center;
+  min-height: 480px;
 }
 
-.btn-primary-sm:hover {
-  background: var(--primary-hover);
-  transform: translateY(-1px);
-  box-shadow: var(--shadow-md);
+.zen-fullscreen .clock-stage-wrapper {
+  width: 100%;
+  height: 100%;
 }
 
-.clock-content-scroll {
-  flex: 1;
-  overflow-y: auto;
-  padding-right: 4px;
+.clock-showcase-card {
+  position: relative;
+  width: 100%;
+  max-width: 960px;
+  background: var(--bg-card, #ffffff);
+  border: 1px solid var(--border-color, #e2e8f0);
+  border-radius: 28px;
+  padding: 48px 40px;
+  box-shadow: 0 20px 48px -12px rgba(0, 0, 0, 0.06), 0 0 1px 1px rgba(255, 255, 255, 0.6) inset;
   display: flex;
   flex-direction: column;
-  gap: 24px;
-}
-
-/* Hero Clock Card */
-.hero-clock-card {
-  position: relative;
-  background: var(--bg-surface);
-  border: 1px solid var(--border-color);
-  border-radius: 20px;
-  padding: 28px 32px;
-  box-shadow: var(--shadow-md);
-  overflow: hidden;
-}
-
-.hero-card-badge {
-  display: inline-flex;
   align-items: center;
-  gap: 8px;
-  background: rgba(var(--primary-rgb), 0.1);
-  border: 1px solid rgba(var(--primary-rgb), 0.2);
-  padding: 6px 14px;
-  border-radius: 20px;
-  font-size: 0.85rem;
-  margin-bottom: 20px;
+  justify-content: center;
+  box-sizing: border-box;
 }
 
-.badge-text {
-  font-weight: 600;
-  color: var(--text-main);
+.zen-fullscreen .clock-showcase-card {
+  max-width: 1100px;
+  border: none;
+  background: transparent;
+  box-shadow: none;
 }
 
-.badge-offset {
-  color: var(--primary);
-  font-family: monospace;
+.clock-ambient-glow {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 480px;
+  height: 480px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(99, 102, 241, 0.12) 0%, rgba(236, 72, 153, 0.05) 50%, transparent 70%);
+  pointer-events: none;
+  animation: pulse-glow 6s infinite ease-in-out;
 }
 
-.hero-main-content {
+@keyframes pulse-glow {
+  0%, 100% { transform: translate(-50%, -50%) scale(1); opacity: 0.8; }
+  50% { transform: translate(-50%, -50%) scale(1.18); opacity: 1; }
+}
+
+.clock-main-stage {
+  position: relative;
+  z-index: 1;
+  width: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 48px;
 }
 
-/* Analog Clock SVG */
+/* Analog Clock SVG Styles */
 .analog-clock-wrapper {
-  width: 180px;
-  height: 180px;
   flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .analog-clock-svg {
-  width: 100%;
-  height: 100%;
+  width: 240px;
+  height: 240px;
+  filter: drop-shadow(0 12px 28px rgba(0, 0, 0, 0.08));
 }
 
-.clock-outer-circle {
-  fill: var(--bg-card);
-  stroke: var(--border-color);
-  stroke-width: 4;
+.clock-outer-bezel {
+  stroke: var(--border-color, #cbd5e1);
+  stroke-width: 2;
 }
 
-.clock-inner-circle {
-  fill: var(--bg-app);
-  stroke: rgba(var(--primary-rgb), 0.3);
+.clock-dial-bg {
+  fill: var(--bg-surface, #ffffff);
+  stroke: rgba(0, 0, 0, 0.04);
   stroke-width: 1;
-}
-
-.hour-tick {
-  stroke: var(--text-main);
-  stroke-width: 2.5;
 }
 
 .minute-tick {
-  stroke: var(--text-muted);
-  stroke-width: 1;
+  stroke: var(--text-muted, #94a3b8);
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  opacity: 0.45;
+}
+
+.hour-tick {
+  stroke: var(--text-main, #0f172a);
+  stroke-width: 3;
+  stroke-linecap: round;
+  opacity: 0.85;
 }
 
 .clock-number {
-  fill: var(--text-main);
-  font-size: 14px;
-  font-weight: 700;
-  font-family: system-ui, sans-serif;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, sans-serif;
+  font-size: 15px;
+  font-weight: 800;
+  fill: var(--text-main, #1e293b);
 }
 
 .hand {
   stroke-linecap: round;
+  transform-origin: 120px 120px;
+  transition: transform 0.05s linear;
 }
 
 .hour-hand {
-  stroke: var(--text-main);
-  stroke-width: 4.5;
+  stroke: var(--primary, #3b82f6);
+  stroke-width: 5;
 }
 
 .minute-hand {
-  stroke: var(--primary);
-  stroke-width: 3;
+  stroke: var(--text-main, #0f172a);
+  stroke-width: 3.5;
 }
 
 .second-hand {
-  stroke: #f43f5e;
-  stroke-width: 1.5;
+  stroke: #ec4899;
+  stroke-width: 2;
 }
 
 .center-pin {
-  fill: #f43f5e;
+  fill: #0f172a;
 }
 
-.center-dot {
-  fill: #fff;
+.center-jewel {
+  fill: #ec4899;
 }
 
-/* Digital Clock */
+/* Digital Clock Wrapper Styles */
 .digital-clock-wrapper {
+  flex: 1;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  justify-content: center;
+  gap: 20px;
 }
 
-.hero-time-display {
+.clock-showcase-card.digital .digital-clock-wrapper {
+  align-items: center;
+}
+
+.time-header-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 14px;
+  background: var(--bg-surface, #f8fafc);
+  border: 1px solid var(--border-color, #e2e8f0);
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted, #64748b);
+}
+
+.pulse-indicator {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background-color: #10b981;
+  box-shadow: 0 0 8px #10b981;
+  animation: blink 2s infinite;
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(0.85); }
+}
+
+.tz-offset {
+  color: var(--primary, #3b82f6);
+  font-weight: 700;
+}
+
+/* Huge Digital Numbers with Tabular Anti-Shake */
+.hero-digital-time {
   display: flex;
   align-items: baseline;
-  font-family: 'JetBrains Mono', 'Fira Code', ui-monospace, monospace;
-  font-weight: 800;
-  line-height: 1;
-  margin-bottom: 12px;
-}
-
-.time-main {
-  font-size: 4.2rem;
-  letter-spacing: -0.04em;
-  color: var(--text-main);
-}
-
-.time-seconds {
-  font-size: 2.8rem;
-  color: var(--primary);
-}
-
-.time-milliseconds {
-  font-size: 1.8rem;
-  color: var(--text-muted);
-  width: 3.2ch;
-}
-
-.time-ampm {
-  font-size: 1.4rem;
-  margin-left: 12px;
-  color: #d97706;
-  font-weight: 700;
-}
-
-.hero-date-info {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  font-size: 1.05rem;
-  color: var(--text-muted);
-}
-
-.icon-muted {
-  color: var(--text-muted);
-}
-
-.week-pill {
-  background: var(--bg-hover);
-  color: var(--text-main);
-  padding: 3px 10px;
-  border-radius: 6px;
-  font-size: 0.85rem;
-}
-
-/* World Cities Section */
-.section-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.section-title {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.section-title h3 {
-  margin: 0;
-  font-size: 1.15rem;
-  font-weight: 600;
-}
-
-.city-count-badge {
-  background: rgba(var(--primary-rgb), 0.15);
-  color: var(--primary);
-  font-size: 0.75rem;
-  padding: 2px 8px;
-  border-radius: 12px;
-  font-weight: 600;
-}
-
-.text-btn {
-  background: none;
-  border: none;
-  color: var(--text-muted);
-  font-size: 0.82rem;
-  cursor: pointer;
-  transition: color 0.2s ease;
-}
-
-.text-btn:hover {
-  color: var(--primary);
-}
-
-.world-cities-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-  gap: 16px;
-}
-
-.city-clock-card {
-  position: relative;
-  background: var(--bg-surface);
-  border: 1px solid var(--border-color);
-  border-radius: 14px;
-  padding: 16px 18px;
-  display: flex;
-  flex-direction: column;
   gap: 12px;
-  transition: all 0.25s ease;
-  box-shadow: var(--shadow-sm);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+  line-height: 1;
 }
 
-.city-clock-card:hover {
-  transform: translateY(-2px);
-  background: var(--bg-card-hover);
-  border-color: var(--border-color-focus);
-  box-shadow: var(--shadow-md);
+.digits-group {
+  display: flex;
+  align-items: baseline;
+  font-size: clamp(48px, 6vw, 76px);
+  font-weight: 800;
+  color: var(--text-main, #0f172a);
+  letter-spacing: -2px;
+  text-shadow: 0 4px 20px rgba(99, 102, 241, 0.15);
 }
 
-.remove-city-btn {
-  position: absolute;
-  top: 12px;
-  right: 12px;
-  background: transparent;
-  border: none;
-  color: var(--text-muted);
-  cursor: pointer;
-  opacity: 0;
-  transition: all 0.2s ease;
+.digit-colon {
+  margin: 0 2px;
+  color: var(--primary, #6366f1);
+  opacity: 0.85;
 }
 
-.city-clock-card:hover .remove-city-btn {
-  opacity: 1;
+.digit-seconds {
+  color: #6366f1;
 }
 
-.remove-city-btn:hover {
-  color: #ef4444;
+.digit-milliseconds {
+  font-size: 0.48em;
+  color: #a855f7;
+  font-weight: 700;
+  margin-left: 2px;
 }
 
-.city-header {
+.digit-ampm {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text-muted, #64748b);
+}
+
+/* Calendar and Lunar Badges */
+.calendar-detail-row {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
+  flex-wrap: wrap;
 }
 
-.city-flag {
-  font-size: 1.6rem;
+.detail-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background: var(--bg-surface, #f8fafc);
+  border: 1px solid var(--border-color, #e2e8f0);
+  border-radius: 12px;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--text-main, #1e293b);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.02);
 }
 
-.city-name-box {
+.icon-accent {
+  color: var(--primary, #3b82f6);
+}
+
+.icon-lunar {
+  color: #f59e0b;
+}
+
+.weekday-tag {
+  background: rgba(59, 130, 246, 0.12);
+  color: var(--primary, #3b82f6);
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+/* Greeting and Day Progress Section */
+.day-progress-section {
+  width: 100%;
   display: flex;
   flex-direction: column;
+  gap: 8px;
+  margin-top: 4px;
 }
 
-.city-name {
-  margin: 0;
-  font-size: 0.95rem;
+.progress-info-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12.5px;
   font-weight: 600;
 }
 
-.city-tz {
-  font-size: 0.75rem;
-  color: var(--text-muted);
+.greeting-text {
+  color: var(--text-muted, #64748b);
 }
 
-.city-time-display {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 1.7rem;
-  font-weight: 700;
-  color: var(--primary);
+.progress-percent {
+  color: var(--primary, #6366f1);
+  font-family: ui-monospace, monospace;
 }
 
-.city-footer {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  font-size: 0.78rem;
-  color: var(--text-muted);
-}
-
-.city-offset-tag {
-  color: var(--text-main);
-}
-
-.city-date-tag {
-  color: var(--text-muted);
-}
-
-/* Modal */
-.modal-backdrop {
-  position: fixed;
-  inset: 0;
-  background: var(--bg-overlay);
-  backdrop-filter: blur(4px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-}
-
-.modal-card {
-  background: var(--bg-card);
-  border: 1px solid var(--border-color);
-  border-radius: 16px;
-  width: 90%;
-  max-width: 480px;
-  max-height: 80vh;
-  display: flex;
-  flex-direction: column;
-  box-shadow: var(--shadow-lg);
+.day-progress-track {
+  width: 100%;
+  height: 6px;
+  background: var(--border-color, #e2e8f0);
+  border-radius: 6px;
   overflow: hidden;
 }
 
-.modal-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 16px 20px;
-  border-bottom: 1px solid var(--border-color);
-}
-
-.modal-title {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.modal-title h3 {
-  margin: 0;
-  font-size: 1.1rem;
-}
-
-.close-btn {
-  background: none;
-  border: none;
-  color: var(--text-muted);
-  cursor: pointer;
-}
-
-.close-btn:hover {
-  color: var(--text-main);
-}
-
-.modal-body {
-  padding: 20px;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  overflow-y: auto;
-}
-
-.search-input-wrapper {
-  position: relative;
-  display: flex;
-  align-items: center;
-}
-
-.search-icon {
-  position: absolute;
-  left: 12px;
-  color: var(--text-muted);
-}
-
-.search-input {
-  width: 100%;
-  background: var(--bg-app);
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
-  padding: 10px 12px 10px 36px;
-  color: var(--text-main);
-  font-size: 0.9rem;
-  outline: none;
-}
-
-.search-input:focus {
-  border-color: var(--primary);
-}
-
-.available-cities-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  max-height: 320px;
-  overflow-y: auto;
-}
-
-.available-city-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  background: var(--bg-app);
-  border: 1px solid var(--border-color);
-  padding: 10px 14px;
-  border-radius: 10px;
-}
-
-.city-info-left {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.flag-lg {
-  font-size: 1.4rem;
-}
-
-.name-meta {
-  display: flex;
-  flex-direction: column;
-}
-
-.c-name {
-  font-size: 0.9rem;
-  font-weight: 600;
-}
-
-.c-tz {
-  font-size: 0.75rem;
-  color: var(--text-muted);
-}
-
-.city-action-right {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.live-preview-time {
-  font-family: monospace;
-  font-size: 0.9rem;
-  color: var(--primary);
-}
-
-.btn-add-action {
-  background: rgba(var(--primary-rgb), 0.15);
-  color: var(--primary);
-  border: 1px solid rgba(var(--primary-rgb), 0.3);
-  padding: 4px 10px;
+.day-progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, #3b82f6 0%, #8b5cf6 50%, #ec4899 100%);
   border-radius: 6px;
-  font-size: 0.8rem;
-  cursor: pointer;
-  transition: all 0.2s ease;
+  transition: width 1s linear;
 }
 
-.btn-add-action:hover:not(:disabled) {
-  background: var(--primary);
-  color: #ffffff;
-}
-
-.btn-add-action:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-  border-color: transparent;
-}
-
-.empty-search {
-  text-align: center;
-  color: var(--text-muted);
-  padding: 20px;
-  font-size: 0.85rem;
-}
-
-/* Animations */
-.animate-fade-in {
-  animation: fadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.animate-scale-up {
-  animation: scaleUp 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(6px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-@keyframes scaleUp {
-  from { opacity: 0; transform: scale(0.95); }
-  to { opacity: 1; transform: scale(1); }
+/* Responsive Breakpoints */
+@media (max-width: 768px) {
+  .clock-main-stage {
+    flex-direction: column;
+    gap: 32px;
+  }
+  .digital-clock-wrapper {
+    align-items: center;
+  }
+  .clock-showcase-card {
+    padding: 32px 20px;
+  }
+  .digits-group {
+    font-size: 42px;
+  }
 }
 </style>
