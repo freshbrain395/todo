@@ -24,16 +24,6 @@
       <nav class="navbar-tabs">
         <button
           class="nav-tab-btn"
-          :class="{ active: currentTab === 'todos' }"
-          @click="currentTab = 'todos'"
-          title="待办事项"
-          data-tooltip="待办事项"
-        >
-          <CheckSquare :size="15" /> <span>待办事项</span>
-        </button>
-
-        <button
-          class="nav-tab-btn"
           :class="{ active: currentTab === 'calendar' }"
           @click="currentTab = 'calendar'"
           title="任务日历"
@@ -44,12 +34,22 @@
 
         <button
           class="nav-tab-btn"
-          :class="{ active: currentTab === 'local-clock' }"
-          @click="currentTab = 'local-clock'"
-          title="本地时钟"
-          data-tooltip="本地时钟"
+          :class="{ active: currentTab === 'todos' }"
+          @click="currentTab = 'todos'"
+          title="待办事项"
+          data-tooltip="待办事项"
         >
-          <Clock :size="15" /> <span>本地时钟</span>
+          <CheckSquare :size="15" /> <span>待办事项</span>
+        </button>
+
+        <button
+          class="nav-tab-btn"
+          :class="{ active: currentTab === 'pomodoro' }"
+          @click="currentTab = 'pomodoro'"
+          title="番茄时钟"
+          data-tooltip="番茄时钟"
+        >
+          <Flame :size="15" /> <span>番茄时钟</span>
         </button>
 
         <button
@@ -74,12 +74,12 @@
 
         <button
           class="nav-tab-btn"
-          :class="{ active: currentTab === 'pomodoro' }"
-          @click="currentTab = 'pomodoro'"
-          title="番茄时钟"
-          data-tooltip="番茄时钟"
+          :class="{ active: currentTab === 'local-clock' }"
+          @click="currentTab = 'local-clock'"
+          title="本地时钟"
+          data-tooltip="本地时钟"
         >
-          <Flame :size="15" /> <span>番茄时钟</span>
+          <Clock :size="15" /> <span>本地时钟</span>
         </button>
 
         <button
@@ -98,13 +98,6 @@
         <div class="mobile-nav-links">
           <button
             class="mobile-nav-item"
-            :class="{ active: currentTab === 'todos' }"
-            @click="selectMobileTab('todos')"
-          >
-            <CheckSquare :size="16" /> <span>待办事项</span>
-          </button>
-          <button
-            class="mobile-nav-item"
             :class="{ active: currentTab === 'calendar' }"
             @click="selectMobileTab('calendar')"
           >
@@ -112,10 +105,17 @@
           </button>
           <button
             class="mobile-nav-item"
-            :class="{ active: currentTab === 'local-clock' }"
-            @click="selectMobileTab('local-clock')"
+            :class="{ active: currentTab === 'todos' }"
+            @click="selectMobileTab('todos')"
           >
-            <Clock :size="16" /> <span>本地时钟</span>
+            <CheckSquare :size="16" /> <span>待办事项</span>
+          </button>
+          <button
+            class="mobile-nav-item"
+            :class="{ active: currentTab === 'pomodoro' }"
+            @click="selectMobileTab('pomodoro')"
+          >
+            <Flame :size="16" /> <span>番茄时钟</span>
           </button>
           <button
             class="mobile-nav-item"
@@ -133,10 +133,10 @@
           </button>
           <button
             class="mobile-nav-item"
-            :class="{ active: currentTab === 'pomodoro' }"
-            @click="selectMobileTab('pomodoro')"
+            :class="{ active: currentTab === 'local-clock' }"
+            @click="selectMobileTab('local-clock')"
           >
-            <Flame :size="16" /> <span>番茄时钟</span>
+            <Clock :size="16" /> <span>本地时钟</span>
           </button>
           <button
             class="mobile-nav-item"
@@ -322,16 +322,6 @@
 
         <button
           class="dock-btn"
-          :class="{ active: currentTab === 'todos' }"
-          @click="currentTab = 'todos'"
-          title="待办事项"
-        >
-          <CheckSquare :size="20" />
-          <span class="dock-tooltip">待办事项</span>
-        </button>
-
-        <button
-          class="dock-btn"
           :class="{ active: currentTab === 'calendar' }"
           @click="currentTab = 'calendar'"
           title="任务日历"
@@ -342,12 +332,22 @@
 
         <button
           class="dock-btn"
-          :class="{ active: currentTab === 'local-clock' }"
-          @click="currentTab = 'local-clock'"
-          title="本地时钟"
+          :class="{ active: currentTab === 'todos' }"
+          @click="currentTab = 'todos'"
+          title="待办事项"
         >
-          <Clock :size="20" />
-          <span class="dock-tooltip">本地时钟</span>
+          <CheckSquare :size="20" />
+          <span class="dock-tooltip">待办事项</span>
+        </button>
+
+        <button
+          class="dock-btn"
+          :class="{ active: currentTab === 'pomodoro' }"
+          @click="currentTab = 'pomodoro'"
+          title="番茄时钟"
+        >
+          <Flame :size="20" />
+          <span class="dock-tooltip">番茄时钟</span>
         </button>
 
         <button
@@ -372,12 +372,12 @@
 
         <button
           class="dock-btn"
-          :class="{ active: currentTab === 'pomodoro' }"
-          @click="currentTab = 'pomodoro'"
-          title="番茄时钟"
+          :class="{ active: currentTab === 'local-clock' }"
+          @click="currentTab = 'local-clock'"
+          title="本地时钟"
         >
-          <Flame :size="20" />
-          <span class="dock-tooltip">番茄时钟</span>
+          <Clock :size="20" />
+          <span class="dock-tooltip">本地时钟</span>
         </button>
 
         <button

@@ -59,7 +59,18 @@
       </div>
 
       <div class="desktop-apps-grid">
-        <!-- 1. Todos -->
+        <!-- 1. Calendar -->
+        <div class="app-icon-card card-calendar" @click="emit('openApp', 'calendar')">
+          <div class="app-icon-wrapper theme-calendar">
+            <Calendar :size="32" class="app-svg" />
+          </div>
+          <div class="app-info">
+            <div class="app-name">任务日历</div>
+            <div class="app-desc">月周日视图与节假日</div>
+          </div>
+        </div>
+
+        <!-- 2. Todos -->
         <div class="app-icon-card card-todos" @click="emit('openApp', 'todos')">
           <div class="app-icon-wrapper theme-todos">
             <CheckSquare :size="32" class="app-svg" />
@@ -71,25 +82,14 @@
           </div>
         </div>
 
-        <!-- 2. Calendar -->
-        <div class="app-icon-card card-calendar" @click="emit('openApp', 'calendar')">
-          <div class="app-icon-wrapper theme-calendar">
-            <Calendar :size="32" class="app-svg" />
+        <!-- 3. Pomodoro -->
+        <div class="app-icon-card card-pomodoro" @click="emit('openApp', 'pomodoro')">
+          <div class="app-icon-wrapper theme-pomodoro">
+            <Flame :size="32" class="app-svg" />
           </div>
           <div class="app-info">
-            <div class="app-name">任务日历</div>
-            <div class="app-desc">月周日视图与节假日</div>
-          </div>
-        </div>
-
-        <!-- 3. Local Clock -->
-        <div class="app-icon-card card-clock" @click="emit('openApp', 'local-clock')">
-          <div class="app-icon-wrapper theme-clock">
-            <Clock :size="32" class="app-svg" />
-          </div>
-          <div class="app-info">
-            <div class="app-name">本地时钟</div>
-            <div class="app-desc">高精度表盘与世界时区</div>
+            <div class="app-name">番茄时钟</div>
+            <div class="app-desc">25+5 分钟高效专注流</div>
           </div>
         </div>
 
@@ -115,14 +115,14 @@
           </div>
         </div>
 
-        <!-- 6. Pomodoro -->
-        <div class="app-icon-card card-pomodoro" @click="emit('openApp', 'pomodoro')">
-          <div class="app-icon-wrapper theme-pomodoro">
-            <Flame :size="32" class="app-svg" />
+        <!-- 6. Local Clock -->
+        <div class="app-icon-card card-clock" @click="emit('openApp', 'local-clock')">
+          <div class="app-icon-wrapper theme-clock">
+            <Clock :size="32" class="app-svg" />
           </div>
           <div class="app-info">
-            <div class="app-name">番茄时钟</div>
-            <div class="app-desc">25+5 分钟高效专注流</div>
+            <div class="app-name">本地时钟</div>
+            <div class="app-desc">高精度表盘与世界时区</div>
           </div>
         </div>
 
