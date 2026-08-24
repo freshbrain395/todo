@@ -265,6 +265,7 @@
                 </div>
 
                 <div class="card-body">
+                  <!-- Row 1: Title Line -->
                   <div class="card-title-row">
                     <!-- Inline Direct Editable Title -->
                     <div v-if="editingId === todo.id" class="inline-edit-wrapper" @click.stop>
@@ -288,14 +289,72 @@
                     >
                       {{ todo.title }}
                     </span>
+                  </div>
 
-                    <span class="tag-cat"><Folder :size="11" /> {{ todo.category || '默认' }}</span>
-                    <span class="prio-tag" :class="todo.priority">
-                      {{ priorityLabel(todo.priority) }}
-                    </span>
-                    <span v-if="todo.remind_at" class="tag-reminder">
-                      <Clock :size="11" /> {{ todo.remind_at }}
-                    </span>
+                  <!-- Row 2: Interactive Metadata & Configuration Row (Hover/Click to edit) -->
+                  <div class="card-meta-row">
+                    <!-- 1. Priority Selector -->
+                    <div class="meta-item-config" title="鼠标悬浮/点击修改优先级">
+                      <div class="interactive-pill prio-pill" :class="todo.priority">
+                        <span class="prio-dot"></span>
+                        <span class="prio-text">{{ priorityLabel(todo.priority) }}</span>
+                        <ChevronDown :size="10" class="pill-arrow" />
+                        <select
+                          :value="todo.priority"
+                          @change="(e: any) => updateTodoPriority(todo, e.target.value)"
+                          class="meta-inline-select"
+                        >
+                          <option value="high">🔴 高优</option>
+                          <option value="medium">🟡 中优</option>
+                          <option value="low">🔵 低优</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <!-- 2. Category / Tag Selector -->
+                    <div class="meta-item-config" title="鼠标悬浮/点击修改标签">
+                      <div class="interactive-pill cat-pill">
+                        <Folder :size="12" />
+                        <span class="cat-text">{{ todo.category || '默认' }}</span>
+                        <ChevronDown :size="10" class="pill-arrow" />
+                        <select
+                          :value="todo.category || '工作'"
+                          @change="(e: any) => updateTodoCategory(todo, e.target.value)"
+                          class="meta-inline-select"
+                        >
+                          <option value="工作">工作</option>
+                          <option value="学习">学习</option>
+                          <option value="生活">生活</option>
+                          <option value="常规">常规</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <!-- 3. Reminder Switch & DateTime Picker -->
+                    <div class="meta-item-config" title="鼠标悬浮/点击设置提醒时间">
+                      <div class="interactive-pill reminder-pill" :class="{ active: !!todo.remind_at }">
+                        <Clock :size="12" />
+                        <span v-if="todo.remind_at" class="reminder-text">{{ formatRemindDisplay(todo.remind_at) }}</span>
+                        <span v-else class="reminder-text placeholder">设置提醒</span>
+                        <input
+                          type="datetime-local"
+                          class="meta-inline-datetime"
+                          :value="formatInputDateTime(todo.remind_at)"
+                          @change="(e: any) => updateTodoReminder(todo, e.target.value)"
+                          title="选择提醒时间"
+                        />
+                        <button
+                          v-if="todo.remind_at"
+                          class="btn-clear-reminder"
+                          @click.stop="updateTodoReminder(todo, '')"
+                          title="清除提醒"
+                        >
+                          <X :size="11" />
+                        </button>
+                      </div>
+                    </div>
+
+                    <!-- 4. Status Indicator Tag -->
                     <span class="status-tag" :class="{ finished: todo.completed, pending: !todo.completed }">
                       <span class="dot"></span>
                       {{ todo.completed ? '已完成' : '待处理' }}
@@ -565,7 +624,7 @@
 import { ref, computed, nextTick, onMounted, onUnmounted, watch } from 'vue'
 import {
   CheckSquare, Calendar, Clock, Flame, Settings, Menu, X, Hourglass, Bell,
-  Plus, Edit3, Trash2, Folder, Search, ListTodo, Inbox, LayoutGrid, Check, Square
+  Plus, Edit3, Trash2, Folder, Search, ListTodo, Inbox, LayoutGrid, Check, Square, ChevronDown
 } from 'lucide-vue-next'
 import type { Todo, LlmConfig, FilterType, ThemeType, NavPosition, User } from './types'
 import { showConfirm } from './utils/confirmState'
@@ -922,6 +981,79 @@ async function saveInlineEdit(todo: Todo) {
 function cancelInlineEdit() {
   editingId.value = null
   inlineEditText.value = ''
+}
+
+// Inline Config Updaters (Priority, Category, Reminder)
+async function updateTodoPriority(todo: Todo, newPriority: string) {
+  const prio = newPriority as 'high' | 'medium' | 'low'
+  if (todo.priority === prio) return
+  todo.priority = prio
+  try {
+    const uid = currentUser.value ? currentUser.value.id : 0
+    await tauriInvoke('update_todo', {
+      id: todo.id,
+      title: todo.title,
+      category: todo.category,
+      priority: prio,
+      remind_at: todo.remind_at,
+      user_id: uid
+    })
+    statusMessage.value = `🎯 已更新任务 [${todo.title}] 优先级为 ${priorityLabel(prio)}`
+  } catch (err: any) {
+    statusMessage.value = `❌ 更新优先级失败: ${err?.message || err}`
+  }
+}
+
+async function updateTodoCategory(todo: Todo, newCategory: string) {
+  if (todo.category === newCategory) return
+  todo.category = newCategory
+  try {
+    const uid = currentUser.value ? currentUser.value.id : 0
+    await tauriInvoke('update_todo', {
+      id: todo.id,
+      title: todo.title,
+      category: newCategory,
+      priority: todo.priority,
+      remind_at: todo.remind_at,
+      user_id: uid
+    })
+    statusMessage.value = `🏷️ 已更新任务 [${todo.title}] 标签为 [${newCategory}]`
+  } catch (err: any) {
+    statusMessage.value = `❌ 更新标签失败: ${err?.message || err}`
+  }
+}
+
+function formatRemindDisplay(remindStr?: string | null) {
+  if (!remindStr) return ''
+  const clean = remindStr.replace('T', ' ')
+  if (clean.length >= 16) {
+    return clean.slice(5, 16)
+  }
+  return clean
+}
+
+function formatInputDateTime(remindStr?: string | null) {
+  if (!remindStr) return ''
+  return remindStr.slice(0, 16).replace(' ', 'T')
+}
+
+async function updateTodoReminder(todo: Todo, val: string) {
+  const remindFormatted = val ? (val.includes('T') ? val.replace('T', ' ') + (val.length === 16 ? ':00' : '') : val) : null
+  todo.remind_at = remindFormatted
+  try {
+    const uid = currentUser.value ? currentUser.value.id : 0
+    await tauriInvoke('update_todo', {
+      id: todo.id,
+      title: todo.title,
+      category: todo.category,
+      priority: todo.priority,
+      remind_at: remindFormatted,
+      user_id: uid
+    })
+    statusMessage.value = remindFormatted ? `⏰ 已为 [${todo.title}] 设置提醒: ${remindFormatted}` : `🔕 已关闭 [${todo.title}] 提醒`
+  } catch (err: any) {
+    statusMessage.value = `❌ 更新提醒失败: ${err?.message || err}`
+  }
 }
 
 async function clearCompletedTodos() {
@@ -1762,21 +1894,23 @@ onMounted(() => {
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 8px;
   min-width: 0;
 }
 
+/* Row 1: Title Line */
 .card-title-row {
   display: flex;
   align-items: center;
   gap: 8px;
-  flex-wrap: wrap;
+  width: 100%;
 }
 
 .card-title {
-  font-size: 14.5px;
+  font-size: 15px;
   font-weight: 600;
   color: var(--text-main, #0f172a);
+  line-height: 1.4;
 }
 
 .clickable-title {
@@ -1796,17 +1930,17 @@ onMounted(() => {
   display: inline-flex;
   align-items: center;
   flex: 1;
-  min-width: 140px;
+  width: 100%;
 }
 
 .inline-edit-input {
-  font-size: 14px;
+  font-size: 14.5px;
   font-weight: 600;
   color: var(--text-main, #0f172a);
   background: var(--bg-surface, #ffffff);
   border: 1.5px solid var(--primary, #3b82f6);
   border-radius: 6px;
-  padding: 2px 8px;
+  padding: 4px 8px;
   outline: none;
   width: 100%;
   box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
@@ -1818,51 +1952,134 @@ onMounted(() => {
   color: var(--text-muted, #94a3b8);
 }
 
-.tag-cat {
+/* Row 2: Metadata & Quick Interactive Config Row */
+.card-meta-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.meta-item-config {
+  position: relative;
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  font-size: 11px;
-  font-weight: 600;
-  padding: 2px 8px;
+}
+
+.interactive-pill {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 9px;
   border-radius: 6px;
-  background: var(--bg-surface, #f8fafc);
   border: 1px solid var(--border-color, #e2e8f0);
+  background: var(--bg-surface, #f8fafc);
   color: var(--text-muted, #64748b);
-}
-
-.prio-tag {
-  font-size: 11px;
+  font-size: 11.5px;
   font-weight: 600;
-  padding: 2px 8px;
-  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  user-select: none;
 }
 
-.prio-tag.high {
-  background: rgba(239, 68, 68, 0.12);
+.interactive-pill:hover {
+  border-color: var(--primary, #3b82f6);
+  background: var(--bg-surface, #ffffff);
+  color: var(--primary, #3b82f6);
+  box-shadow: 0 2px 6px rgba(59, 130, 246, 0.15);
+  transform: translateY(-1px);
+}
+
+.interactive-pill .pill-arrow {
+  opacity: 0.5;
+  transition: transform 0.2s;
+}
+
+.interactive-pill:hover .pill-arrow {
+  opacity: 1;
+  transform: rotate(180deg);
+}
+
+.prio-pill .prio-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: currentColor;
+}
+
+.prio-pill.high {
+  background: rgba(239, 68, 68, 0.08);
+  border-color: rgba(239, 68, 68, 0.25);
   color: #ef4444;
 }
 
-.prio-tag.medium {
-  background: rgba(245, 158, 11, 0.12);
+.prio-pill.medium {
+  background: rgba(245, 158, 11, 0.08);
+  border-color: rgba(245, 158, 11, 0.25);
   color: #f59e0b;
 }
 
-.prio-tag.low {
-  background: rgba(59, 130, 246, 0.12);
+.prio-pill.low {
+  background: rgba(59, 130, 246, 0.08);
+  border-color: rgba(59, 130, 246, 0.25);
   color: var(--primary, #3b82f6);
 }
 
-.tag-reminder {
+.cat-pill:hover {
+  border-color: var(--primary, #3b82f6);
+  color: var(--primary, #3b82f6);
+}
+
+.reminder-pill.active {
+  background: rgba(128, 90, 213, 0.1);
+  border-color: rgba(128, 90, 213, 0.3);
+  color: var(--ai-purple, #805ad5);
+}
+
+.reminder-pill .placeholder {
+  opacity: 0.7;
+}
+
+.meta-inline-select {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+  z-index: 2;
+}
+
+.meta-inline-datetime {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+  z-index: 2;
+}
+
+.btn-clear-reminder {
+  position: relative;
+  z-index: 3;
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  font-size: 11px;
-  font-weight: 600;
-  padding: 2px 8px;
-  border-radius: 6px;
-  background: rgba(128, 90, 213, 0.12);
-  color: var(--ai-purple, #805ad5);
+  justify-content: center;
+  background: transparent;
+  border: none;
+  color: var(--text-muted, #94a3b8);
+  cursor: pointer;
+  padding: 1px 2px;
+  border-radius: 4px;
+  transition: color 0.2s;
+}
+
+.btn-clear-reminder:hover {
+  color: #ef4444;
 }
 
 .status-tag {
@@ -1871,26 +2088,26 @@ onMounted(() => {
   gap: 4px;
   font-size: 11px;
   font-weight: 600;
-  padding: 2px 8px;
+  padding: 3px 8px;
   border-radius: 10px;
   background: var(--bg-app, #f1f5f9);
   color: var(--text-muted, #64748b);
 }
 
 .status-tag .dot {
-  width: 6px;
-  height: 6px;
+  width: 5px;
+  height: 5px;
   border-radius: 50%;
   background-color: currentColor;
 }
 
 .status-tag.pending {
-  background: rgba(59, 130, 246, 0.1);
+  background: rgba(59, 130, 246, 0.08);
   color: var(--primary, #3b82f6);
 }
 
 .status-tag.finished {
-  background: rgba(16, 185, 129, 0.12);
+  background: rgba(16, 185, 129, 0.1);
   color: #10b981;
 }
 
