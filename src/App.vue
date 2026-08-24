@@ -1,11 +1,11 @@
 <template>
   <div
     class="app-layout"
-    :class="[navPosition === 'left' ? 'layout-nav-left' : 'layout-nav-top']"
+    :class="[navPosition === 'left' ? 'layout-nav-left' : navPosition === 'desktop' ? 'layout-nav-desktop' : 'layout-nav-top']"
     :data-theme="theme"
   >
-    <!-- 1. Header Bar with Navigation Tabs -->
-    <header class="header">
+    <!-- 1. Header Bar with Navigation Tabs (Hidden in Desktop OS Mode) -->
+    <header v-if="navPosition !== 'desktop'" class="header">
       <div class="header-left">
         <!-- Mobile Navigation Toggle Button (< 640px) -->
         <button
@@ -152,8 +152,19 @@
 
     <!-- 2. Main Content Area -->
     <main class="main-content">
+      <!-- Tab 0: Desktop View -->
+      <template v-if="currentTab === 'desktop'">
+        <DesktopView
+          :todos="todos"
+          :current-user="currentUser"
+          @open-app="tab => currentTab = tab"
+          @open-add-todo="openAddModal"
+          @open-login="showAuthModal = true"
+        />
+      </template>
+
       <!-- Tab 1: Todos List View -->
-      <template v-if="currentTab === 'todos'">
+      <template v-else-if="currentTab === 'todos'">
         <!-- Filter & Search Toolbar -->
         <div class="toolbar">
           <div class="filter-group">
@@ -294,11 +305,90 @@
       </template>
     </main>
 
+    <!-- Floating Desktop Dock Bar (When in Desktop OS Layout Mode) -->
+    <div v-if="navPosition === 'desktop'" class="desktop-dock-bar animate-fade-in">
+      <button
+        class="dock-btn"
+        :class="{ active: currentTab === 'desktop' }"
+        @click="currentTab = 'desktop'"
+        title="返回桌面"
+      >
+        <LayoutGrid :size="20" />
+        <span class="dock-tooltip">桌面</span>
+      </button>
 
+      <div class="dock-divider"></div>
 
+      <button
+        class="dock-btn"
+        :class="{ active: currentTab === 'todos' }"
+        @click="currentTab = 'todos'"
+        title="待办事项"
+      >
+        <CheckSquare :size="20" />
+        <span class="dock-tooltip">待办事项</span>
+      </button>
 
+      <button
+        class="dock-btn"
+        :class="{ active: currentTab === 'calendar' }"
+        @click="currentTab = 'calendar'"
+        title="任务日历"
+      >
+        <Calendar :size="20" />
+        <span class="dock-tooltip">任务日历</span>
+      </button>
 
+      <button
+        class="dock-btn"
+        :class="{ active: currentTab === 'local-clock' }"
+        @click="currentTab = 'local-clock'"
+        title="本地时钟"
+      >
+        <Clock :size="20" />
+        <span class="dock-tooltip">本地时钟</span>
+      </button>
 
+      <button
+        class="dock-btn"
+        :class="{ active: currentTab === 'countdown' }"
+        @click="currentTab = 'countdown'"
+        title="倒计时"
+      >
+        <Hourglass :size="20" />
+        <span class="dock-tooltip">倒计时</span>
+      </button>
+
+      <button
+        class="dock-btn"
+        :class="{ active: currentTab === 'alarm' }"
+        @click="currentTab = 'alarm'"
+        title="闹钟"
+      >
+        <Bell :size="20" />
+        <span class="dock-tooltip">闹钟</span>
+      </button>
+
+      <button
+        class="dock-btn"
+        :class="{ active: currentTab === 'pomodoro' }"
+        @click="currentTab = 'pomodoro'"
+        title="番茄时钟"
+      >
+        <Flame :size="20" />
+        <span class="dock-tooltip">番茄时钟</span>
+      </button>
+
+      <button
+        class="dock-btn"
+        :class="{ active: currentTab === 'settings' }"
+        @click="currentTab = 'settings'"
+        title="系统设置"
+      >
+        <Settings :size="20" />
+        <span class="dock-tooltip">系统设置</span>
+      </button>
+    </div>
 
     <!-- Modals -->
     <!-- Add / Edit Modal -->
@@ -413,12 +503,13 @@
 import { ref, onMounted, onUnmounted, watch } from 'vue'
 import {
   CheckSquare, Calendar, Clock, Flame, Settings, Menu, X, Hourglass, Bell,
-  Plus, Edit3, Trash2, Folder, Search, ListTodo, Inbox
+  Plus, Edit3, Trash2, Folder, Search, ListTodo, Inbox, LayoutGrid
 } from 'lucide-vue-next'
 import type { Todo, LlmConfig, FilterType, ThemeType, NavPosition, User } from './types'
 import { showConfirm } from './utils/confirmState'
 import { getLlmConfig, saveLlmConfig as persistLlmConfig, getTheme, saveTheme, getNavPosition, saveNavPosition } from './utils/aiStorage'
 import { getUserConfig, getCurrentUserId } from './utils/configManager'
+import DesktopView from './components/common/DesktopView.vue'
 import LocalClockPage from './components/productivity/LocalClockPage.vue'
 import CalendarView from './components/productivity/CalendarView.vue'
 import PomodoroTimer from './components/productivity/PomodoroTimer.vue'
@@ -458,10 +549,28 @@ function toggleMobileNavMenu(e: Event) {
   showUserMenu.value = false
 }
 
-function selectMobileTab(tab: 'todos' | 'calendar' | 'local-clock' | 'countdown' | 'alarm' | 'pomodoro' | 'settings') {
+// Navigation Position State (top | left | desktop)
+const userInitialConfig = getUserConfig(getCurrentUserId())
+const storedNavPos = getNavPosition() as NavPosition | null
+const navPosition = ref<NavPosition>(storedNavPos || userInitialConfig.navPosition || 'top')
+
+// Navigation Tab State
+type TabType = 'desktop' | 'todos' | 'calendar' | 'local-clock' | 'countdown' | 'alarm' | 'pomodoro' | 'settings'
+const currentTab = ref<TabType>(navPosition.value === 'desktop' ? 'desktop' : 'todos')
+
+function selectMobileTab(tab: TabType) {
   currentTab.value = tab
   showMobileNavMenu.value = false
 }
+
+watch(navPosition, (newVal) => {
+  saveNavPosition(newVal)
+  if (newVal === 'desktop') {
+    currentTab.value = 'desktop'
+  } else if (currentTab.value === 'desktop') {
+    currentTab.value = 'todos'
+  }
+})
 
 onMounted(() => {
   window.addEventListener('click', closeUserMenu)
@@ -498,10 +607,6 @@ function handleLogout() {
   loadTodos()
 }
 
-// Navigation Tab State
-type TabType = 'todos' | 'calendar' | 'local-clock' | 'countdown' | 'alarm' | 'pomodoro' | 'settings'
-const currentTab = ref<TabType>('todos')
-
 // Theme State
 const storedTheme = getTheme() as ThemeType | null
 const theme = ref<ThemeType>(storedTheme || 'light')
@@ -509,14 +614,6 @@ watch(theme, (newVal) => {
   saveTheme(newVal)
   document.documentElement.setAttribute('data-theme', newVal)
 }, { immediate: true })
-
-// Navigation Position State (top | left)
-const userInitialConfig = getUserConfig(getCurrentUserId())
-const storedNavPos = getNavPosition() as NavPosition | null
-const navPosition = ref<NavPosition>(storedNavPos || userInitialConfig.navPosition || 'top')
-watch(navPosition, (newVal) => {
-  saveNavPosition(newVal)
-})
 
 // LLM Config State
 const storedLlmConfig = getLlmConfig()
@@ -1807,6 +1904,105 @@ onMounted(() => {
 .login-trigger-btn:hover {
   opacity: 0.9;
   transform: translateY(-1px);
+}
+
+/* =========================================================
+   Desktop OS Layout & Floating Dock Bar Styles
+   ========================================================= */
+.layout-nav-desktop {
+  position: relative;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.layout-nav-desktop .main-content {
+  padding-bottom: 84px;
+}
+
+.desktop-dock-bar {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  background: var(--bg-surface, rgba(255, 255, 255, 0.92));
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--border-color, rgba(226, 232, 240, 0.8));
+  border-radius: 24px;
+  box-shadow: 0 16px 36px -6px rgba(0, 0, 0, 0.18), 0 0 0 1px rgba(255, 255, 255, 0.2) inset;
+  z-index: 999;
+}
+
+.dock-btn {
+  position: relative;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+  border: none;
+  background: transparent;
+  color: var(--text-muted, #64748b);
+  cursor: pointer;
+  transition: all 0.22s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.dock-btn:hover {
+  transform: translateY(-4px) scale(1.18);
+  color: var(--primary, #3b82f6);
+  background: rgba(59, 130, 246, 0.12);
+}
+
+.dock-btn.active {
+  color: #ffffff;
+  background: var(--primary, #3b82f6);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+}
+
+.dock-divider {
+  width: 1px;
+  height: 22px;
+  background: var(--border-color, #e2e8f0);
+  margin: 0 4px;
+}
+
+.dock-tooltip {
+  position: absolute;
+  top: -34px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(15, 23, 42, 0.88);
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 4px 8px;
+  border-radius: 6px;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.dock-btn:hover .dock-tooltip {
+  opacity: 1;
+  transform: translateX(-50%) translateY(-2px);
+}
+
+@media (max-width: 640px) {
+  .desktop-dock-bar {
+    bottom: 12px;
+    padding: 6px 10px;
+    gap: 4px;
+  }
+  .dock-btn {
+    width: 34px;
+    height: 34px;
+  }
 }
 </style>
 

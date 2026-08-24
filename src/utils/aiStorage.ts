@@ -185,10 +185,10 @@ export function saveTheme(theme: string): void {
 }
 
 // ============ Navigation Position ============
-export function getNavPosition(): 'top' | 'left' | null {
-  return (navPositionCache as 'top' | 'left') || null
+export function getNavPosition(): 'top' | 'left' | 'desktop' | null {
+  return (navPositionCache as 'top' | 'left' | 'desktop') || null
 }
-export function saveNavPosition(navPosition: 'top' | 'left'): void {
+export function saveNavPosition(navPosition: 'top' | 'left' | 'desktop'): void {
   navPositionCache = navPosition
   persist(api.saveAppConfig('todo_nav_position', navPosition))
 }

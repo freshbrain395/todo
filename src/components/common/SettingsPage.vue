@@ -153,6 +153,7 @@
               <select v-model="navPosition" class="select-input" @change="saveNavPositionSettings">
                 <option value="top">顶部导航栏 (Top Navbar)</option>
                 <option value="left">左侧边栏 (VS Code 风格)</option>
+                <option value="desktop">桌面图标视图 (Desktop OS 风格)</option>
               </select>
             </div>
           </div>
