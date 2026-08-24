@@ -266,7 +266,29 @@
 
                 <div class="card-body">
                   <div class="card-title-row">
-                    <span class="card-title" :class="{ strike: todo.completed }">{{ todo.title }}</span>
+                    <!-- Inline Direct Editable Title -->
+                    <div v-if="editingId === todo.id" class="inline-edit-wrapper" @click.stop>
+                      <input
+                        ref="inlineInputRef"
+                        type="text"
+                        class="inline-edit-input"
+                        v-model="inlineEditText"
+                        @blur="saveInlineEdit(todo)"
+                        @keydown.enter="saveInlineEdit(todo)"
+                        @keydown.esc="cancelInlineEdit"
+                        placeholder="任务标题..."
+                      />
+                    </div>
+                    <span
+                      v-else
+                      class="card-title clickable-title"
+                      :class="{ strike: todo.completed }"
+                      @click="startInlineEdit(todo)"
+                      title="点击直接修改标题"
+                    >
+                      {{ todo.title }}
+                    </span>
+
                     <span class="tag-cat"><Folder :size="11" /> {{ todo.category || '默认' }}</span>
                     <span class="prio-tag" :class="todo.priority">
                       {{ priorityLabel(todo.priority) }}
@@ -291,10 +313,6 @@
                     <Check v-if="todo.completed" :size="14" />
                     <Square v-else :size="14" />
                     <span>{{ todo.completed ? '已完成' : '完成' }}</span>
-                  </button>
-
-                  <button class="icon-btn-action edit" @click="openEditModal(todo)" title="编辑任务">
-                    <Edit3 :size="14" />
                   </button>
 
                   <button class="icon-btn-action delete" @click="deleteTodo(todo.id)" title="删除任务">
@@ -544,7 +562,7 @@
 
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import { ref, computed, nextTick, onMounted, onUnmounted, watch } from 'vue'
 import {
   CheckSquare, Calendar, Clock, Flame, Settings, Menu, X, Hourglass, Bell,
   Plus, Edit3, Trash2, Folder, Search, ListTodo, Inbox, LayoutGrid, Check, Square
@@ -860,6 +878,52 @@ const pendingTodosCount = computed(() => todos.value.filter(t => !t.completed).l
 const completedTodosCount = computed(() => todos.value.filter(t => t.completed).length)
 const highPriorityTodosCount = computed(() => todos.value.filter(t => t.priority === 'high' && !t.completed).length)
 
+// Direct Inline Edit State & Methods
+const editingId = ref<number | null>(null)
+const inlineEditText = ref('')
+const inlineInputRef = ref<HTMLInputElement | null>(null)
+
+function startInlineEdit(todo: Todo) {
+  editingId.value = todo.id
+  inlineEditText.value = todo.title
+  nextTick(() => {
+    if (inlineInputRef.value) {
+      inlineInputRef.value.focus()
+      inlineInputRef.value.select()
+    }
+  })
+}
+
+async function saveInlineEdit(todo: Todo) {
+  if (editingId.value !== todo.id) return
+  const newTitle = inlineEditText.value.trim()
+  editingId.value = null
+  if (!newTitle || newTitle === todo.title) return
+
+  const oldTitle = todo.title
+  todo.title = newTitle
+  try {
+    const uid = currentUser.value ? currentUser.value.id : 0
+    await tauriInvoke('update_todo', {
+      id: todo.id,
+      title: newTitle,
+      category: todo.category,
+      priority: todo.priority,
+      remind_at: todo.remind_at,
+      user_id: uid
+    })
+    statusMessage.value = `✏️ 已更新待办标题 [${newTitle}]`
+  } catch (err: any) {
+    todo.title = oldTitle
+    statusMessage.value = `❌ 更新标题失败: ${err?.message || err}`
+  }
+}
+
+function cancelInlineEdit() {
+  editingId.value = null
+  inlineEditText.value = ''
+}
+
 async function clearCompletedTodos() {
   const completedList = todos.value.filter(t => t.completed)
   if (completedList.length === 0) return
@@ -936,6 +1000,7 @@ function openEditModal(todo: Todo) {
   }
   showAddEditModal.value = true
 }
+void openEditModal
 
 async function saveTodoForm() {
   if (!todoForm.value.title.trim()) {
@@ -1712,6 +1777,40 @@ onMounted(() => {
   font-size: 14.5px;
   font-weight: 600;
   color: var(--text-main, #0f172a);
+}
+
+.clickable-title {
+  cursor: text;
+  padding: 2px 6px;
+  margin: -2px -6px;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+}
+
+.clickable-title:hover {
+  background-color: rgba(59, 130, 246, 0.08);
+  color: var(--primary, #3b82f6);
+}
+
+.inline-edit-wrapper {
+  display: inline-flex;
+  align-items: center;
+  flex: 1;
+  min-width: 140px;
+}
+
+.inline-edit-input {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-main, #0f172a);
+  background: var(--bg-surface, #ffffff);
+  border: 1.5px solid var(--primary, #3b82f6);
+  border-radius: 6px;
+  padding: 2px 8px;
+  outline: none;
+  width: 100%;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+  font-family: inherit;
 }
 
 .card-title.strike {
