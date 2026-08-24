@@ -14,6 +14,7 @@ export interface UserAppConfig {
   soundType: SoundType;
   soundVolume: number; // 0.0 ~ 1.0
   theme: 'light' | 'dark' | 'nord';
+  navPosition?: 'top' | 'left';
   llmConfig: {
     provider: string;
     base_url: string;
@@ -38,6 +39,7 @@ export const DEFAULT_USER_CONFIG: UserAppConfig = {
   soundType: 'chime',
   soundVolume: 0.8,
   theme: 'light',
+  navPosition: 'top',
   llmConfig: {
     provider: 'siliconflow',
     base_url: 'https://api.siliconflow.cn/v1',

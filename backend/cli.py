@@ -2,10 +2,16 @@ import os
 import sys
 import json
 import asyncio
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict, Any, Tuple
 from prompt_toolkit import PromptSession
+from prompt_toolkit.application import Application
+from prompt_toolkit.key_binding import KeyBindings
+from prompt_toolkit.layout.containers import HSplit, Window
+from prompt_toolkit.layout.controls import FormattedTextControl
+from prompt_toolkit.layout.layout import Layout
 from prompt_toolkit.completion import Completer, Completion
 from prompt_toolkit.formatted_text import HTML
+from prompt_toolkit.styles import Style
 from rich.console import Console
 from rich.table import Table
 from rich.panel import Panel
@@ -31,8 +37,6 @@ from backend.service.ai import (
     parse_intent_and_execute,
 )
 
-console = Console()
-
 SLASH_COMMANDS = [
     ("/help", "显示可用命令帮助"),
     ("/todo", "创建待办任务 (/todo <标题>)"),
@@ -45,13 +49,37 @@ SLASH_COMMANDS = [
     ("/prompt", "选择并执行 Prompt 模板"),
     ("/agent", "切换并进入 Agent 角色模式"),
     ("/skill", "切换并启用 Skill 技能模式"),
-    ("/provider", "管理/切换模型供应商"),
-    ("/model", "查看/切换当前 LLM 模型"),
+    ("/provider", "管理/切换供应商与配置 API Key (上下箭头选择)"),
+    ("/model", "查看/切换当前 LLM 模型 (上下箭头选择)"),
     ("/clear", "清空当前对话上下文历史"),
     ("/cls", "清空控制台屏幕"),
     ("/quit", "退出命令行程序"),
     ("/exit", "退出命令行程序"),
 ]
+
+# 纯无背景色、全灰色字体样式
+CLI_STYLE = Style.from_dict({
+    "bottom-toolbar": "noreverse noinherit bg:default fg:#7f848e",
+    "toolbar-gray": "noreverse noinherit bg:default fg:#7f848e",
+    "menu-title": "#61afef bold",
+    "menu-selected": "#98c379 bold",
+    "menu-item": "#abb2bf",
+    "menu-dim": "#5c6370",
+})
+
+# 各供应商常用推荐模型备选表
+FALLBACK_MODELS = {
+    "deepseek": ["deepseek-chat", "deepseek-reasoner"],
+    "siliconflow": [
+        "deepseek-ai/DeepSeek-V3",
+        "deepseek-ai/DeepSeek-R1",
+        "Qwen/Qwen2.5-7B-Instruct",
+        "Qwen/Qwen2.5-14B-Instruct",
+        "Pro/deepseek-ai/DeepSeek-V3",
+    ],
+    "openai": ["gpt-4o-mini", "gpt-4o", "gpt-3.5-turbo", "o1-mini"],
+    "ollama": ["llama3:latest", "qwen2.5:latest", "deepseek-r1:latest", "mistral:latest"],
+}
 
 
 class SlashCommandCompleter(Completer):
@@ -61,7 +89,6 @@ class SlashCommandCompleter(Completer):
             query = text.lower()
             for cmd, desc in SLASH_COMMANDS:
                 if cmd.lower().startswith(query) or query in cmd.lower() or query.lstrip("/") in desc:
-                    display_meta = desc
                     yield Completion(cmd, start_position=-len(text), display=f"{cmd:<12} {desc}", display_meta="")
 
 
@@ -153,12 +180,218 @@ def save_current_llm_config(db: DbState, config: LlmConfig):
     )
 
 
+def format_status_text(db: DbState, llm_cfg: LlmConfig, current_mode: Dict[str, Any]) -> str:
+    """生成统一的状态栏纯文本（灰色、无背景）"""
+    try:
+        todo_svc = TodoService(db)
+        all_todos = todo_svc.get_todos("all", "")
+        total_cnt = len(all_todos)
+        pending_cnt = sum(1 for t in all_todos if not t["completed"])
+        todo_badge = f"{pending_cnt}/{total_cnt}"
+    except Exception:
+        todo_badge = "-/-"
+
+    mode_label = current_mode.get("display_name", "聊天模式")
+    prov = llm_cfg.provider or "默认"
+    model_name = llm_cfg.model or "未选择"
+    if len(model_name) > 22:
+        model_name = model_name[:20] + ".."
+
+    is_ollama = (llm_cfg.provider or "").lower() == "ollama" or "11434" in (llm_cfg.base_url or "")
+    if is_ollama:
+        key_badge = "已配CloudKey" if (llm_cfg.api_key and llm_cfg.api_key.strip()) else "免Key(可选)"
+    else:
+        key_badge = "已配置" if (llm_cfg.api_key and llm_cfg.api_key.strip()) else "未设置"
+    status_label = current_mode.get("status_text", "就绪")
+
+    return (
+        f" [状态: {status_label}] "
+        f"| [模式: {mode_label}] "
+        f"| [模型: {prov}:{model_name}] "
+        f"| [Key: {key_badge}] "
+        f"| [待办: {todo_badge}] "
+        f"| /help 帮助"
+    )
+
+
+def create_bottom_toolbar_getter(
+    db: DbState,
+    llm_cfg: LlmConfig,
+    current_mode: Dict[str, Any],
+):
+    """动态生成 prompt_toolkit CLI 底部状态栏"""
+    def get_toolbar():
+        return [("class:toolbar-gray", format_status_text(db, llm_cfg, current_mode))]
+
+    return get_toolbar
+
+
+async def select_provider_interactive(
+    providers: List[Dict[str, Any]],
+    current_id: str,
+) -> Tuple[Optional[str], Optional[Dict[str, Any]]]:
+    """二级菜单：使用上下箭头选择 AI 供应商，支持 Enter 切换 或 k 配置 Key"""
+    if not providers:
+        return (None, None)
+
+    selected_index = 0
+    for idx, p in enumerate(providers):
+        if p.get("id", "").lower() == (current_id or "").lower():
+            selected_index = idx
+            break
+
+    action_holder: List[Optional[str]] = [None]
+    result_holder: List[Optional[Dict[str, Any]]] = [None]
+
+    kb = KeyBindings()
+
+    @kb.add("up")
+    def _(event):
+        nonlocal selected_index
+        selected_index = (selected_index - 1) % len(providers)
+
+    @kb.add("down")
+    def _(event):
+        nonlocal selected_index
+        selected_index = (selected_index + 1) % len(providers)
+
+    @kb.add("enter")
+    def _(event):
+        action_holder[0] = "switch"
+        result_holder[0] = providers[selected_index]
+        event.app.exit()
+
+    @kb.add("k")
+    @kb.add("K")
+    def _(event):
+        action_holder[0] = "set_key"
+        result_holder[0] = providers[selected_index]
+        event.app.exit()
+
+    @kb.add("escape")
+    @kb.add("c-c")
+    def _(event):
+        action_holder[0] = "cancel"
+        event.app.exit()
+
+    def get_text():
+        tokens = [
+            ("class:menu-title", "╭─ 🤖 选择 AI 供应商 [Enter 切换 | k 设置Key | Esc 取消] ─╮\n")
+        ]
+        for idx, p in enumerate(providers):
+            is_cur = p.get("id", "").lower() == (current_id or "").lower()
+            is_sel = idx == selected_index
+            pointer = "❯ " if is_sel else "  "
+            cur_tag = " [当前]" if is_cur else ""
+            if p.get("id") == "ollama" or "11434" in (p.get("base_url") or ""):
+                key_tag = "✓ 已配CloudKey" if p.get("api_key") else "本地免Key(按k可设CloudKey)"
+            else:
+                key_tag = "✓ Key已配" if p.get("api_key") else "✗ 无Key"
+            line = f"{pointer}{p.get('name', p.get('id'))} ({p.get('model', '')}) [{key_tag}]{cur_tag}\n"
+            if is_sel:
+                tokens.append(("class:menu-selected", line))
+            else:
+                tokens.append(("class:menu-item", line))
+        tokens.append(("class:menu-dim", "╰" + "─" * 66 + "╯"))
+        return tokens
+
+    control = FormattedTextControl(get_text)
+    window = Window(content=control, height=len(providers) + 3)
+    app = Application(
+        layout=Layout(HSplit([window])),
+        key_bindings=kb,
+        style=CLI_STYLE,
+        full_screen=False,
+    )
+
+    await app.run_async()
+    return (action_holder[0], result_holder[0])
+
+
+async def select_model_interactive(
+    models: List[str],
+    current_model: str,
+) -> Optional[str]:
+    """二级菜单：使用上下箭头选择模型"""
+    if not models:
+        return None
+
+    # 加入自定义选项
+    options = list(models)
+    custom_option = "[➕ 输入自定义模型名称...]"
+    options.append(custom_option)
+
+    selected_index = 0
+    for idx, m in enumerate(options):
+        if m.lower() == (current_model or "").lower():
+            selected_index = idx
+            break
+
+    result_holder: List[Optional[str]] = [None]
+    cancelled_holder = [False]
+
+    kb = KeyBindings()
+
+    @kb.add("up")
+    def _(event):
+        nonlocal selected_index
+        selected_index = (selected_index - 1) % len(options)
+
+    @kb.add("down")
+    def _(event):
+        nonlocal selected_index
+        selected_index = (selected_index + 1) % len(options)
+
+    @kb.add("enter")
+    def _(event):
+        result_holder[0] = options[selected_index]
+        event.app.exit()
+
+    @kb.add("escape")
+    @kb.add("c-c")
+    def _(event):
+        cancelled_holder[0] = True
+        event.app.exit()
+
+    def get_text():
+        tokens = [
+            ("class:menu-title", "╭─ 🧠 选择 LLM 模型 [↑/↓ 选择 | Enter 确认 | Esc 取消] ─╮\n")
+        ]
+        for idx, m in enumerate(options):
+            is_cur = m.lower() == (current_model or "").lower()
+            is_sel = idx == selected_index
+            pointer = "❯ " if is_sel else "  "
+            cur_tag = " [当前]" if is_cur else ""
+            line = f"{pointer}{m}{cur_tag}\n"
+            if is_sel:
+                tokens.append(("class:menu-selected", line))
+            else:
+                tokens.append(("class:menu-item", line))
+        tokens.append(("class:menu-dim", "╰" + "─" * 60 + "╯"))
+        return tokens
+
+    control = FormattedTextControl(get_text)
+    window = Window(content=control, height=min(len(options) + 3, 16))
+    app = Application(
+        layout=Layout(HSplit([window])),
+        key_bindings=kb,
+        style=CLI_STYLE,
+        full_screen=False,
+    )
+
+    await app.run_async()
+    if cancelled_holder[0]:
+        return None
+    return result_holder[0]
+
+
 async def handle_command(
     cmd_line: str,
     db: DbState,
     llm_cfg: LlmConfig,
     history: List[Dict[str, str]],
     current_mode: Dict[str, Any],
+    session: Optional[PromptSession] = None,
 ) -> bool:
     """返回 False 表示退出"""
     line = cmd_line.strip()
@@ -238,33 +471,187 @@ async def handle_command(
 
     elif line == "/chat":
         current_mode["role"] = "chat"
+        current_mode["display_name"] = "聊天模式"
         current_mode["system_prompt"] = ""
-        console.print("[cyan]已切换到常规 AI 聊天模式。[/cyan]")
+        console.print("[dim]已切换到常规 AI 聊天模式。[/dim]")
         return True
 
-    elif line == "/model":
-        console.print(
-            f"[cyan]当前模型: [bold]{llm_cfg.model}[/bold] (厂商: {llm_cfg.provider}, BaseUrl: {llm_cfg.base_url})[/cyan]"
-        )
+    elif line == "/agent" or line.startswith("/agent "):
+        current_mode["role"] = "agent"
+        current_mode["display_name"] = "Agent助理"
+        current_mode["system_prompt"] = "你是一个全能 Todo Agent 个人助理，帮助用户智能规划、拆解和自动化管理待办事项。"
+        console.print("[dim]已切换到全能 Todo Agent 智能助理模式。[/dim]")
         return True
 
-    elif line == "/provider":
-        providers = ai_cfg_service.get_providers()
-        if not providers:
-            console.print("[yellow]当前未配置额外的 Provider 列表。[/yellow]")
+    elif line == "/model" or line.startswith("/model "):
+        parts = line.split(maxsplit=1)
+        if len(parts) == 1:
+            # 尝试从当前 BaseUrl 拉取可用模型，失败则使用预置推荐
+            models: List[str] = []
+            try:
+                models = await fetch_models(llm_cfg.base_url, llm_cfg.api_key, llm_cfg.provider)
+            except Exception:
+                pass
+
+            if not models:
+                prov_key = (llm_cfg.provider or "").lower()
+                models = FALLBACK_MODELS.get(prov_key, ["deepseek-chat", "gpt-4o-mini", "llama3:latest"])
+
+            # 确保当前模型在列表中
+            if llm_cfg.model and llm_cfg.model not in models:
+                models.insert(0, llm_cfg.model)
+
+            selected_m = await select_model_interactive(models, llm_cfg.model)
+            if selected_m:
+                if selected_m == "[➕ 输入自定义模型名称...]":
+                    if session:
+                        custom_name = await session.prompt_async(HTML("<b>输入自定义模型名称: </b>"))
+                        if custom_name.strip():
+                            llm_cfg.model = custom_name.strip()
+                            save_current_llm_config(db, llm_cfg)
+                            console.print(f"[green]✓ 已将当前模型切换为: [bold]{llm_cfg.model}[/bold][/green]")
+                else:
+                    llm_cfg.model = selected_m
+                    save_current_llm_config(db, llm_cfg)
+                    console.print(f"[green]✓ 已将当前模型切换为: [bold]{selected_m}[/bold][/green]")
+            else:
+                console.print("[dim]已取消选择模型。[/dim]")
+            return True
         else:
-            table = Table(title="🤖 已配置的 AI 模型供应商")
-            table.add_column("ID", style="dim")
-            table.add_column("名称", style="cyan")
-            table.add_column("默认模型", style="green")
-            table.add_column("Base URL", style="dim")
-            for p in providers:
-                table.add_row(p.get("id", ""), p.get("name", ""), p.get("model", ""), p.get("base_url", ""))
-            console.print(table)
+            new_model = parts[1].strip()
+            llm_cfg.model = new_model
+            save_current_llm_config(db, llm_cfg)
+            console.print(f"[green]✓ 已将当前模型切换为: [bold]{new_model}[/bold][/green]")
         return True
+
+    elif line == "/provider" or line == "/providers" or line.startswith("/provider "):
+        providers = ai_cfg_service.get_providers()
+        parts = line.split(maxsplit=2)
+        if len(parts) == 1:
+            # 二级菜单：上下箭头交互式选择，支持 Enter 切换与 k 设置 Key
+            action, target_p = await select_provider_interactive(providers, llm_cfg.provider)
+            if action == "switch" and target_p:
+                llm_cfg.provider = target_p.get("id", "")
+                llm_cfg.base_url = target_p.get("base_url", "")
+                if target_p.get("model"):
+                    llm_cfg.model = target_p.get("model")
+                llm_cfg.api_key = target_p.get("api_key", "")
+                save_current_llm_config(db, llm_cfg)
+                console.print(
+                    f"[green]✓ 已成功切换供应商为: [bold]{target_p.get('name')}[/bold] (模型: {llm_cfg.model})[/green]"
+                )
+            elif action == "set_key" and target_p:
+                if session:
+                    new_key = await session.prompt_async(HTML(f"<b>为 [{target_p.get('name')}] 输入新 API Key: </b>"))
+                    new_key = new_key.strip()
+                    target_p["api_key"] = new_key
+                    ai_cfg_service.save_providers(providers)
+                    if (llm_cfg.provider or "").lower() == target_p.get("id", "").lower():
+                        llm_cfg.api_key = new_key
+                        save_current_llm_config(db, llm_cfg)
+                    console.print(f"[green]✓ 已成功更新 [{target_p.get('name')}] 的 API Key 并保存至 config.json！[/green]")
+            else:
+                console.print("[dim]已取消操作。[/dim]")
+            return True
+        else:
+            sub = parts[1].strip()
+            if sub.lower() == "key" and len(parts) > 2:
+                new_key = parts[2].strip()
+                llm_cfg.api_key = new_key
+                # 同步更新 providers 列表中当前提供商的 key
+                for p in providers:
+                    if p.get("id", "").lower() == (llm_cfg.provider or "").lower():
+                        p["api_key"] = new_key
+                ai_cfg_service.save_providers(providers)
+                save_current_llm_config(db, llm_cfg)
+                console.print(f"[green]✓ 已为当前供应商 ({llm_cfg.provider}) 更新 API Key 并持久化至 config.json！[/green]")
+                return True
+
+            target_p = next((p for p in providers if p.get("id", "").lower() == sub.lower()), None)
+            if target_p:
+                llm_cfg.provider = target_p.get("id", sub)
+                llm_cfg.base_url = target_p.get("base_url", "")
+                if target_p.get("model"):
+                    llm_cfg.model = target_p.get("model")
+                llm_cfg.api_key = target_p.get("api_key", "")
+                save_current_llm_config(db, llm_cfg)
+                console.print(
+                    f"[green]✓ 已成功切换供应商为: [bold]{target_p.get('name')}[/bold] (模型: {llm_cfg.model})[/green]"
+                )
+            else:
+                available_ids = ", ".join([p.get("id", "") for p in providers])
+                console.print(f"[red]未找到供应商 '{sub}'。可用 ID: {available_ids}[/red]")
+            return True
+
+    elif line == "/prompt" or line.startswith("/prompt "):
+        prompts = ai_cfg_service.get_prompts()
+        parts = line.split(maxsplit=1)
+        if len(parts) == 1:
+            table = Table(title="📝 预设 Prompt 提示词模板", title_style="bold blue")
+            table.add_column("ID", style="cyan", no_wrap=True)
+            table.add_column("分类", style="dim")
+            table.add_column("标题", style="bold white")
+            table.add_column("内容", style="white")
+            for pr in prompts:
+                text_snippet = pr.get("text", "")
+                if len(text_snippet) > 60:
+                    text_snippet = text_snippet[:60] + "..."
+                table.add_row(pr.get("id", ""), pr.get("category", ""), pr.get("title", ""), text_snippet)
+            console.print(table)
+            console.print("[dim]💡 执行指定 Prompt: /prompt <ID> (例如: /prompt p1)[/dim]")
+            return True
+        else:
+            pid = parts[1].strip()
+            target_pr = next((pr for pr in prompts if pr.get("id", "").lower() == pid.lower()), None)
+            if target_pr:
+                prompt_text = target_pr.get("text", "")
+                console.print(f"[dim]📌 正在执行 Prompt [{target_pr.get('title')}]: {prompt_text}[/dim]")
+                line = prompt_text
+            else:
+                available_pids = ", ".join([pr.get("id", "") for pr in prompts])
+                console.print(f"[red]未找到 Prompt '{pid}'。可用 ID: {available_pids}[/red]")
+                return True
+
+    elif line == "/skill" or line.startswith("/skill "):
+        skills = ai_cfg_service.get_skills()
+        parts = line.split(maxsplit=1)
+        if len(parts) == 1:
+            table = Table(title="⚡ AI 技能与角色模式 (Skills)", title_style="bold magenta")
+            table.add_column("ID", style="cyan", no_wrap=True)
+            table.add_column("分类", style="dim")
+            table.add_column("技能名称", style="bold white")
+            table.add_column("描述", style="white")
+            for sk in skills:
+                table.add_row(sk.get("id", ""), sk.get("category", ""), sk.get("title", ""), sk.get("description", ""))
+            console.print(table)
+            console.print("[dim]💡 切换技能角色模式: /skill <ID> (例如: /skill skill-gtd)[/dim]")
+            return True
+        else:
+            sid = parts[1].strip()
+            target_sk = next((sk for sk in skills if sk.get("id", "").lower() == sid.lower()), None)
+            if target_sk:
+                current_mode["role"] = target_sk.get("id")
+                current_mode["display_name"] = f"技能:{target_sk.get('title', sid)}"
+                current_mode["system_prompt"] = target_sk.get("systemPrompt") or target_sk.get("system_prompt", "")
+                console.print(f"[dim]已切换到技能模式: {target_sk.get('title')}[/dim]")
+            else:
+                available_sids = ", ".join([sk.get("id", "") for sk in skills])
+                console.print(f"[red]未找到技能 '{sid}'。可用 ID: {available_sids}[/red]")
+            return True
 
     # 其它自然语言或意图指令，调用 AI 执行
-    with console.status(f"[cyan]{display_cfg.ai_name} 正在思考中...[/cyan]"):
+    current_mode["status_text"] = "思考中..."
+    from rich.live import Live
+    from rich.spinner import Spinner
+    from rich.console import Group
+
+    status_str = format_status_text(db, llm_cfg, current_mode)
+    thinking_view = Group(
+        Spinner("dots", text=Text(f" {display_cfg.ai_name} 正在思考处理中...", style="dim")),
+        Text(status_str, style="#7f848e"),
+    )
+
+    with Live(thinking_view, refresh_per_second=10, transient=True, console=console):
         try:
             result = await parse_intent_and_execute(
                 user_input=line,
@@ -282,6 +669,8 @@ async def handle_command(
                 list_todos(db)
         except Exception as e:
             console.print(f"[red]执行出错: {e}[/red]")
+        finally:
+            current_mode["status_text"] = "就绪"
 
     return True
 
@@ -291,33 +680,29 @@ async def main_loop():
     llm_cfg = load_current_llm_config(db)
     display_cfg = DisplayConfigService.load()
 
-    # 处理单次 CLI 参数（如果用户直接传入子命令）
-    if len(sys.argv) > 1:
-        arg1 = sys.argv[1]
-        if arg1 in ["--list", "-l", "list"]:
-            list_todos(db)
-            return
-        elif arg1 in ["--help", "-h", "help"]:
-            show_help()
-            return
-        elif arg1 in ["add", "todo"] and len(sys.argv) > 2:
-            title = " ".join(sys.argv[2:])
-            new_id = TodoService(db).add_todo(title)
-            console.print(f"[green]✓ 已添加待办 #{new_id}: {title}[/green]")
-            return
-
     print_banner(display_cfg)
 
-    session = PromptSession(completer=SlashCommandCompleter())
+    current_mode: Dict[str, Any] = {
+        "role": "chat",
+        "display_name": "聊天模式",
+        "status_text": "就绪",
+        "system_prompt": "",
+    }
     history: List[Dict[str, str]] = []
-    current_mode: Dict[str, Any] = {"role": "chat", "system_prompt": ""}
+
+    toolbar_getter = create_bottom_toolbar_getter(db, llm_cfg, current_mode)
+    session = PromptSession(
+        completer=SlashCommandCompleter(),
+        bottom_toolbar=toolbar_getter,
+        style=CLI_STYLE,
+    )
 
     while True:
         try:
             prompt_str = f"<b><ansicyan>{display_cfg.user_prefix}</ansicyan></b> &gt; "
             user_input = await session.prompt_async(HTML(prompt_str))
             should_continue = await handle_command(
-                user_input, db, llm_cfg, history, current_mode
+                user_input, db, llm_cfg, history, current_mode, session
             )
             if not should_continue:
                 break

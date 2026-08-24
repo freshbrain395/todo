@@ -89,7 +89,7 @@
       <!-- 1. Hero Main Clock Display Card -->
       <div class="hero-clock-card" :class="displayMode">
         <div class="hero-card-badge">
-          <span class="badge-flag">🏠</span>
+          <span class="badge-flag"><Home :size="14" /></span>
           <span class="badge-text">本地时间 (Local Time)</span>
           <span class="badge-offset">{{ localOffsetStr }}</span>
         </div>
@@ -277,7 +277,9 @@
                     :disabled="isCityAdded(city.id)"
                     @click="addCity(city.id)"
                   >
-                    {{ isCityAdded(city.id) ? '已添加' : '+ 添加' }}
+                    <Check v-if="isCityAdded(city.id)" :size="12" />
+                    <Plus v-else :size="12" />
+                    <span>{{ isCityAdded(city.id) ? '已添加' : '添加' }}</span>
                   </button>
                 </div>
               </div>
@@ -306,7 +308,9 @@ import {
   Search,
   Columns,
   Tv,
-  Disc
+  Disc,
+  Home,
+  Check
 } from 'lucide-vue-next'
 import { invoke } from '@tauri-apps/api/core'
 

@@ -39,6 +39,7 @@ let sessionsCache: ChatSession[] = []
 let toolConfigCache: Record<string, boolean> = {}
 let llmConfigCache: LlmConfig | null = null
 let themeCache: string | null = null
+let navPositionCache: string | null = null
 let activePromptIdCache: string = 'p1'
 let localUsersCache: Record<string, { user: any, config: any }> = {}
 
@@ -97,6 +98,10 @@ export async function initBackendStorage(): Promise<void> {
   try {
     themeCache = await api.getAppConfig('todo_theme')
   } catch { themeCache = null }
+
+  try {
+    navPositionCache = await api.getAppConfig('todo_nav_position')
+  } catch { navPositionCache = null }
 
   try {
     activePromptIdCache = (await api.getAppConfig('ai_active_prompt_id')) || 'p1'
@@ -177,6 +182,15 @@ export function getTheme(): string | null {
 export function saveTheme(theme: string): void {
   themeCache = theme
   persist(api.saveAppConfig('todo_theme', theme))
+}
+
+// ============ Navigation Position ============
+export function getNavPosition(): 'top' | 'left' | null {
+  return (navPositionCache as 'top' | 'left') || null
+}
+export function saveNavPosition(navPosition: 'top' | 'left'): void {
+  navPositionCache = navPosition
+  persist(api.saveAppConfig('todo_nav_position', navPosition))
 }
 
 // ============ Local Users ============

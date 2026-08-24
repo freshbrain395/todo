@@ -42,7 +42,7 @@
           <!-- All Day & General Todos Section -->
           <div class="day-allday-section" v-if="dayEventsSummary.length > 0">
             <div class="allday-header">
-              <span class="allday-title">📌 当日待办事项与全天日程 ({{ dayEventsSummary.length }} 个)</span>
+              <span class="allday-title"><CalendarCheck :size="14" /> 当日待办事项与全天日程 ({{ dayEventsSummary.length }} 个)</span>
             </div>
             <div class="allday-events-grid">
               <div
@@ -62,7 +62,7 @@
 
           <!-- Hourly Timeline -->
           <div class="day-timeline-section">
-            <div class="timeline-header-title">🕒 24 小时时间轴分布</div>
+            <div class="timeline-header-title"><Clock :size="14" /> 24 小时时间轴分布</div>
             <div class="day-timeline-scroll">
               <div v-for="slot in dayTimeSlots" :key="slot.hour" class="time-slot-row" :class="{ 'has-events': slot.events.length > 0 }">
                 <div class="slot-time-label">{{ slot.label }}</div>
@@ -101,23 +101,15 @@
                   {{ day.holidayInfo.badge }}
                 </span>
               </div>
-              <div class="week-col-body">
+              <div class="week-col-events">
                 <div
                   v-for="ev in day.events"
                   :key="ev.id"
-                  class="week-event-card"
+                  class="week-event-chip"
                   :class="[`priority-${ev.priority || 'medium'}`, { completed: ev.completed }]"
                 >
-                  <div class="week-ev-top">
-                    <span class="ev-time" v-if="ev.time"><Clock :size="10" /> {{ ev.time }}</span>
-                    <span class="ev-cat" v-if="ev.category">{{ ev.category }}</span>
-                  </div>
-                  <div class="ev-title">{{ ev.title }}</div>
-                  <div class="ev-footer-tag">
-                    <span class="priority-badge" :class="ev.priority || 'medium'">
-                      {{ ev.priority === 'high' ? '高优' : ev.priority === 'low' ? '低优' : '中优' }}
-                    </span>
-                  </div>
+                  <span class="ev-time" v-if="ev.time">{{ ev.time }}</span>
+                  <span class="ev-text">{{ ev.title }}</span>
                 </div>
                 <div v-if="day.events.length === 0" class="empty-week-col">无日程</div>
               </div>
@@ -130,10 +122,10 @@
           <!-- Month Holiday & Compensate Summary Bar -->
           <div class="holiday-summary-bar" v-if="currentMonthSummary.list.length > 0">
             <span class="summary-chip holiday" v-if="currentMonthSummary.holidayDays > 0">
-              🌴 本月法定放假 {{ currentMonthSummary.holidayDays }} 天
+              <Sun :size="13" /> 本月法定放假 {{ currentMonthSummary.holidayDays }} 天
             </span>
             <span class="summary-chip compensate" v-if="currentMonthSummary.compensateDays > 0">
-              ⏰ 周末调休补班 {{ currentMonthSummary.compensateDays }} 天
+              <Briefcase :size="13" /> 周末调休补班 {{ currentMonthSummary.compensateDays }} 天
             </span>
           </div>
 
@@ -243,12 +235,12 @@
         <!-- Quick Add Event Form -->
         <div v-if="showQuickAdd" class="quick-add-box animate-fade-in">
           <div class="quick-add-header">
-            <span>📝 新增日程记录与提醒</span>
+            <span class="quick-add-title-text"><CalendarPlus :size="14" /> 新增日程记录与提醒</span>
             <button class="icon-btn-close-sm" @click="showQuickAdd = false" title="关闭"><X :size="12" /></button>
           </div>
 
           <div class="form-group-sm">
-            <label class="form-label-sm">📌 记录名称 *</label>
+            <label class="form-label-sm">记录名称 *</label>
             <input
               type="text"
               v-model="newEventTitle"
@@ -260,7 +252,7 @@
 
           <div class="form-group-sm">
             <div class="label-with-presets">
-              <label class="form-label-sm">🕒 记录执行时间</label>
+              <label class="form-label-sm">记录执行时间</label>
               <div class="quick-time-chips">
                 <button type="button" class="chip-btn" @click="newEventTime = '09:00'">09:00</button>
                 <button type="button" class="chip-btn" @click="newEventTime = '12:00'">12:00</button>
@@ -279,7 +271,7 @@
             <div class="reminder-setting-row">
               <label class="checkbox-option-sm">
                 <input type="checkbox" v-model="newEventEnableReminder" />
-                <span>⏰ 开启定时提醒</span>
+                <span>开启定时提醒</span>
               </label>
 
               <select
@@ -297,7 +289,7 @@
 
           <div class="form-row-sm">
             <div class="form-group-sm flex-1">
-              <label class="form-label-sm">📂 分类</label>
+              <label class="form-label-sm">分类</label>
               <input
                 type="text"
                 v-model="newEventCategory"
@@ -307,11 +299,11 @@
             </div>
 
             <div class="form-group-sm flex-1">
-              <label class="form-label-sm">⚡ 优先级</label>
+              <label class="form-label-sm">优先级</label>
               <select v-model="newEventPriority" class="select-input-sm">
-                <option value="high">🔴 高优</option>
-                <option value="medium">🟡 中优</option>
-                <option value="low">🟢 低优</option>
+                <option value="high">高优 (High)</option>
+                <option value="medium">中优 (Medium)</option>
+                <option value="low">低优 (Low)</option>
               </select>
             </div>
           </div>
@@ -327,7 +319,7 @@
         <!-- Schedule Items List -->
         <div class="schedule-list-scroll">
           <div v-if="selectedDayEvents.length === 0" class="empty-schedule-state">
-            <p class="empty-icon">📅</p>
+            <div class="empty-icon"><CalendarIcon :size="36" :stroke-width="1.5" /></div>
             <p class="empty-text">该日期暂无安排，点击右上角 "记一笔" 快捷创建任务提醒吧！</p>
           </div>
 
@@ -347,7 +339,7 @@
                 <div class="item-title" :class="{ strike: ev.completed }">{{ ev.title }}</div>
                 <div class="item-meta">
                   <span class="tag tag-time" v-if="ev.time"><Clock :size="10" /> {{ ev.time }}</span>
-                  <span class="tag tag-cat" v-if="ev.category">{{ ev.category }}</span>
+                  <span class="tag tag-cat" v-if="ev.category"><Folder :size="10" /> {{ ev.category }}</span>
                 </div>
               </div>
 
@@ -366,7 +358,8 @@
 import { ref, computed } from 'vue'
 import {
   Calendar as CalendarIcon, ChevronLeft, ChevronRight,
-  Clock, Plus, CheckSquare, Bell, Trash2, X, Check
+  Clock, Plus, CheckSquare, Bell, Trash2, X, Check,
+  CalendarCheck, Sun, Briefcase, CalendarPlus, Folder
 } from 'lucide-vue-next'
 import type { Todo } from '../../types'
 import { getLunar, type LunarResult } from '../../utils/lunar'

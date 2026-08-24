@@ -119,10 +119,10 @@
                     @change="$emit('update-provider', p)"
                   />
                   <div v-if="fetchModelError[p.id]" class="field-hint error-hint">
-                    ⚠️ {{ fetchModelError[p.id] }}
+                    <AlertTriangle :size="12" /> {{ fetchModelError[p.id] }}
                   </div>
                   <div v-else-if="!isFetchingModels[p.id] && !(fetchedModels[p.id] && fetchedModels[p.id].length > 0)" class="field-hint">
-                    💡 点击"自动获取"从服务器拉取，或直接手动输入模型标识
+                    <Info :size="12" /> 点击"自动获取"从服务器拉取，或直接手动输入模型标识
                   </div>
                 </div>
 
@@ -162,10 +162,10 @@
                     @click.stop="handleTestConnectivity(p)"
                   >
                     <Zap :size="14" :class="{ 'spin-icon': !!testResults[p.id]?.loading }" />
-                    {{ testResults[p.id]?.loading ? '正在测试连通性...' : '⚡ 测试模型连通性 (发送"你好")' }}
+                    {{ testResults[p.id]?.loading ? '正在测试连通性...' : '测试模型连通性 (发送"你好")' }}
                   </button>
                   <span class="thinking-status-tag" :class="{ active: localConfig.enable_thinking }">
-                    思考模式: {{ localConfig.enable_thinking ? '🧠 已开启' : '⚡ 已关闭' }}
+                    思考模式: {{ localConfig.enable_thinking ? '已开启' : '已关闭' }}
                   </span>
                 </div>
 
@@ -195,7 +195,7 @@
           </div>
 
           <button class="add-provider-card-btn" @click="$emit('add-custom-provider')">
-            ➕ 添加新的模型服务商卡片
+            <Plus :size="14" /> 添加新的模型服务商卡片
           </button>
         </div>
       </div>
@@ -206,7 +206,7 @@
           <div class="header-left">
             <Sparkles :size="20" class="section-icon" />
             <div>
-              <h4>💬 Prompts 提示词库管理与生效选择</h4>
+              <h4><MessageSquare :size="16" /> Prompts 提示词库管理与生效选择</h4>
             </div>
           </div>
           <div class="prompts-header-actions">
@@ -249,7 +249,7 @@
                   class="active-contained-badge"
                   title="包含当前生效的主预设"
                 >
-                  🎯 包含生效预设
+                  <Target :size="12" /> 包含生效预设
                 </span>
               </div>
 
@@ -642,7 +642,7 @@ import {
   Brain, Sparkles, Wrench, BookOpen, Cpu, Target, RefreshCw,
   Plus, Edit3, Trash2, Zap, CheckCircle2, XCircle,
   AlertTriangle, Database, Sliders, Info, Search, ChevronDown, ChevronUp,
-  Folder, ChevronRight
+  Folder, ChevronRight, MessageSquare
 } from 'lucide-vue-next'
 import { invokeApi } from '../../utils/apiClient'
 import type { LlmConfig, AiActionResult } from '../../types'

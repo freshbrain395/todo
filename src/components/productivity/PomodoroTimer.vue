@@ -113,7 +113,7 @@
       <!-- Today's Stats Banner -->
       <div class="stats-banner">
         <div class="stat-item">
-          <span class="stat-icon">🍅</span>
+          <span class="stat-icon"><Flame :size="18" class="icon-flame" /></span>
           <div class="stat-info">
             <span class="stat-val">{{ completedCount }}</span>
             <span class="stat-lbl">今日完成番茄数</span>
@@ -121,7 +121,7 @@
         </div>
 
         <div class="stat-item">
-          <span class="stat-icon">⏱️</span>
+          <span class="stat-icon"><Clock :size="18" class="icon-clock" /></span>
           <div class="stat-info">
             <span class="stat-val">{{ totalFocusMinutes }} 分钟</span>
             <span class="stat-lbl">累计专注时长</span>
@@ -140,17 +140,17 @@
         <h3 class="modal-title"><Sliders :size="18" /> 自定义番茄钟时长 (分钟)</h3>
 
         <div class="form-group">
-          <label>🔥 专注模式时长 (分钟)</label>
+          <label><Flame :size="14" /> 专注模式时长 (分钟)</label>
           <input type="number" v-model.number="tempModeMinutes.focus" min="1" max="180" />
         </div>
 
         <div class="form-group">
-          <label>☕ 短暂休息时长 (分钟)</label>
+          <label><Coffee :size="14" /> 短暂休息时长 (分钟)</label>
           <input type="number" v-model.number="tempModeMinutes.shortBreak" min="1" max="60" />
         </div>
 
         <div class="form-group">
-          <label>🌿 深度休息时长 (分钟)</label>
+          <label><Smile :size="14" /> 深度休息时长 (分钟)</label>
           <input type="number" v-model.number="tempModeMinutes.longBreak" min="1" max="120" />
         </div>
 
@@ -165,7 +165,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onUnmounted } from 'vue'
-import { Play, Pause, RotateCcw, Flame, Coffee, Smile, Sliders, Trash2 } from 'lucide-vue-next'
+import { Play, Pause, RotateCcw, Flame, Coffee, Smile, Sliders, Trash2, Clock } from 'lucide-vue-next'
 import { soundPlayer, type SoundType } from '../../utils/audio'
 import { showConfirm } from '../../utils/confirmState'
 

@@ -1,5 +1,9 @@
 <template>
-  <div class="app-layout" :data-theme="theme">
+  <div
+    class="app-layout"
+    :class="[navPosition === 'left' ? 'layout-nav-left' : 'layout-nav-top']"
+    :data-theme="theme"
+  >
     <!-- 1. Header Bar with Navigation Tabs -->
     <header class="header">
       <div class="header-left">
@@ -13,7 +17,7 @@
           <Menu v-else :size="18" />
         </button>
 
-        <h1 class="app-title">📝 Todo Agent</h1>
+        <h1 class="app-title"><ListTodo :size="20" /> Todo Agent</h1>
       </div>
 
       <!-- Center Navbar Navigation Tabs (Desktop & Tablet) -->
@@ -26,16 +30,6 @@
           data-tooltip="待办事项"
         >
           <CheckSquare :size="15" /> <span>待办事项</span>
-        </button>
-
-        <button
-          class="nav-tab-btn"
-          :class="{ active: currentTab === 'ai-chat' }"
-          @click="currentTab = 'ai-chat'"
-          title="AI 聊天"
-          data-tooltip="AI 聊天"
-        >
-          <MessageSquare :size="15" /> <span>AI 聊天</span>
         </button>
 
         <button
@@ -75,7 +69,7 @@
           title="闹钟"
           data-tooltip="闹钟"
         >
-          <Alarm :size="15" /> <span>闹钟</span>
+          <Bell :size="15" /> <span>闹钟</span>
         </button>
 
         <button
@@ -99,19 +93,6 @@
         </button>
       </nav>
 
-      <div class="header-right">
-        <button
-          v-if="currentTab !== 'ai-chat'"
-          class="nav-tab-btn ai-assistant-toggle-btn"
-          :class="{ active: showAiSidebar }"
-          @click="showAiSidebar = !showAiSidebar"
-          title="打开/收起 AI 聊天侧边栏"
-          data-tooltip="AI 助手"
-        >
-          <MessageSquare :size="15" /> <span>AI 助手</span>
-        </button>
-      </div>
-
       <!-- Mobile Dropdown Navigation Menu (< 640px) -->
       <div v-if="showMobileNavMenu" class="mobile-dropdown-menu animate-fade-in" @click.stop>
         <div class="mobile-nav-links">
@@ -121,13 +102,6 @@
             @click="selectMobileTab('todos')"
           >
             <CheckSquare :size="16" /> <span>待办事项</span>
-          </button>
-          <button
-            class="mobile-nav-item"
-            :class="{ active: currentTab === 'ai-chat' }"
-            @click="selectMobileTab('ai-chat')"
-          >
-            <MessageSquare :size="16" /> <span>AI 聊天</span>
           </button>
           <button
             class="mobile-nav-item"
@@ -155,7 +129,7 @@
             :class="{ active: currentTab === 'alarm' }"
             @click="selectMobileTab('alarm')"
           >
-            <Alarm :size="16" /> <span>闹钟</span>
+            <Bell :size="16" /> <span>闹钟</span>
           </button>
           <button
             class="mobile-nav-item"
@@ -177,7 +151,7 @@
 
 
     <!-- 2. Main Content Area -->
-    <main class="main-content" :class="{ 'full-chat-mode': currentTab === 'ai-chat' }">
+    <main class="main-content">
       <!-- Tab 1: Todos List View -->
       <template v-if="currentTab === 'todos'">
         <!-- Filter & Search Toolbar -->
@@ -209,16 +183,17 @@
 
           <div class="toolbar-right">
             <div class="search-box">
+              <Search :size="14" class="search-icon" />
               <input
                 type="text"
                 v-model="searchKeyword"
-                placeholder="🔍 搜索待办事项..."
+                placeholder="搜索待办事项..."
                 @input="loadTodos"
               />
             </div>
 
             <button class="btn btn-primary" @click="openAddModal">
-              + 新建任务
+              <Plus :size="14" /> 新建任务
             </button>
           </div>
         </div>
@@ -231,8 +206,8 @@
           </div>
 
           <div v-else-if="todos.length === 0" class="empty-state">
-            <p class="empty-icon">📌</p>
-            <p class="empty-text">暂无待办事项，点击右上角 "+ 新建任务" 或使用 AI 创建吧！</p>
+            <div class="empty-icon"><Inbox :size="42" :stroke-width="1.5" /></div>
+            <p class="empty-text">暂无待办事项，点击右上角 "+ 新建任务" 或使用快捷创建吧！</p>
           </div>
 
           <div v-else class="todo-grid">
@@ -256,22 +231,22 @@
                   {{ todo.title }}
                 </div>
                 <div class="card-meta">
-                  <span class="tag tag-category">📁 {{ todo.category }}</span>
+                  <span class="tag tag-category"><Folder :size="11" /> {{ todo.category }}</span>
                   <span class="tag" :class="'tag-prio-' + todo.priority">
                     {{ priorityLabel(todo.priority) }}
                   </span>
                   <span v-if="todo.remind_at" class="tag tag-reminder">
-                    ⏰ {{ todo.remind_at }}
+                    <Clock :size="11" /> {{ todo.remind_at }}
                   </span>
                 </div>
               </div>
 
               <div class="card-actions">
                 <button class="icon-btn edit-btn" @click="openEditModal(todo)" title="编辑任务">
-                  ✏️
+                  <Edit3 :size="14" />
                 </button>
                 <button class="icon-btn delete-btn" @click="deleteTodo(todo.id)" title="删除任务">
-                  🗑️
+                  <Trash2 :size="14" />
                 </button>
               </div>
             </div>
@@ -279,20 +254,7 @@
         </div>
       </template>
 
-      <!-- Tab 2: AI Chat View -->
-      <template v-else-if="currentTab === 'ai-chat'">
-        <div class="ai-chat-page-wrapper">
-          <AiAssistantPage
-            ref="aiAssistantRef"
-            :config="llmConfig"
-            :is-processing="aiProcessing"
-            @send="handleAiPageSend"
-            @update:config="onLlmConfigUpdate"
-          />
-        </div>
-      </template>
-
-      <!-- Tab 3: Calendar View -->
+      <!-- Tab 2: Calendar View -->
       <template v-else-if="currentTab === 'calendar'">
         <CalendarView
           :todos="todos"
@@ -325,6 +287,7 @@
         <SettingsPage
           v-model:theme="theme"
           v-model:config="llmConfig"
+          @update:navPosition="val => navPosition = val"
           @logout="handleLogout"
           @userChanged="loadTodos"
         />
@@ -335,27 +298,17 @@
 
 
 
-    <!-- Floating AI Chat Sidebar Drawer Overlay -->
-    <div v-if="showAiSidebar && currentTab !== 'ai-chat'" class="ai-drawer-overlay">
-      <div class="drawer-backdrop" @click="showAiSidebar = false"></div>
-      <div class="drawer-content">
-        <AiChatSidebar
-          ref="aiDrawerSidebarRef"
-          :config="llmConfig"
-          :is-processing="aiProcessing"
-          :hide-toggle-btn="true"
-          @send="handleAiPageSend"
-          @update:config="onLlmConfigUpdate"
-          @close="showAiSidebar = false"
-        />
-      </div>
-    </div>
+
 
     <!-- Modals -->
     <!-- Add / Edit Modal -->
     <div v-if="showAddEditModal" class="modal-backdrop" @click.self="showAddEditModal = false">
       <div class="modal-card animate-fade-in">
-        <h2 class="modal-title">{{ editingTodo ? '✏️ 编辑待办事项' : '➕ 添加新待办事项' }}</h2>
+        <h2 class="modal-title">
+          <Edit3 v-if="editingTodo" :size="18" />
+          <Plus v-else :size="18" />
+          <span>{{ editingTodo ? '编辑待办事项' : '添加新待办事项' }}</span>
+        </h2>
 
         <div class="form-group">
           <label>任务标题 *</label>
@@ -371,9 +324,9 @@
           <div class="form-group flex-1">
             <label>优先级</label>
             <select v-model="todoForm.priority">
-              <option value="high">🔴 高优 (high)</option>
-              <option value="medium">🟡 中优 (medium)</option>
-              <option value="low">🔵 低优 (low)</option>
+              <option value="high">高优 (high)</option>
+              <option value="medium">中优 (medium)</option>
+              <option value="low">低优 (low)</option>
             </select>
           </div>
         </div>
@@ -401,7 +354,7 @@
     <!-- Model Config Modal -->
     <div v-if="showModelModal" class="modal-backdrop" @click.self="showModelModal = false">
       <div class="modal-card animate-fade-in">
-        <h2 class="modal-title">⚙️ 配置大语言模型 (LLM)</h2>
+        <h2 class="modal-title"><Settings :size="18" /> <span>配置大语言模型 (LLM)</span></h2>
 
         <div class="form-group">
           <label>服务提供商 (Provider) *</label>
@@ -458,17 +411,19 @@
 
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, watch } from 'vue'
-import { CheckSquare, Calendar, Clock, Flame, Settings, MessageSquare, Menu, X, Hourglass, Alarm } from 'lucide-vue-next'
-import type { Todo, LlmConfig, FilterType, ThemeType, User, AiActionResult } from './types'
+import {
+  CheckSquare, Calendar, Clock, Flame, Settings, Menu, X, Hourglass, Bell,
+  Plus, Edit3, Trash2, Folder, Search, ListTodo, Inbox
+} from 'lucide-vue-next'
+import type { Todo, LlmConfig, FilterType, ThemeType, NavPosition, User } from './types'
 import { showConfirm } from './utils/confirmState'
-import { getLlmConfig, saveLlmConfig as persistLlmConfig, getTheme, saveTheme, getPrompts, getActivePromptId, getSkills } from './utils/aiStorage'
+import { getLlmConfig, saveLlmConfig as persistLlmConfig, getTheme, saveTheme, getNavPosition, saveNavPosition } from './utils/aiStorage'
+import { getUserConfig, getCurrentUserId } from './utils/configManager'
 import LocalClockPage from './components/productivity/LocalClockPage.vue'
 import CalendarView from './components/productivity/CalendarView.vue'
 import PomodoroTimer from './components/productivity/PomodoroTimer.vue'
 import AlarmCountdown from './components/productivity/AlarmCountdown.vue'
 import SettingsPage from './components/common/SettingsPage.vue'
-import AiChatSidebar from './components/ai/AiChatSidebar.vue'
-import AiAssistantPage from './components/ai/AiAssistantPage.vue'
 import LoginPage from './components/common/LoginPage.vue'
 
 // User Auth & Local Mode State
@@ -503,7 +458,7 @@ function toggleMobileNavMenu(e: Event) {
   showUserMenu.value = false
 }
 
-function selectMobileTab(tab: 'todos' | 'ai-chat' | 'calendar' | 'local-clock' | 'countdown' | 'alarm' | 'pomodoro' | 'settings') {
+function selectMobileTab(tab: 'todos' | 'calendar' | 'local-clock' | 'countdown' | 'alarm' | 'pomodoro' | 'settings') {
   currentTab.value = tab
   showMobileNavMenu.value = false
 }
@@ -544,21 +499,8 @@ function handleLogout() {
 }
 
 // Navigation Tab State
-type TabType = 'todos' | 'ai-chat' | 'calendar' | 'local-clock' | 'countdown' | 'alarm' | 'pomodoro' | 'settings'
+type TabType = 'todos' | 'calendar' | 'local-clock' | 'countdown' | 'alarm' | 'pomodoro' | 'settings'
 const currentTab = ref<TabType>('todos')
-const showAiSidebar = ref(false)
-const aiInput = ref('')
-const aiProcessing = ref(false)
-
-function handleAiPageSend(text: string) {
-  aiInput.value = text
-  sendAiCommand()
-}
-
-function onLlmConfigUpdate(newConfig: LlmConfig) {
-  llmConfig.value = { ...newConfig }
-  persistLlmConfig(newConfig)
-}
 
 // Theme State
 const storedTheme = getTheme() as ThemeType | null
@@ -567,6 +509,14 @@ watch(theme, (newVal) => {
   saveTheme(newVal)
   document.documentElement.setAttribute('data-theme', newVal)
 }, { immediate: true })
+
+// Navigation Position State (top | left)
+const userInitialConfig = getUserConfig(getCurrentUserId())
+const storedNavPos = getNavPosition() as NavPosition | null
+const navPosition = ref<NavPosition>(storedNavPos || userInitialConfig.navPosition || 'top')
+watch(navPosition, (newVal) => {
+  saveNavPosition(newVal)
+})
 
 // LLM Config State
 const storedLlmConfig = getLlmConfig()
@@ -597,10 +547,6 @@ const todoForm = ref({
 })
 
 const showModelModal = ref(false)
-
-// AI Sidebar Component Refs
-const aiAssistantRef = ref<any>(null)
-const aiDrawerSidebarRef = ref<any>(null)
 
 // Tauri Invoke Helper (with fallback for web browser testing)
 async function tauriInvoke<T>(cmd: string, args: Record<string, any> = {}): Promise<T> {
@@ -903,69 +849,6 @@ function saveLlmConfig() {
   statusMessage.value = `⚙️ LLM 配置已更新 [Provider: ${llmConfig.value.provider}, Model: ${llmConfig.value.model}]`
 }
 
-// Send AI Command
-async function sendAiCommand() {
-  const text = aiInput.value.trim()
-  if (!text) return
-
-  aiProcessing.value = true
-  statusMessage.value = '🧠 AI 智能体分析思考并执行中...'
-
-  try {
-    const uid = currentUser.value ? currentUser.value.id : 0
-    const history = aiAssistantRef.value?.getHistory?.() || aiDrawerSidebarRef.value?.getHistory?.() || []
-    const systemPrompt = buildSystemPrompt()
-    const res = await tauriInvoke<AiActionResult>('execute_ai_command', {
-      input: text,
-      config: llmConfig.value,
-      user_id: uid,
-      history: history.length ? history : null,
-      system_prompt: systemPrompt || null
-    })
-    aiInput.value = ''
-    statusMessage.value = `✅ AI 任务完成：${res.message}`
-
-    // 重点：将 AI 响应追加回全屏页或侧边抽屉的对话框
-    if (aiAssistantRef.value) {
-      aiAssistantRef.value.appendAiResponse(res)
-    }
-    if (aiDrawerSidebarRef.value) {
-      aiDrawerSidebarRef.value.appendAiResponse(res)
-    }
-
-    if (res.should_refresh) {
-      loadTodos()
-    }
-  } catch (err: any) {
-    const errMsg = err?.message || String(err)
-    statusMessage.value = `❌ AI 执行异常: ${errMsg}`
-
-    if (aiAssistantRef.value) {
-      aiAssistantRef.value.appendSystemError(errMsg)
-    }
-    if (aiDrawerSidebarRef.value) {
-      aiDrawerSidebarRef.value.appendSystemError(errMsg)
-    }
-  } finally {
-    aiProcessing.value = false
-  }
-}
-
-function buildSystemPrompt(): string {
-  const parts: string[] = []
-  const prompts = getPrompts()
-  const activeId = getActivePromptId()
-  const active = prompts.find(p => p.id === activeId && p.enabled !== false)
-  if (active) {
-    parts.push(`【当前激活的提示词模板】\n${active.text}`)
-  }
-  const skills = getSkills().filter(s => s.enabled)
-  if (skills.length) {
-    parts.push(`【当前启用的技能指令】\n${skills.map(s => `- ${s.title}: ${s.systemPrompt}`).join('\n')}`)
-  }
-  return parts.join('\n\n')
-}
-
 onMounted(() => {
   document.documentElement.setAttribute('data-theme', theme.value)
   loadTodos()
@@ -984,6 +867,133 @@ onMounted(() => {
   flex-direction: column;
   height: 100vh;
   background-color: var(--bg-app);
+}
+
+/* VS Code style Left Navigation Sidebar */
+.layout-nav-left {
+  flex-direction: row;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.layout-nav-left .header {
+  width: 200px;
+  min-width: 200px;
+  max-width: 200px;
+  height: 100vh;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: stretch;
+  padding: 16px 12px;
+  border-bottom: none;
+  border-right: 1px solid var(--border-color);
+  box-sizing: border-box;
+  flex-shrink: 0;
+  gap: 16px;
+  background-color: var(--bg-surface);
+}
+
+.layout-nav-left .header-left {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 0 4px 12px 4px;
+  border-bottom: 1px solid var(--border-color);
+  width: 100%;
+}
+
+.layout-nav-left .app-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--primary);
+  margin: 0;
+}
+
+.layout-nav-left .navbar-tabs {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 4px;
+  background: transparent;
+  border: none;
+  padding: 0;
+  width: 100%;
+  flex: 1;
+  overflow-y: auto;
+}
+
+.layout-nav-left .nav-tab-btn {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 10px;
+  padding: 9px 12px;
+  border-radius: 6px;
+  width: 100%;
+  font-size: 13px;
+  font-weight: 500;
+  text-align: left;
+  border: 1px solid transparent;
+  color: var(--text-muted);
+  box-sizing: border-box;
+  transition: all 0.18s ease;
+}
+
+.layout-nav-left .nav-tab-btn span {
+  display: inline-block !important;
+}
+
+.layout-nav-left .nav-tab-btn:hover {
+  background-color: var(--bg-hover);
+  color: var(--text-main);
+}
+
+.layout-nav-left .nav-tab-btn.active {
+  background-color: var(--bg-hover);
+  color: var(--primary);
+  border-left: 3px solid var(--primary);
+  border-radius: 4px;
+  font-weight: 600;
+  box-shadow: none;
+}
+
+.layout-nav-left .main-content {
+  flex: 1;
+  height: 100vh;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+@media (max-width: 640px) {
+  .layout-nav-left {
+    flex-direction: column;
+  }
+
+  .layout-nav-left .header {
+    width: 100%;
+    min-width: 100%;
+    max-width: 100%;
+    height: auto;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    border-right: none;
+    border-bottom: 1px solid var(--border-color);
+  }
+
+  .layout-nav-left .header-left {
+    flex-direction: row;
+    align-items: center;
+    border-bottom: none;
+    padding-bottom: 0;
+    width: auto;
+  }
+
+  .layout-nav-left .navbar-tabs {
+    display: none;
+  }
 }
 
 .header {
@@ -1312,11 +1322,6 @@ onMounted(() => {
 }
 
 @media (max-width: 480px) {
-  .drawer-content {
-    width: 100vw !important;
-    max-width: 100vw !important;
-  }
-
   .todo-card {
     padding: 10px 12px;
   }
@@ -1652,78 +1657,6 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   box-sizing: border-box;
-}
-
-.main-content.full-chat-mode {
-  padding: 0;
-  height: 100%;
-  overflow: hidden;
-}
-
-/* AI Chat Page & Drawer Layout */
-.ai-chat-page-wrapper {
-  width: 100%;
-  height: 100%;
-  display: flex;
-  justify-content: center;
-  align-items: stretch;
-  background-color: var(--bg-surface);
-  overflow: hidden;
-}
-
-.ai-chat-page-wrapper :deep(.ai-sidebar) {
-  width: 100%;
-  max-width: 1000px;
-  border-left: none;
-  border-right: none;
-  box-shadow: none;
-  border-radius: 0;
-}
-
-.ai-drawer-overlay {
-  position: fixed;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  left: 0;
-  z-index: 100;
-  display: flex;
-  justify-content: flex-end;
-}
-
-.drawer-backdrop {
-  position: absolute;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  left: 0;
-  background-color: rgba(0, 0, 0, 0.35);
-  backdrop-filter: blur(2px);
-}
-
-.drawer-content {
-  position: relative;
-  width: 420px;
-  max-width: 90vw;
-  height: 100%;
-  z-index: 101;
-  box-shadow: -4px 0 20px rgba(0, 0, 0, 0.18);
-  background-color: var(--bg-surface);
-  animation: drawerSlideIn 0.22s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-@keyframes drawerSlideIn {
-  from {
-    transform: translateX(100%);
-  }
-  to {
-    transform: translateX(0);
-  }
-}
-
-.drawer-content :deep(.ai-sidebar) {
-  width: 100% !important;
-  border-left: none;
 }
 
 /* User Auth Badge Styles */

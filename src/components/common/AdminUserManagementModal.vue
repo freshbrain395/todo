@@ -37,7 +37,9 @@
                 <td class="code-text">{{ item.user.id }}</td>
                 <td>
                   <span class="role-badge" :class="item.user.isAdmin ? 'badge-admin' : 'badge-user'">
-                    {{ item.user.isAdmin ? '👑 超级管理员' : '👤 普通用户' }}
+                    <Crown v-if="item.user.isAdmin" :size="12" />
+                    <User v-else :size="12" />
+                    <span>{{ item.user.isAdmin ? '超级管理员' : '普通用户' }}</span>
                   </span>
                 </td>
                 <td>
@@ -98,7 +100,7 @@
 
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import { ShieldCheck, X, FileJson, Key, Trash2 } from 'lucide-vue-next'
+import { ShieldCheck, X, FileJson, Key, Trash2, Crown, User } from 'lucide-vue-next'
 import { showConfirm } from '../../utils/confirmState'
 import {
   getAllUserAccountsMap,

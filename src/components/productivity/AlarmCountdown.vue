@@ -157,7 +157,7 @@
                     <span class="time-number">{{ formatDurationText(activeCountdown.remainingSeconds) }}</span>
                     <span class="timer-status-badge" :class="{ running: activeCountdown.isRunning }">
                       <span class="status-dot"></span>
-                      {{ activeCountdown.isRunning ? '⏳ 计时中' : activeCountdown.remainingSeconds === 0 ? '🎉 计时完成' : '准备就绪' }}
+                      {{ activeCountdown.isRunning ? '计时中' : activeCountdown.remainingSeconds === 0 ? '计时完成' : '准备就绪' }}
                     </span>
                   </div>
                 </div>
@@ -194,7 +194,7 @@
             <!-- Configuration Details Card -->
             <div class="config-form-card">
               <div class="form-group">
-                <label class="form-label">🏷️ 倒计时名称 / 备注 *</label>
+                <label class="form-label">倒计时名称 / 备注 *</label>
                 <input
                   type="text"
                   v-model="activeCountdown.title"
@@ -204,7 +204,7 @@
               </div>
 
               <div class="form-group">
-                <label class="form-label">⏱️ 快捷预设时长</label>
+                <label class="form-label">快捷预设时长</label>
                 <div class="preset-chips-row">
                   <button class="chip-btn" :class="{ active: activeCountdown.initialSeconds === 60 }" @click="setCountdownPreset(activeCountdown, 1)">1 分钟</button>
                   <button class="chip-btn" :class="{ active: activeCountdown.initialSeconds === 300 }" @click="setCountdownPreset(activeCountdown, 5)">5 分钟</button>
@@ -216,27 +216,27 @@
               </div>
 
               <div class="form-group">
-                <label class="form-label">🔔 倒计时结束提醒音效</label>
+                <label class="form-label">倒计时结束提醒音效</label>
                 <select v-model="activeCountdown.soundType" class="select-input">
-                  <option value="chime">🔔 清脆金铃 (Digital Chime)</option>
-                  <option value="marimba">🪵 柔和木音 (Soft Marimba)</option>
-                  <option value="cyber">⚡ 科技脉冲 (Cyber Pulse)</option>
-                  <option value="beep">🚨 警报蜂鸣 (Beep Alert)</option>
-                  <option value="silent">🔇 无声 (仅弹窗提醒)</option>
+                  <option value="chime">清脆金铃 (Digital Chime)</option>
+                  <option value="marimba">柔和木音 (Soft Marimba)</option>
+                  <option value="cyber">科技脉冲 (Cyber Pulse)</option>
+                  <option value="beep">警报蜂鸣 (Beep Alert)</option>
+                  <option value="silent">无声 (仅弹窗提醒)</option>
                 </select>
               </div>
 
               <div class="form-group">
-                <label class="form-label">📣 提醒交互方式</label>
+                <label class="form-label">提醒交互方式</label>
                 <select v-model="activeCountdown.notifyType" class="select-input">
-                  <option value="sound_and_popup">🔔 声音响铃 + 弹窗提醒 (默认)</option>
-                  <option value="sound_only">🔊 仅播放声音提醒</option>
-                  <option value="popup_only">💬 仅显示弹窗提醒</option>
+                  <option value="sound_and_popup">声音响铃 + 弹窗提醒 (默认)</option>
+                  <option value="sound_only">仅播放声音提醒</option>
+                  <option value="popup_only">仅显示弹窗提醒</option>
                 </select>
               </div>
 
               <div class="form-group">
-                <label class="form-label">💬 结束提醒提示词 / 消息文本</label>
+                <label class="form-label">结束提醒提示词 / 消息文本</label>
                 <input
                   type="text"
                   v-model="activeCountdown.finishMessage"
@@ -275,7 +275,7 @@
 
           <div class="alarm-list-scroll">
             <div v-if="alarmList.length === 0" class="empty-alarm-state">
-              <p class="empty-icon">🔔</p>
+              <div class="empty-icon"><Bell :size="36" :stroke-width="1.5" /></div>
               <p class="empty-text">暂无已设闹钟，右侧面板直接配置添加！</p>
             </div>
 
@@ -329,12 +329,12 @@
 
           <div class="config-form-card">
             <div class="form-group">
-              <label class="form-label">⏰ 响铃时刻 (3D 轮盘调节) *</label>
+              <label class="form-label">响铃时刻 (3D 轮盘调节) *</label>
               <WheelTimePicker v-model="alarmForm.time" />
             </div>
 
             <div class="form-group">
-              <label class="form-label">🏷️ 闹钟标签 / 备注说明</label>
+              <label class="form-label">闹钟标签 / 备注说明</label>
               <input
                 type="text"
                 v-model="alarmForm.label"
@@ -344,10 +344,10 @@
             </div>
 
             <div class="form-group">
-              <label class="form-label">🔄 重复频率 / 智能调休模式</label>
+              <label class="form-label">重复频率 / 智能调休模式</label>
               <select v-model="alarmForm.repeatType" class="select-input">
-                <option value="holiday_compensate">⚡ 智能调休闹钟 (工作日响 / 假关 / 补班响)</option>
-                <option value="compensate_only">📅 仅调休补班日 (周六日补班时自动响)</option>
+                <option value="holiday_compensate">智能调休闹钟 (工作日响 / 假关 / 补班响)</option>
+                <option value="compensate_only">仅调休补班日 (周六日补班时自动响)</option>
                 <option value="workday">工作日 (周一至周五)</option>
                 <option value="weekend">周末 (周六与周日)</option>
                 <option value="everyday">每天响铃</option>
@@ -360,14 +360,14 @@
             <div v-if="alarmForm.repeatType === 'holiday_compensate' || alarmForm.repeatType === 'compensate_only'" class="compensate-config-box">
               <label class="checkbox-option">
                 <input type="checkbox" v-model="alarmForm.skipHolidays" />
-                <span>🏖️ 自动跳过法定节假日 (假期当天不响铃)</span>
+                <span>自动跳过法定节假日 (假期当天不响铃)</span>
               </label>
               <label class="checkbox-option">
                 <input type="checkbox" v-model="alarmForm.ringOnCompensate" />
-                <span>💼 周末调休补班智能响铃 (补班日自动激活)</span>
+                <span>周末调休补班智能响铃 (补班日自动激活)</span>
               </label>
               <div class="compensate-tips">
-                💡 已接入 2026 年法定节假日与调休补班日历，自动识别调休日，避免假期误响与补班漏响。
+                <Sparkles :size="14" /> 已接入法定节假日与调休补班日历，自动识别调休日，避免假期误响与补班漏响。
               </div>
             </div>
 
@@ -402,7 +402,7 @@
     <!-- Countdown Ringing/Finished Notification Modal -->
     <div v-if="ringingCountdown" class="modal-backdrop alarm-ringing-backdrop">
       <div class="modal-card ringing-card animate-pulse">
-        <div class="ringing-icon">⏳</div>
+        <div class="ringing-icon"><Hourglass :size="40" /></div>
         <h2 class="ringing-title">倒计时结束提醒！</h2>
         <div class="ringing-time">{{ ringingCountdown.title }}</div>
         <p class="ringing-label">{{ ringingCountdown.finishMessage || '倒计时时间到！' }}</p>
@@ -418,7 +418,7 @@
     <!-- Alarm Ringing Snooze Notification Banner/Modal -->
     <div v-if="ringingAlarm" class="modal-backdrop alarm-ringing-backdrop">
       <div class="modal-card ringing-card animate-pulse">
-        <div class="ringing-icon">🔔</div>
+        <div class="ringing-icon"><Bell :size="40" /></div>
         <h2 class="ringing-title">闹钟响铃提醒！</h2>
         <div class="ringing-time">{{ ringingAlarm.time }}</div>
         <p class="ringing-label" v-if="ringingAlarm.label">{{ ringingAlarm.label }}</p>
@@ -441,7 +441,7 @@
 import { ref, computed, onUnmounted, onMounted, watch } from 'vue'
 import {
   Hourglass, Bell, Play, Pause, RotateCcw,
-  Trash2, Plus, Tag, Repeat, Check, Coffee, Sliders
+  Trash2, Plus, Tag, Repeat, Check, Coffee, Sliders, Sparkles
 } from 'lucide-vue-next'
 import { soundPlayer, type SoundType } from '../../utils/audio'
 import WheelTimePicker from '../widgets/WheelTimePicker.vue'

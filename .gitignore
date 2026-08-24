@@ -28,6 +28,9 @@ dist/
 # Local data & configs
 todos.db
 agent_config.json
+ai_config.json
+cli_config.json
+config.json
 
 # IDE
 .vscode/

@@ -1,76 +1,87 @@
 <template>
   <div class="settings-container animate-fade-in">
-    <div class="settings-card">
-      <div class="settings-header">
-        <h2 class="page-title"><Settings :size="22" /> 系统全局与用户偏好设置</h2>
-      </div>
+    <div class="settings-layout">
+      <!-- VS Code 风格左侧设置导航栏 -->
+      <aside class="settings-sidebar">
+        <div class="settings-sidebar-header">
+          <h2 class="sidebar-title"><Settings :size="18" /> 系统设置</h2>
+        </div>
 
-      <!-- 单层扁平 Tab 导航页签栏 (按 PRD 要求平铺 8 个功能项) -->
-      <div class="settings-main-tabs">
-        <button
-          class="main-tab-btn"
-          :class="{ active: activeTab === 'llm' }"
-          @click="activeTab = 'llm'"
-        >
-          <Brain :size="16" /> <span>大模型参数</span>
-        </button>
+        <nav class="settings-nav-list">
+          <button
+            class="settings-nav-item"
+            :class="{ active: activeTab === 'llm' }"
+            @click="activeTab = 'llm'"
+          >
+            <Brain :size="16" /> <span>大模型参数</span>
+          </button>
 
-        <button
-          class="main-tab-btn"
-          :class="{ active: activeTab === 'prompts' }"
-          @click="activeTab = 'prompts'"
-        >
-          <Sparkles :size="16" /> <span>Prompts 预设 ({{ promptLibrary.length }})</span>
-        </button>
+          <button
+            class="settings-nav-item"
+            :class="{ active: activeTab === 'prompts' }"
+            @click="activeTab = 'prompts'"
+          >
+            <Sparkles :size="16" />
+            <span class="nav-text">Prompts 预设</span>
+            <span class="nav-badge">{{ promptLibrary.length }}</span>
+          </button>
 
-        <button
-          class="main-tab-btn"
-          :class="{ active: activeTab === 'tools' }"
-          @click="activeTab = 'tools'"
-        >
-          <Wrench :size="16" /> <span>Agent Tools ({{ enabledToolsCount }}/{{ agentTools.length }})</span>
-        </button>
+          <button
+            class="settings-nav-item"
+            :class="{ active: activeTab === 'tools' }"
+            @click="activeTab = 'tools'"
+          >
+            <Wrench :size="16" />
+            <span class="nav-text">Agent 工具</span>
+            <span class="nav-badge">{{ enabledToolsCount }}/{{ agentTools.length }}</span>
+          </button>
 
-        <button
-          class="main-tab-btn"
-          :class="{ active: activeTab === 'skills' }"
-          @click="activeTab = 'skills'"
-        >
-          <BookOpen :size="16" /> <span>Skills 技能库 ({{ enabledSkillsCount }}/{{ skillsLibrary.length }})</span>
-        </button>
+          <button
+            class="settings-nav-item"
+            :class="{ active: activeTab === 'skills' }"
+            @click="activeTab = 'skills'"
+          >
+            <BookOpen :size="16" />
+            <span class="nav-text">Skills 技能库</span>
+            <span class="nav-badge">{{ enabledSkillsCount }}/{{ skillsLibrary.length }}</span>
+          </button>
 
-        <button
-          class="main-tab-btn"
-          :class="{ active: activeTab === 'appearance' }"
-          @click="activeTab = 'appearance'"
-        >
-          <Palette :size="16" /> <span>外观界面主题</span>
-        </button>
+          <button
+            class="settings-nav-item"
+            :class="{ active: activeTab === 'appearance' }"
+            @click="activeTab = 'appearance'"
+          >
+            <Palette :size="16" /> <span>外观与主题</span>
+          </button>
 
-        <button
-          class="main-tab-btn"
-          :class="{ active: activeTab === 'audio' }"
-          @click="activeTab = 'audio'"
-        >
-          <Volume2 :size="16" /> <span>提示与音效</span>
-        </button>
+          <button
+            class="settings-nav-item"
+            :class="{ active: activeTab === 'audio' }"
+            @click="activeTab = 'audio'"
+          >
+            <Volume2 :size="16" /> <span>提示与音效</span>
+          </button>
 
-        <button
-          class="main-tab-btn"
-          :class="{ active: activeTab === 'account' }"
-          @click="activeTab = 'account'"
-        >
-          <User :size="16" /> <span>账号与权限</span>
-        </button>
+          <button
+            class="settings-nav-item"
+            :class="{ active: activeTab === 'account' }"
+            @click="activeTab = 'account'"
+          >
+            <User :size="16" /> <span>账号与权限</span>
+          </button>
 
-        <button
-          class="main-tab-btn"
-          :class="{ active: activeTab === 'backup' }"
-          @click="activeTab = 'backup'"
-        >
-          <FileJson :size="16" /> <span>数据备份与危险区</span>
-        </button>
-      </div>
+          <button
+            class="settings-nav-item"
+            :class="{ active: activeTab === 'backup' }"
+            @click="activeTab = 'backup'"
+          >
+            <FileJson :size="16" /> <span>备份与危险区</span>
+          </button>
+        </nav>
+      </aside>
+
+      <!-- 右侧设置详细内容区 -->
+      <main class="settings-content">
 
       <!-- 选项卡 1 ~ 4: AI 模块相关设置 (渲染 AiSettingsView) -->
       <div v-if="['llm', 'prompts', 'tools', 'skills'].includes(activeTab)" class="tab-pane">
@@ -126,9 +137,22 @@
             </div>
             <div class="item-control">
               <select v-model="theme" class="select-input" @change="saveThemeSettings">
-                <option value="light">☀️ 浅色明亮 (Light Classic)</option>
-                <option value="dark">🌙 暗黑现代 (Dark Modern)</option>
-                <option value="nord">❄️ 极光冰蓝 (Nord Aurora)</option>
+                <option value="light">浅色明亮 (Light Classic)</option>
+                <option value="dark">暗黑现代 (Dark Modern)</option>
+                <option value="nord">极光冰蓝 (Nord Aurora)</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="setting-item">
+            <div class="item-label">
+              <span>导航栏布局位置</span>
+              <small>选择导航栏展示在顶部或作为类似 VS Code 的左侧边栏</small>
+            </div>
+            <div class="item-control">
+              <select v-model="navPosition" class="select-input" @change="saveNavPositionSettings">
+                <option value="top">顶部导航栏 (Top Navbar)</option>
+                <option value="left">左侧边栏 (VS Code 风格)</option>
               </select>
             </div>
           </div>
@@ -147,10 +171,10 @@
             </div>
             <div class="item-control">
               <select v-model="soundType" class="select-input" @change="saveAudioSettings">
-                <option value="chime">🔔 清脆金铃 (Digital Chime)</option>
-                <option value="marimba">🎵 柔和木鱼 (Soft Marimba)</option>
-                <option value="cyber">⚡ 科技和声 (Cyber Pulse)</option>
-                <option value="beep">📢 警报哔哔 (Beep Alert)</option>
+                <option value="chime">清脆金铃 (Digital Chime)</option>
+                <option value="marimba">柔和木鱼 (Soft Marimba)</option>
+                <option value="cyber">科技和声 (Cyber Pulse)</option>
+                <option value="beep">警报哔哔 (Beep Alert)</option>
               </select>
               <button class="btn btn-listen" @click="testSound">
                 <Volume2 :size="14" /> 试听音效
@@ -184,7 +208,7 @@
           <h3 class="section-title"><User :size="16" /> 用户账号与权限配置</h3>
           <div class="setting-item">
             <div class="item-label">
-              <span>当前登录账号：<strong>{{ currentUserName }}</strong> <span v-if="isAdmin" class="admin-tag">👑 管理员</span></span>
+              <span>当前登录账号：<strong>{{ currentUserName }}</strong> <span v-if="isAdmin" class="admin-tag"><Crown :size="12" /> 管理员</span></span>
               <small>当前账号配置均实时存储在前端 JSON 集合中</small>
             </div>
             <div class="item-control">
@@ -246,7 +270,8 @@
           </div>
         </div>
       </div>
-    </div>
+    </main>
+  </div>
 
     <!-- 用户切换弹窗 -->
     <UserSwitchModal
@@ -269,7 +294,7 @@ import { ref, computed, onMounted, watch } from 'vue'
 import {
   Settings, Volume2, Trash2, RotateCcw, User, Users,
   FileJson, Download, Upload, ShieldCheck, Palette, Brain,
-  Sparkles, Wrench, BookOpen, LogOut
+  Sparkles, Wrench, BookOpen, LogOut, Crown
 } from 'lucide-vue-next'
 import { soundPlayer, type SoundType } from '../../utils/audio'
 import { showConfirm } from '../../utils/confirmState'
@@ -286,7 +311,7 @@ import {
   DEFAULT_USER_CONFIG,
   type UserAppConfig
 } from '../../utils/configManager'
-import type { LlmConfig, ThemeType } from '../../types'
+import type { LlmConfig, ThemeType, NavPosition } from '../../types'
 import {
   defaultAgentTools,
   type SkillItem,
@@ -303,7 +328,8 @@ import {
   getSkills,
   saveSkills,
   getToolConfig,
-  saveToolConfig
+  saveToolConfig,
+  saveNavPosition
 } from '../../utils/aiStorage'
 
 
@@ -312,6 +338,7 @@ const emit = defineEmits<{
   (e: 'update:soundType', type: SoundType): void
   (e: 'update:soundVolume', vol: number): void
   (e: 'update:theme', theme: ThemeType): void
+  (e: 'update:navPosition', pos: NavPosition): void
   (e: 'update:config', config: LlmConfig): void
   (e: 'userChanged'): void
   (e: 'logout'): void
@@ -327,12 +354,20 @@ const currentConfig = ref<UserAppConfig>(getUserConfig(userId.value))
 const soundType = ref<SoundType>(currentConfig.value.soundType)
 const soundVolume = ref<number>(currentConfig.value.soundVolume)
 const theme = ref<ThemeType>(currentConfig.value.theme || 'light')
+const navPosition = ref<NavPosition>(currentConfig.value.navPosition || 'top')
 
 // Theme save
 function saveThemeSettings() {
   saveUserConfig(userId.value, { theme: theme.value })
   document.documentElement.setAttribute('data-theme', theme.value)
   emit('update:theme', theme.value)
+}
+
+// Nav position save
+function saveNavPositionSettings() {
+  saveUserConfig(userId.value, { navPosition: navPosition.value })
+  saveNavPosition(navPosition.value)
+  emit('update:navPosition', navPosition.value)
 }
 
 // Single Flat Tab Navigation State (8 items in PRD order)
@@ -646,6 +681,7 @@ function syncFromConfig() {
   soundType.value = currentConfig.value.soundType
   soundVolume.value = currentConfig.value.soundVolume
   theme.value = currentConfig.value.theme || 'light'
+  navPosition.value = currentConfig.value.navPosition || 'top'
   llmConfig.value = { ...currentConfig.value.llmConfig }
 }
 
@@ -671,6 +707,7 @@ function onUserSwitched() {
   emit('update:soundType', soundType.value)
   emit('update:soundVolume', soundVolume.value)
   emit('update:theme', theme.value)
+  emit('update:navPosition', navPosition.value)
   emit('update:config', llmConfig.value)
   emit('userChanged')
 }
@@ -707,6 +744,7 @@ function handleImportJson(e: Event) {
         emit('update:soundType', soundType.value)
         emit('update:soundVolume', soundVolume.value)
         emit('update:theme', theme.value)
+        emit('update:navPosition', navPosition.value)
         emit('update:config', llmConfig.value)
         emit('userChanged')
         alert('配置已成功从 JSON 文件导入并保存！')
@@ -735,6 +773,7 @@ async function resetAllSettings() {
   syncFromConfig()
   saveAudioSettings()
   saveThemeSettings()
+  saveNavPositionSettings()
 }
 </script>
 
@@ -742,31 +781,51 @@ async function resetAllSettings() {
 .settings-container {
   display: flex;
   justify-content: center;
-  align-items: flex-start;
+  align-items: stretch;
   width: 100%;
   flex: 1;
   min-height: 0;
-  padding: 24px;
-  overflow-y: auto;
+  padding: 16px;
+  overflow: hidden;
   box-sizing: border-box;
 }
 
-.settings-card {
+.settings-layout {
+  display: flex;
+  flex-direction: row;
   width: 100%;
-  max-width: 960px;
-  background-color: transparent;
-  border: none;
-  border-radius: 0;
-  padding: 10px 10px 40px 10px;
-  box-shadow: none;
+  max-width: 1100px;
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  overflow: hidden;
+  min-height: 0;
+  flex: 1;
+}
+
+/* Left Sidebar Navigation (VS Code Settings Style) */
+.settings-sidebar {
+  width: 230px;
+  min-width: 230px;
+  max-width: 230px;
+  background-color: var(--bg-surface);
+  border-right: 1px solid var(--border-color);
   display: flex;
   flex-direction: column;
-  gap: 28px;
+  padding: 16px 10px;
+  box-sizing: border-box;
   flex-shrink: 0;
 }
 
-.page-title {
-  font-size: 18px;
+.settings-sidebar-header {
+  padding: 4px 8px 12px 8px;
+  border-bottom: 1px solid var(--border-color);
+  margin-bottom: 8px;
+}
+
+.sidebar-title {
+  font-size: 15px;
   font-weight: 700;
   color: var(--primary);
   display: flex;
@@ -775,42 +834,112 @@ async function resetAllSettings() {
   margin: 0;
 }
 
-.settings-main-tabs {
+.settings-nav-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+  overflow-y: auto;
+}
+
+.settings-nav-item {
   display: flex;
   align-items: center;
-  gap: 8px;
-  border-bottom: 1px solid var(--border-color, #333);
-  padding-bottom: 12px;
-  overflow-x: auto;
-}
-
-.main-tab-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 18px;
-  background: var(--bg-surface, #1e1e2e);
-  border: 1px solid var(--border-color, #333);
-  border-radius: 8px;
-  color: var(--text-muted, #aaa);
+  gap: 10px;
+  padding: 9px 12px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-left: 3px solid transparent;
+  border-radius: 6px;
+  color: var(--text-muted);
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 500;
   cursor: pointer;
   white-space: nowrap;
-  transition: all 0.2s ease-in-out;
+  transition: all 0.18s ease;
+  text-align: left;
+  width: 100%;
+  box-sizing: border-box;
 }
 
-.main-tab-btn:hover {
-  color: var(--text-main, #fff);
-  border-color: var(--primary, #3182ce);
-  background: var(--bg-card-hover, rgba(49, 130, 206, 0.08));
+.settings-nav-item .nav-text {
+  flex: 1;
 }
 
-.main-tab-btn.active {
-  background: var(--primary, #3182ce);
-  color: #ffffff;
-  border-color: var(--primary, #3182ce);
-  box-shadow: 0 4px 12px rgba(49, 130, 206, 0.25);
+.settings-nav-item .nav-badge {
+  font-size: 11px;
+  background-color: var(--bg-app);
+  color: var(--text-muted);
+  padding: 1px 6px;
+  border-radius: 10px;
+  font-weight: 600;
+}
+
+.settings-nav-item:hover {
+  background-color: var(--bg-hover);
+  color: var(--text-main);
+}
+
+.settings-nav-item.active {
+  background-color: var(--bg-hover);
+  color: var(--primary);
+  border-left-color: var(--primary);
+  font-weight: 600;
+}
+
+.settings-nav-item.active .nav-badge {
+  background-color: var(--primary);
+  color: #fff;
+}
+
+/* Right Content Area */
+.settings-content {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  padding: 24px 28px;
+  overflow-y: auto;
+  box-sizing: border-box;
+}
+
+@media (max-width: 768px) {
+  .settings-container {
+    padding: 8px;
+  }
+
+  .settings-layout {
+    flex-direction: column;
+    height: 100%;
+  }
+
+  .settings-sidebar {
+    width: 100%;
+    min-width: 100%;
+    max-width: 100%;
+    border-right: none;
+    border-bottom: 1px solid var(--border-color);
+    padding: 10px;
+  }
+
+  .settings-nav-list {
+    flex-direction: row;
+    overflow-x: auto;
+  }
+
+  .settings-nav-item {
+    border-left: 1px solid transparent;
+    border-bottom: 3px solid transparent;
+    padding: 6px 10px;
+  }
+
+  .settings-nav-item.active {
+    border-left-color: transparent;
+    border-bottom-color: var(--primary);
+  }
+
+  .settings-content {
+    padding: 16px;
+  }
 }
 
 .tab-pane {

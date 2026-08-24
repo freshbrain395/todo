@@ -2,6 +2,7 @@ import os
 import json
 from pathlib import Path
 from dataclasses import dataclass, asdict
+from typing import Any, Dict
 import platformdirs
 
 APP_NAME = "todo_agent"
@@ -18,8 +19,44 @@ def get_db_path() -> Path:
     return get_app_dir() / "todos.db"
 
 
+def get_project_root() -> Path:
+    return Path(__file__).resolve().parent.parent
+
+
+def get_config_path() -> Path:
+    """获取全局统一 JSON 配置文件路径"""
+    return get_project_root() / "config.json"
+
+
+# 兼容别名
+def get_ai_config_path() -> Path:
+    return get_config_path()
+
+
 def get_display_config_path() -> Path:
-    return get_app_dir() / "cli_config.json"
+    return get_config_path()
+
+
+def read_raw_config() -> Dict[str, Any]:
+    """读取全局统一 JSON 配置文件"""
+    path = get_config_path()
+    if path.exists():
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                if isinstance(data, dict):
+                    return data
+        except Exception:
+            pass
+    return {}
+
+
+def write_raw_config(data: Dict[str, Any]) -> None:
+    """写入全局统一 JSON 配置文件"""
+    path = get_config_path()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
 
 
 @dataclass
@@ -31,20 +68,16 @@ class DisplayConfig:
 
     @classmethod
     def load(cls) -> "DisplayConfig":
-        path = get_display_config_path()
-        if path.exists():
+        data = read_raw_config()
+        sys_cfg = data.get("system", {})
+        if isinstance(sys_cfg, dict) and sys_cfg:
             try:
-                with open(path, "r", encoding="utf-8") as f:
-                    data = json.load(f)
-                    return cls(**data)
+                return cls(**{k: v for k, v in sys_cfg.items() if k in cls.__dataclass_fields__})
             except Exception:
                 pass
-        cfg = cls()
-        cfg.save()
-        return cfg
+        return cls()
 
     def save(self) -> None:
-        path = get_display_config_path()
-        path.parent.mkdir(parents=True, exist_ok=True)
-        with open(path, "w", encoding="utf-8") as f:
-            json.dump(asdict(self), f, ensure_ascii=False, indent=2)
+        data = read_raw_config()
+        data["system"] = asdict(self)
+        write_raw_config(data)

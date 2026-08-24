@@ -7,7 +7,7 @@
         <!-- FRONT FACE: LOGIN CARD -->
         <div class="card-face card-front shadow-2xl">
           <!-- Close Button -->
-          <button class="close-btn" @click="handleClose" title="关闭">✕</button>
+          <button class="close-btn" @click="handleClose" title="关闭"><X :size="16" /></button>
 
           <!-- Header -->
           <div class="login-header">
@@ -90,7 +90,7 @@
         <!-- BACK FACE: REGISTER CARD -->
         <div class="card-face card-back shadow-2xl">
           <!-- Close Button -->
-          <button class="close-btn" @click="handleClose" title="关闭">✕</button>
+          <button class="close-btn" @click="handleClose" title="关闭"><X :size="16" /></button>
 
           <!-- Header -->
           <div class="login-header">
@@ -118,7 +118,7 @@
                 <input
                   type="text"
                   v-model="registerUsername"
-                  placeholder="请输入字母/汉字用户名"
+                  placeholder="设置您的用户名"
                   class="form-input"
                   required
                 />
@@ -132,7 +132,7 @@
                 <input
                   type="password"
                   v-model="registerPassword"
-                  placeholder="请设置密码 (至少 3 位)"
+                  placeholder="设置登录密码"
                   class="form-input"
                   required
                 />
@@ -146,7 +146,7 @@
                 <input
                   type="password"
                   v-model="registerPasswordConfirm"
-                  placeholder="请再次输入密码确认"
+                  placeholder="请再次输入密码"
                   class="form-input"
                   required
                 />
@@ -163,7 +163,7 @@
             <button type="submit" class="submit-btn register-theme" :disabled="loading">
               <span v-if="loading" class="spinner-sm"></span>
               <UserPlus v-else :size="16" />
-              <span>{{ loading ? '注册中...' : '确认创建账号' }}</span>
+              <span>{{ loading ? '注册中...' : '注册并登录' }}</span>
             </button>
           </form>
 
@@ -191,7 +191,7 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
-import { CheckSquare, LogIn, UserPlus, Lock, User, Home, ChevronRight, Repeat } from 'lucide-vue-next'
+import { CheckSquare, LogIn, UserPlus, Lock, User, Home, ChevronRight, Repeat, X } from 'lucide-vue-next'
 import type { User as UserType } from '../../types'
 
 const emit = defineEmits<{

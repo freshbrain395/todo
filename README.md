@@ -53,12 +53,7 @@ pnpm dev
   # 或
   pnpm run cli
   ```
-- **快速执行命令行指令**：
-  ```bash
-  uv run todo-cli --list
-  uv run todo-cli add "学习 Python FastAPI 与 UV"
-  uv run todo-cli --help
-  ```
+  进入交互终端后可直接输入自然语言，或使用 `/help`、`/list`、`/add`、`/done`、`/prompt` 等 Slash 快捷命令。
 - **运行后端 Python 测试**：
   ```bash
   uv run --extra dev pytest backend/tests
