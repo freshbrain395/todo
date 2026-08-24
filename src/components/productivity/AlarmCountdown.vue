@@ -1,24 +1,6 @@
 <template>
   <div class="alarm-container animate-fade-in">
     <div class="alarm-workspace">
-      <!-- Sub Tab Switcher (Show if mode prop is not specified) -->
-      <div v-if="!props.mode" class="sub-tabs">
-        <button
-          class="sub-tab-btn"
-          :class="{ active: tab === 'countdown' }"
-          @click="tab = 'countdown'"
-        >
-          <Hourglass :size="15" /> 快捷倒计时 (Countdown)
-        </button>
-        <button
-          class="sub-tab-btn"
-          :class="{ active: tab === 'alarm' }"
-          @click="tab = 'alarm'"
-        >
-          <Bell :size="15" /> 闹钟 (Alarm)
-        </button>
-      </div>
-
       <!-- Tab 1: Countdown Mode (Split-pane Left-List Right-Config View) -->
       <div v-if="tab === 'countdown'" class="countdown-split-workspace">
         <!-- Left Pane: Countdown Timers List -->
@@ -85,6 +67,15 @@
                     <Trash2 :size="14" />
                   </button>
                 </div>
+
+                <!-- Bottom Progress Bar -->
+                <div class="card-progress-bar">
+                  <div
+                    class="card-progress-fill"
+                    :class="{ running: item.isRunning }"
+                    :style="{ width: `${((item.initialSeconds - item.remainingSeconds) / (item.initialSeconds || 1)) * 100}%` }"
+                  ></div>
+                </div>
               </div>
             </div>
           </div>
@@ -102,6 +93,8 @@
           <div class="countdown-right-content">
             <!-- Focus Big Ring Display -->
             <div class="active-timer-focus-box">
+              <div class="ambient-glow" :class="{ running: activeCountdown.isRunning }"></div>
+
               <div class="focus-display-section">
                 <!-- Adjust Left -->
                 <div class="adjust-group left">
@@ -111,7 +104,7 @@
                     title="减少5分钟"
                     :disabled="activeCountdown.remainingSeconds <= 300"
                   >
-                    -5m
+                    -5分
                   </button>
                   <button
                     class="btn-adjust"
@@ -119,36 +112,42 @@
                     title="减少1分钟"
                     :disabled="activeCountdown.remainingSeconds <= 60"
                   >
-                    -1m
+                    -1分
                   </button>
                 </div>
 
                 <!-- Circular Ring -->
                 <div class="timer-circle-wrapper" :class="{ 'is-active': activeCountdown.isRunning }">
-                  <svg class="progress-ring" width="220" height="220">
+                  <svg class="progress-ring" width="230" height="230">
                     <defs>
                       <linearGradient id="countdownGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                        <stop offset="0%" stop-color="#DD6B20" />
-                        <stop offset="100%" stop-color="#805AD5" />
+                        <stop offset="0%" stop-color="#6366f1" />
+                        <stop offset="50%" stop-color="#a855f7" />
+                        <stop offset="100%" stop-color="#ec4899" />
                       </linearGradient>
+                      <filter id="neonGlow" x="-20%" y="-20%" width="140%" height="140%">
+                        <feGaussianBlur stdDeviation="3" result="blur" />
+                        <feComposite in="SourceGraphic" in2="blur" operator="over" />
+                      </filter>
                     </defs>
                     <circle
                       class="progress-ring-bg"
-                      stroke-width="10"
-                      r="95"
-                      cx="110"
-                      cy="110"
+                      stroke-width="12"
+                      r="98"
+                      cx="115"
+                      cy="115"
                     />
                     <circle
                       class="progress-ring-fill"
-                      stroke-width="10"
-                      r="95"
-                      cx="110"
-                      cy="110"
+                      stroke-width="12"
+                      r="98"
+                      cx="115"
+                      cy="115"
                       stroke="url(#countdownGradient)"
+                      filter="url(#neonGlow)"
                       :style="{
-                        strokeDasharray: `${2 * Math.PI * 95} ${2 * Math.PI * 95}`,
-                        strokeDashoffset: `${(2 * Math.PI * 95) - (((activeCountdown.initialSeconds - activeCountdown.remainingSeconds) / (activeCountdown.initialSeconds || 1)) * 2 * Math.PI * 95)}`
+                        strokeDasharray: `${2 * Math.PI * 98} ${2 * Math.PI * 98}`,
+                        strokeDashoffset: `${(2 * Math.PI * 98) - (((activeCountdown.initialSeconds - activeCountdown.remainingSeconds) / (activeCountdown.initialSeconds || 1)) * 2 * Math.PI * 98)}`
                       }"
                     />
                   </svg>
@@ -165,10 +164,10 @@
                 <!-- Adjust Right -->
                 <div class="adjust-group right">
                   <button class="btn-adjust" @click="adjustCountdownTime(activeCountdown, 1)" title="增加1分钟">
-                    +1m
+                    +1分
                   </button>
                   <button class="btn-adjust" @click="adjustCountdownTime(activeCountdown, 5)" title="增加5分钟">
-                    +5m
+                    +5分
                   </button>
                 </div>
               </div>
@@ -207,8 +206,10 @@
                 <label class="form-label">快捷预设时长</label>
                 <div class="preset-chips-row">
                   <button class="chip-btn" :class="{ active: activeCountdown.initialSeconds === 60 }" @click="setCountdownPreset(activeCountdown, 1)">1 分钟</button>
+                  <button class="chip-btn" :class="{ active: activeCountdown.initialSeconds === 180 }" @click="setCountdownPreset(activeCountdown, 3)">3 分钟</button>
                   <button class="chip-btn" :class="{ active: activeCountdown.initialSeconds === 300 }" @click="setCountdownPreset(activeCountdown, 5)">5 分钟</button>
                   <button class="chip-btn" :class="{ active: activeCountdown.initialSeconds === 600 }" @click="setCountdownPreset(activeCountdown, 10)">10 分钟</button>
+                  <button class="chip-btn" :class="{ active: activeCountdown.initialSeconds === 900 }" @click="setCountdownPreset(activeCountdown, 15)">15 分钟</button>
                   <button class="chip-btn" :class="{ active: activeCountdown.initialSeconds === 1500 }" @click="setCountdownPreset(activeCountdown, 25)">25 分钟</button>
                   <button class="chip-btn" :class="{ active: activeCountdown.initialSeconds === 1800 }" @click="setCountdownPreset(activeCountdown, 30)">30 分钟</button>
                   <button class="chip-btn" :class="{ active: activeCountdown.initialSeconds === 3600 }" @click="setCountdownPreset(activeCountdown, 60)">60 分钟</button>
@@ -217,13 +218,24 @@
 
               <div class="form-group">
                 <label class="form-label">倒计时结束提醒音效</label>
-                <select v-model="activeCountdown.soundType" class="select-input">
-                  <option value="chime">清脆金铃 (Digital Chime)</option>
-                  <option value="marimba">柔和木音 (Soft Marimba)</option>
-                  <option value="cyber">科技脉冲 (Cyber Pulse)</option>
-                  <option value="beep">警报蜂鸣 (Beep Alert)</option>
-                  <option value="silent">无声 (仅弹窗提醒)</option>
-                </select>
+                <div class="sound-select-row">
+                  <select v-model="activeCountdown.soundType" class="select-input flex-1">
+                    <option value="chime">清脆金铃 (Digital Chime)</option>
+                    <option value="marimba">柔和木音 (Soft Marimba)</option>
+                    <option value="cyber">科技脉冲 (Cyber Pulse)</option>
+                    <option value="beep">警报蜂鸣 (Beep Alert)</option>
+                    <option value="silent">无声 (仅弹窗提醒)</option>
+                  </select>
+                  <button
+                    type="button"
+                    class="btn-sound-test"
+                    @click="previewSound(activeCountdown.soundType)"
+                    title="试听当前提醒音效"
+                    :disabled="activeCountdown.soundType === 'silent'"
+                  >
+                    <Volume2 :size="14" /> 试听
+                  </button>
+                </div>
               </div>
 
               <div class="form-group">
@@ -441,7 +453,7 @@
 import { ref, computed, onUnmounted, onMounted, watch } from 'vue'
 import {
   Hourglass, Bell, Play, Pause, RotateCcw,
-  Trash2, Plus, Tag, Repeat, Check, Coffee, Sliders, Sparkles
+  Trash2, Plus, Tag, Repeat, Check, Coffee, Sliders, Sparkles, Volume2
 } from 'lucide-vue-next'
 import { soundPlayer, type SoundType } from '../../utils/audio'
 import WheelTimePicker from '../widgets/WheelTimePicker.vue'
@@ -460,6 +472,12 @@ watch(() => props.mode, (newMode) => {
     tab.value = newMode
   }
 }, { immediate: true })
+
+function previewSound(soundType: SoundType | 'silent') {
+  if (soundType !== 'silent') {
+    soundPlayer.play(soundType, props.soundVolume ?? 0.8)
+  }
+}
 
 // Multi-Countdown Timer State & Data Model
 export interface CountdownItem {
@@ -1013,34 +1031,56 @@ onUnmounted(() => {
 .countdown-cards-stack {
   display: flex;
   flex-direction: column;
-  gap: 0;
+  gap: 8px;
 }
 
 .countdown-card-item {
-  background-color: transparent;
-  border: none;
-  border-bottom: 1px solid var(--border-color);
-  border-radius: 0;
-  border-left: 3px solid transparent;
-  padding: 12px 10px;
+  position: relative;
+  overflow: hidden;
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 12px 14px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
   cursor: pointer;
   transition: all 0.2s ease;
-  box-shadow: none;
+  box-shadow: var(--shadow-sm);
 }
 
 .countdown-card-item:hover {
   background-color: var(--bg-card-hover);
-  border-left-color: var(--text-muted);
+  border-color: var(--primary, #3b82f6);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
 }
 
 .countdown-card-item.active {
-  background-color: rgba(221, 107, 32, 0.08);
-  border-left-color: #DD6B20;
-  box-shadow: none;
+  background-color: rgba(99, 102, 241, 0.06);
+  border-color: #6366f1;
+  box-shadow: 0 0 0 1px #6366f1 inset, 0 4px 14px rgba(99, 102, 241, 0.12);
+}
+
+.card-progress-bar {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: rgba(0, 0, 0, 0.05);
+  overflow: hidden;
+}
+
+.card-progress-fill {
+  height: 100%;
+  background: #6366f1;
+  transition: width 0.8s ease;
+}
+
+.card-progress-fill.running {
+  background: linear-gradient(90deg, #6366f1, #ec4899);
 }
 
 .card-item-left {
@@ -1064,13 +1104,13 @@ onUnmounted(() => {
   display: flex;
   align-items: baseline;
   gap: 4px;
-  font-family: 'Roboto Mono', monospace, sans-serif;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 }
 
 .time-main {
   font-size: 16px;
   font-weight: 700;
-  color: #DD6B20;
+  color: #6366f1;
 }
 
 .time-sub {
@@ -1098,8 +1138,8 @@ onUnmounted(() => {
 }
 
 .status-tag.running {
-  background-color: rgba(221, 107, 32, 0.15);
-  color: #DD6B20;
+  background-color: rgba(99, 102, 241, 0.15);
+  color: #6366f1;
 }
 
 .status-tag.finished {
@@ -1130,8 +1170,8 @@ onUnmounted(() => {
 }
 
 .action-play-btn {
-  background-color: rgba(221, 107, 32, 0.12);
-  color: #DD6B20;
+  background-color: rgba(99, 102, 241, 0.12);
+  color: #6366f1;
   border-radius: 50%;
   width: 32px;
   height: 32px;
@@ -1145,12 +1185,12 @@ onUnmounted(() => {
 
 .action-play-btn:hover {
   transform: scale(1.1);
-  background-color: #DD6B20;
+  background-color: #6366f1;
   color: #FFFFFF;
 }
 
 .action-play-btn.running {
-  background-color: #DD6B20;
+  background-color: #6366f1;
   color: #FFFFFF;
 }
 
@@ -1161,21 +1201,48 @@ onUnmounted(() => {
 }
 
 .active-timer-focus-box {
-  background-color: transparent;
-  border: none;
-  border-radius: 0;
-  padding: 10px 0;
+  position: relative;
+  background: var(--bg-surface, #ffffff);
+  border: 1px solid var(--border-color, #e2e8f0);
+  border-radius: 18px;
+  padding: 24px 20px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 16px;
+  gap: 18px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04);
+}
+
+.ambient-glow {
+  position: absolute;
+  top: 45%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 220px;
+  height: 220px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(99, 102, 241, 0.12), transparent 70%);
+  pointer-events: none;
+  transition: all 0.5s ease;
+}
+
+.ambient-glow.running {
+  background: radial-gradient(circle, rgba(168, 85, 247, 0.22), transparent 70%);
+  animation: pulse-ambient 3s infinite ease-in-out;
+}
+
+@keyframes pulse-ambient {
+  0%, 100% { transform: translate(-50%, -50%) scale(1); opacity: 0.8; }
+  50% { transform: translate(-50%, -50%) scale(1.15); opacity: 1; }
 }
 
 .focus-display-section {
+  position: relative;
+  z-index: 1;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 20px;
+  gap: 24px;
   width: 100%;
 }
 
@@ -1189,8 +1256,8 @@ onUnmounted(() => {
   background-color: var(--bg-surface);
   border: 1px solid var(--border-color);
   color: var(--text-main);
-  width: 42px;
-  height: 42px;
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
   font-size: 12px;
   font-weight: 700;
@@ -1203,8 +1270,8 @@ onUnmounted(() => {
 }
 
 .btn-adjust:hover:not(:disabled) {
-  border-color: var(--primary);
-  color: var(--primary);
+  border-color: #6366f1;
+  color: #6366f1;
   transform: scale(1.08);
 }
 
@@ -1215,8 +1282,8 @@ onUnmounted(() => {
 
 .timer-circle-wrapper {
   position: relative;
-  width: 220px;
-  height: 220px;
+  width: 230px;
+  height: 230px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1229,7 +1296,7 @@ onUnmounted(() => {
 
 .progress-ring-bg {
   fill: transparent;
-  stroke: var(--bg-surface);
+  stroke: rgba(0, 0, 0, 0.06);
 }
 
 .progress-ring-fill {
@@ -1249,8 +1316,8 @@ onUnmounted(() => {
 }
 
 .time-number {
-  font-family: 'Roboto Mono', monospace, sans-serif;
-  font-size: 42px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 44px;
   font-weight: 800;
   color: var(--text-main);
   letter-spacing: -1px;
@@ -1270,9 +1337,9 @@ onUnmounted(() => {
 }
 
 .timer-status-badge.running {
-  color: #DD6B20;
-  border-color: rgba(221, 107, 32, 0.3);
-  background-color: rgba(221, 107, 32, 0.08);
+  color: #6366f1;
+  border-color: rgba(99, 102, 241, 0.3);
+  background-color: rgba(99, 102, 241, 0.08);
 }
 
 .status-dot {
@@ -1283,6 +1350,8 @@ onUnmounted(() => {
 }
 
 .focus-controls-row {
+  position: relative;
+  z-index: 1;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1293,26 +1362,26 @@ onUnmounted(() => {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  background: linear-gradient(135deg, #DD6B20 0%, #C05621 100%);
+  background: linear-gradient(135deg, #6366f1 0%, #a855f7 50%, #ec4899 100%);
   color: #FFFFFF;
   border: none;
   font-size: 14px;
   font-weight: 700;
-  padding: 10px 24px;
+  padding: 11px 26px;
   border-radius: 20px;
   cursor: pointer;
   transition: all 0.25s ease;
-  box-shadow: 0 4px 16px rgba(221, 107, 32, 0.35);
+  box-shadow: 0 4px 16px rgba(99, 102, 241, 0.35);
 }
 
 .btn-toggle-run:hover {
   transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(221, 107, 32, 0.45);
+  box-shadow: 0 6px 20px rgba(99, 102, 241, 0.45);
 }
 
 .btn-toggle-run.is-running {
-  background: linear-gradient(135deg, #E53E3E 0%, #C53030 100%);
-  box-shadow: 0 4px 16px rgba(229, 62, 62, 0.35);
+  background: linear-gradient(135deg, #ef4444 0%, #f97316 100%);
+  box-shadow: 0 4px 16px rgba(239, 68, 68, 0.35);
 }
 
 .preset-chips-row {
@@ -1334,9 +1403,41 @@ onUnmounted(() => {
 }
 
 .chip-btn:hover, .chip-btn.active {
-  border-color: #DD6B20;
-  color: #DD6B20;
-  background-color: rgba(221, 107, 32, 0.08);
+  border-color: #6366f1;
+  color: #6366f1;
+  background-color: rgba(99, 102, 241, 0.08);
+}
+
+.sound-select-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.btn-sound-test {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  background: rgba(99, 102, 241, 0.08);
+  border: 1px solid rgba(99, 102, 241, 0.2);
+  color: #6366f1;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.btn-sound-test:hover:not(:disabled) {
+  background: rgba(99, 102, 241, 0.16);
+  transform: translateY(-1px);
+}
+
+.btn-sound-test:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
 }
 
 

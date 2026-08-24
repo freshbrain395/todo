@@ -280,7 +280,7 @@
 
       <!-- Tab 5: Countdown Timer View -->
       <template v-else-if="currentTab === 'countdown'">
-        <AlarmCountdown />
+        <AlarmCountdown mode="countdown" />
       </template>
 
       <!-- Tab 6: Alarm View -->
@@ -1924,8 +1924,12 @@ onMounted(() => {
   bottom: 20px;
   left: 50%;
   transform: translateX(-50%);
+  margin: 0 auto;
+  width: max-content;
+  max-width: calc(100vw - 32px);
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 6px;
   padding: 8px 14px;
   background: var(--bg-surface, rgba(255, 255, 255, 0.92));
