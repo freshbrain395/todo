@@ -781,52 +781,52 @@ async function resetAllSettings() {
 <style scoped>
 .settings-container {
   display: flex;
-  justify-content: center;
-  align-items: stretch;
   width: 100%;
-  flex: 1;
-  min-height: 0;
-  padding: 16px;
+  height: 100%;
+  padding: 0;
+  margin: 0;
   overflow: hidden;
   box-sizing: border-box;
+  background-color: var(--bg-app);
 }
 
 .settings-layout {
   display: flex;
   flex-direction: row;
   width: 100%;
-  max-width: 1100px;
-  background-color: var(--bg-surface);
-  border: 1px solid var(--border-color);
-  border-radius: 12px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  height: 100%;
+  max-width: 100%;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
   overflow: hidden;
   min-height: 0;
   flex: 1;
 }
 
-/* Left Sidebar Navigation (VS Code Settings Style) */
+/* Left Sidebar Navigation (VS Code Settings Full-Screen Style) */
 .settings-sidebar {
-  width: 230px;
-  min-width: 230px;
-  max-width: 230px;
+  width: 240px;
+  min-width: 240px;
+  max-width: 240px;
   background-color: var(--bg-surface);
   border-right: 1px solid var(--border-color);
   display: flex;
   flex-direction: column;
-  padding: 16px 10px;
+  padding: 20px 12px;
   box-sizing: border-box;
   flex-shrink: 0;
 }
 
 .settings-sidebar-header {
-  padding: 4px 8px 12px 8px;
+  padding: 4px 8px 14px 8px;
   border-bottom: 1px solid var(--border-color);
-  margin-bottom: 8px;
+  margin-bottom: 10px;
 }
 
 .sidebar-title {
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 700;
   color: var(--primary);
   display: flex;
@@ -847,11 +847,11 @@ async function resetAllSettings() {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 9px 12px;
+  padding: 10px 14px;
   background: transparent;
   border: 1px solid transparent;
   border-left: 3px solid transparent;
-  border-radius: 6px;
+  border-radius: 8px;
   color: var(--text-muted);
   font-size: 13px;
   font-weight: 500;
@@ -898,9 +898,10 @@ async function resetAllSettings() {
   flex: 1;
   min-width: 0;
   min-height: 0;
-  padding: 24px 28px;
+  padding: 32px 48px;
   overflow-y: auto;
   box-sizing: border-box;
+  background-color: var(--bg-app);
 }
 
 @media (max-width: 768px) {
@@ -947,6 +948,8 @@ async function resetAllSettings() {
   display: flex;
   flex-direction: column;
   gap: 20px;
+  max-width: 960px;
+  width: 100%;
   animation: tabFadeIn 0.2s ease-in-out;
 }
 

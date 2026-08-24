@@ -1,409 +1,129 @@
 <template>
   <div class="alarm-container animate-fade-in">
-    <div class="alarm-workspace">
-      <!-- Tab 1: Countdown Mode (Split-pane Left-List Right-Config View) -->
-      <div v-if="tab === 'countdown'" class="countdown-split-workspace">
-        <!-- Left Pane: Countdown Timers List -->
-        <div class="countdown-left-pane">
-          <div class="pane-header">
-            <div class="header-title">
-              <Hourglass :size="18" class="icon-hourglass" />
-              <span>我的倒计时列表</span>
-              <span class="count-badge">{{ countdownList.length }} 个</span>
-            </div>
-            <button class="btn btn-sm btn-primary" @click="createNewCountdown">
-              <Plus :size="14" /> 新建倒计时
-            </button>
-          </div>
-
-          <div class="countdown-list-scroll">
-            <div class="countdown-cards-stack">
-              <div
-                v-for="item in countdownList"
-                :key="item.id"
-                class="countdown-card-item"
-                :class="{ active: selectedCountdownId === item.id, running: item.isRunning }"
-                @click="selectedCountdownId = item.id"
-              >
-                <div class="card-item-left">
-                  <div class="card-item-title">{{ item.title }}</div>
-                  <div class="card-item-time">
-                    <span class="time-main">{{ formatDurationText(item.remainingSeconds) }}</span>
-                    <span class="time-sub">/ {{ formatDurationText(item.initialSeconds) }}</span>
-                  </div>
-                  <div class="card-item-tags">
-                    <span class="status-tag" :class="{ running: item.isRunning, finished: item.remainingSeconds === 0 }">
-                      <span class="dot"></span>
-                      {{ item.isRunning ? '计时中' : item.remainingSeconds === 0 ? '已完成' : '就绪' }}
-                    </span>
-                    <span class="sound-tag">{{ soundTypeShortLabel(item.soundType) }}</span>
-                  </div>
-                </div>
-
-                <div class="card-item-right" @click.stop>
-                  <button
-                    class="icon-btn action-play-btn"
-                    :class="{ running: item.isRunning }"
-                    @click="toggleCountdownItem(item)"
-                    :title="item.isRunning ? '暂停' : '开始'"
-                  >
-                    <Pause v-if="item.isRunning" :size="15" />
-                    <Play v-else :size="15" />
-                  </button>
-
-                  <button
-                    class="icon-btn reset-btn"
-                    @click="resetCountdownItem(item)"
-                    title="重置倒计时"
-                  >
-                    <RotateCcw :size="14" />
-                  </button>
-
-                  <button
-                    class="icon-btn delete-btn"
-                    @click="removeCountdownItem(item.id)"
-                    title="删除此倒计时"
-                  >
-                    <Trash2 :size="14" />
-                  </button>
-                </div>
-
-                <!-- Bottom Progress Bar -->
-                <div class="card-progress-bar">
-                  <div
-                    class="card-progress-fill"
-                    :class="{ running: item.isRunning }"
-                    :style="{ width: `${((item.initialSeconds - item.remainingSeconds) / (item.initialSeconds || 1)) * 100}%` }"
-                  ></div>
-                </div>
-              </div>
-            </div>
-          </div>
+    <!-- View 1: Countdown Mode List View -->
+    <div v-if="tab === 'countdown'" class="pure-list-workspace">
+      <!-- Top Toolbar (Filters, Search, Add Button) -->
+      <div class="toolbar">
+        <div class="filter-group">
+          <button
+            class="filter-btn"
+            :class="{ active: countdownFilter === 'all' }"
+            @click="countdownFilter = 'all'"
+          >
+            全部 ({{ countdownList.length }})
+          </button>
+          <button
+            class="filter-btn"
+            :class="{ active: countdownFilter === 'running' }"
+            @click="countdownFilter = 'running'"
+          >
+            计时中 ({{ runningCountdownCount }})
+          </button>
+          <button
+            class="filter-btn"
+            :class="{ active: countdownFilter === 'completed' }"
+            @click="countdownFilter = 'completed'"
+          >
+            已完成 ({{ completedCountdownCount }})
+          </button>
         </div>
 
-        <!-- Right Pane: Active Timer Focus Display & Configuration Form -->
-        <div class="countdown-right-pane" v-if="activeCountdown">
-          <div class="pane-header">
-            <div class="header-title">
-              <Sliders :size="18" class="icon-sliders" />
-              <span>倒计时控制台 & 详细配置</span>
-            </div>
+        <div class="toolbar-right">
+          <div class="search-box">
+            <Search :size="14" class="search-icon" />
+            <input
+              type="text"
+              v-model="countdownSearch"
+              placeholder="搜索倒计时..."
+            />
           </div>
 
-          <div class="countdown-right-content">
-            <!-- Focus Big Ring Display -->
-            <div class="active-timer-focus-box">
-              <div class="ambient-glow" :class="{ running: activeCountdown.isRunning }"></div>
-
-              <div class="focus-display-section">
-                <!-- Adjust Left -->
-                <div class="adjust-group left">
-                  <button
-                    class="btn-adjust"
-                    @click="adjustCountdownTime(activeCountdown, -5)"
-                    title="减少5分钟"
-                    :disabled="activeCountdown.remainingSeconds <= 300"
-                  >
-                    -5分
-                  </button>
-                  <button
-                    class="btn-adjust"
-                    @click="adjustCountdownTime(activeCountdown, -1)"
-                    title="减少1分钟"
-                    :disabled="activeCountdown.remainingSeconds <= 60"
-                  >
-                    -1分
-                  </button>
-                </div>
-
-                <!-- Circular Ring -->
-                <div class="timer-circle-wrapper" :class="{ 'is-active': activeCountdown.isRunning }">
-                  <svg class="progress-ring" width="230" height="230">
-                    <defs>
-                      <linearGradient id="countdownGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                        <stop offset="0%" stop-color="#6366f1" />
-                        <stop offset="50%" stop-color="#a855f7" />
-                        <stop offset="100%" stop-color="#ec4899" />
-                      </linearGradient>
-                      <filter id="neonGlow" x="-20%" y="-20%" width="140%" height="140%">
-                        <feGaussianBlur stdDeviation="3" result="blur" />
-                        <feComposite in="SourceGraphic" in2="blur" operator="over" />
-                      </filter>
-                    </defs>
-                    <circle
-                      class="progress-ring-bg"
-                      stroke-width="12"
-                      r="98"
-                      cx="115"
-                      cy="115"
-                    />
-                    <circle
-                      class="progress-ring-fill"
-                      stroke-width="12"
-                      r="98"
-                      cx="115"
-                      cy="115"
-                      stroke="url(#countdownGradient)"
-                      filter="url(#neonGlow)"
-                      :style="{
-                        strokeDasharray: `${2 * Math.PI * 98} ${2 * Math.PI * 98}`,
-                        strokeDashoffset: `${(2 * Math.PI * 98) - (((activeCountdown.initialSeconds - activeCountdown.remainingSeconds) / (activeCountdown.initialSeconds || 1)) * 2 * Math.PI * 98)}`
-                      }"
-                    />
-                  </svg>
-
-                  <div class="timer-center-text">
-                    <span class="time-number">{{ formatDurationText(activeCountdown.remainingSeconds) }}</span>
-                    <span class="timer-status-badge" :class="{ running: activeCountdown.isRunning }">
-                      <span class="status-dot"></span>
-                      {{ activeCountdown.isRunning ? '计时中' : activeCountdown.remainingSeconds === 0 ? '计时完成' : '准备就绪' }}
-                    </span>
-                  </div>
-                </div>
-
-                <!-- Adjust Right -->
-                <div class="adjust-group right">
-                  <button class="btn-adjust" @click="adjustCountdownTime(activeCountdown, 1)" title="增加1分钟">
-                    +1分
-                  </button>
-                  <button class="btn-adjust" @click="adjustCountdownTime(activeCountdown, 5)" title="增加5分钟">
-                    +5分
-                  </button>
-                </div>
-              </div>
-
-              <!-- Main Control Row -->
-              <div class="focus-controls-row">
-                <button class="btn btn-reset" @click="resetCountdownItem(activeCountdown)" title="重置倒计时">
-                  <RotateCcw :size="16" /> 重置
-                </button>
-
-                <button
-                  class="btn btn-toggle-run"
-                  :class="{ 'is-running': activeCountdown.isRunning }"
-                  @click="toggleCountdownItem(activeCountdown)"
-                >
-                  <Pause v-if="activeCountdown.isRunning" :size="20" />
-                  <Play v-else :size="20" />
-                  <span>{{ activeCountdown.isRunning ? '暂停计时' : '开始倒计时' }}</span>
-                </button>
-              </div>
-            </div>
-
-            <!-- Configuration Details Card -->
-            <div class="config-form-card">
-              <div class="form-group">
-                <label class="form-label">倒计时名称 / 备注 *</label>
-                <input
-                  type="text"
-                  v-model="activeCountdown.title"
-                  class="text-input"
-                  placeholder="例如: 番茄专注 / 煮温泉蛋 / 歇息5分钟..."
-                />
-              </div>
-
-              <div class="form-group">
-                <label class="form-label">快捷预设时长</label>
-                <div class="preset-chips-row">
-                  <button class="chip-btn" :class="{ active: activeCountdown.initialSeconds === 60 }" @click="setCountdownPreset(activeCountdown, 1)">1 分钟</button>
-                  <button class="chip-btn" :class="{ active: activeCountdown.initialSeconds === 180 }" @click="setCountdownPreset(activeCountdown, 3)">3 分钟</button>
-                  <button class="chip-btn" :class="{ active: activeCountdown.initialSeconds === 300 }" @click="setCountdownPreset(activeCountdown, 5)">5 分钟</button>
-                  <button class="chip-btn" :class="{ active: activeCountdown.initialSeconds === 600 }" @click="setCountdownPreset(activeCountdown, 10)">10 分钟</button>
-                  <button class="chip-btn" :class="{ active: activeCountdown.initialSeconds === 900 }" @click="setCountdownPreset(activeCountdown, 15)">15 分钟</button>
-                  <button class="chip-btn" :class="{ active: activeCountdown.initialSeconds === 1500 }" @click="setCountdownPreset(activeCountdown, 25)">25 分钟</button>
-                  <button class="chip-btn" :class="{ active: activeCountdown.initialSeconds === 1800 }" @click="setCountdownPreset(activeCountdown, 30)">30 分钟</button>
-                  <button class="chip-btn" :class="{ active: activeCountdown.initialSeconds === 3600 }" @click="setCountdownPreset(activeCountdown, 60)">60 分钟</button>
-                </div>
-              </div>
-
-              <div class="form-group">
-                <label class="form-label">倒计时结束提醒音效</label>
-                <div class="sound-select-row">
-                  <select v-model="activeCountdown.soundType" class="select-input flex-1">
-                    <option value="chime">清脆金铃 (Digital Chime)</option>
-                    <option value="marimba">柔和木音 (Soft Marimba)</option>
-                    <option value="cyber">科技脉冲 (Cyber Pulse)</option>
-                    <option value="beep">警报蜂鸣 (Beep Alert)</option>
-                    <option value="silent">无声 (仅弹窗提醒)</option>
-                  </select>
-                  <button
-                    type="button"
-                    class="btn-sound-test"
-                    @click="previewSound(activeCountdown.soundType)"
-                    title="试听当前提醒音效"
-                    :disabled="activeCountdown.soundType === 'silent'"
-                  >
-                    <Volume2 :size="14" /> 试听
-                  </button>
-                </div>
-              </div>
-
-              <div class="form-group">
-                <label class="form-label">提醒交互方式</label>
-                <select v-model="activeCountdown.notifyType" class="select-input">
-                  <option value="sound_and_popup">声音响铃 + 弹窗提醒 (默认)</option>
-                  <option value="sound_only">仅播放声音提醒</option>
-                  <option value="popup_only">仅显示弹窗提醒</option>
-                </select>
-              </div>
-
-              <div class="form-group">
-                <label class="form-label">结束提醒提示词 / 消息文本</label>
-                <input
-                  type="text"
-                  v-model="activeCountdown.finishMessage"
-                  class="text-input"
-                  placeholder="例如: 8分钟到了，温泉蛋煮好啦！"
-                />
-              </div>
-
-              <div class="config-actions">
-                <button class="btn btn-outline" @click="resetCountdownItem(activeCountdown)">
-                  重置为初始时长
-                </button>
-                <button class="btn btn-danger-outline" @click="removeCountdownItem(activeCountdown.id)">
-                  <Trash2 :size="14" /> 删除倒计时
-                </button>
-              </div>
-            </div>
-          </div>
+          <button class="btn btn-primary" @click="openAddCountdownModal">
+            <Plus :size="14" /> 新建倒计时
+          </button>
         </div>
       </div>
 
-      <!-- Tab 2: Alarm Mode (Split-pane Left-List Right-Config View) -->
-      <div v-else class="alarm-split-workspace">
-        <!-- Left Pane: Alarm List -->
-        <div class="alarm-left-pane">
-          <div class="pane-header">
-            <div class="header-title">
-              <Bell :size="18" class="icon-bell" />
-              <span>我的闹钟列表</span>
-              <span class="alarm-count-badge">{{ alarmList.length }} 个</span>
-            </div>
-            <button class="btn btn-sm btn-primary" @click="resetFormForNew">
-              <Plus :size="14" /> 新建
-            </button>
-          </div>
-
-          <div class="alarm-list-scroll">
-            <div v-if="alarmList.length === 0" class="empty-alarm-state">
-              <div class="empty-icon"><Bell :size="36" :stroke-width="1.5" /></div>
-              <p class="empty-text">暂无已设闹钟，右侧面板直接配置添加！</p>
-            </div>
-
-            <div v-else class="alarm-cards-stack">
-              <div
-                v-for="item in alarmList"
-                :key="item.id"
-                class="alarm-card-item"
-                :class="{ active: selectedAlarmId === item.id, disabled: !item.enabled }"
-                @click="selectAlarmToEdit(item)"
-              >
-                <div class="alarm-item-left">
-                  <div class="alarm-time-display">{{ item.time }}</div>
-                  <div class="alarm-meta-info">
-                    <span class="alarm-tag-label" v-if="item.label">
-                      <Tag :size="11" /> {{ item.label }}
-                    </span>
-                    <span class="alarm-tag-repeat">
-                      <Repeat :size="11" /> {{ formatRepeatText(item) }}
-                    </span>
-                  </div>
-                </div>
-
-                <div class="alarm-item-right" @click.stop>
-                  <label class="switch-toggle" title="开启/关闭闹钟">
-                    <input
-                      type="checkbox"
-                      :checked="item.enabled"
-                      @change="item.enabled = !item.enabled"
-                    />
-                    <span class="slider-round"></span>
-                  </label>
-
-                  <button class="icon-btn delete-btn" @click="removeAlarm(item.id)" title="删除闹钟">
-                    <Trash2 :size="15" />
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
+      <!-- Countdown List Area -->
+      <div class="list-scroll-area">
+        <div v-if="filteredCountdownList.length === 0" class="empty-state">
+          <div class="empty-icon"><Hourglass :size="42" :stroke-width="1.5" /></div>
+          <p class="empty-text">暂无倒计时项目，点击右上角 "+ 新建倒计时" 添加吧！</p>
         </div>
 
-        <!-- Right Pane: Direct Configuration Form -->
-        <div class="alarm-right-pane">
-          <div class="pane-header">
-            <div class="header-title">
-              <Sliders :size="18" class="icon-sliders" />
-              <span>{{ editingAlarmId ? '编辑闹钟配置' : '新建闹钟配置' }}</span>
-            </div>
-          </div>
-
-          <div class="config-form-card">
-            <div class="form-group">
-              <label class="form-label">响铃时刻 (3D 轮盘调节) *</label>
-              <WheelTimePicker v-model="alarmForm.time" />
-            </div>
-
-            <div class="form-group">
-              <label class="form-label">闹钟标签 / 备注说明</label>
-              <input
-                type="text"
-                v-model="alarmForm.label"
-                class="text-input"
-                placeholder="例如: 晨起早读 / 团队开会 / 喝水提醒..."
-              />
-            </div>
-
-            <div class="form-group">
-              <label class="form-label">重复频率 / 智能调休模式</label>
-              <select v-model="alarmForm.repeatType" class="select-input">
-                <option value="holiday_compensate">智能调休闹钟 (工作日响 / 假关 / 补班响)</option>
-                <option value="compensate_only">仅调休补班日 (周六日补班时自动响)</option>
-                <option value="workday">工作日 (周一至周五)</option>
-                <option value="weekend">周末 (周六与周日)</option>
-                <option value="everyday">每天响铃</option>
-                <option value="once">单次响铃 (仅响一次)</option>
-                <option value="custom">自定义星期</option>
-              </select>
-            </div>
-
-            <!-- 调休闹钟高级设置面板 -->
-            <div v-if="alarmForm.repeatType === 'holiday_compensate' || alarmForm.repeatType === 'compensate_only'" class="compensate-config-box">
-              <label class="checkbox-option">
-                <input type="checkbox" v-model="alarmForm.skipHolidays" />
-                <span>自动跳过法定节假日 (假期当天不响铃)</span>
-              </label>
-              <label class="checkbox-option">
-                <input type="checkbox" v-model="alarmForm.ringOnCompensate" />
-                <span>周末调休补班智能响铃 (补班日自动激活)</span>
-              </label>
-              <div class="compensate-tips">
-                <Sparkles :size="14" /> 已接入法定节假日与调休补班日历，自动识别调休日，避免假期误响与补班漏响。
+        <div v-else class="items-grid">
+          <div
+            v-for="item in filteredCountdownList"
+            :key="item.id"
+            class="list-card-item animate-fade-in"
+            :class="{ running: item.isRunning, completed: item.remainingSeconds === 0 }"
+          >
+            <div class="card-left-indicator">
+              <div class="mini-timer-circle" :class="{ running: item.isRunning, done: item.remainingSeconds === 0 }">
+                <Hourglass :size="18" />
               </div>
             </div>
 
-            <div v-if="alarmForm.repeatType === 'custom'" class="form-group">
-              <label class="form-label">选择重复星期:</label>
-              <div class="weekdays-selector">
-                <button
-                  v-for="day in [1, 2, 3, 4, 5, 6, 0]"
-                  :key="day"
-                  class="weekday-chip"
-                  :class="{ active: alarmForm.customDays.includes(day) }"
-                  @click="toggleCustomDay(day)"
-                >
-                  {{ weekDayLabel(day) }}
-                </button>
+            <div class="card-body">
+              <div class="card-title-row">
+                <span class="card-title">{{ item.title }}</span>
+                <span class="status-tag" :class="{ running: item.isRunning, finished: item.remainingSeconds === 0 }">
+                  <span class="dot"></span>
+                  {{ item.isRunning ? '计时中' : item.remainingSeconds === 0 ? '已完成' : '就绪' }}
+                </span>
+                <span class="sound-tag">{{ soundTypeShortLabel(item.soundType) }}</span>
+              </div>
+
+              <div class="card-time-display">
+                <span class="digits-time">{{ formatDurationText(item.remainingSeconds) }}</span>
+                <span class="digits-total">/ 初始 {{ formatDurationText(item.initialSeconds) }}</span>
+                <span v-if="item.finishMessage" class="finish-msg-tip">· {{ item.finishMessage }}</span>
+              </div>
+
+              <!-- Progress Track -->
+              <div class="item-progress-track">
+                <div
+                  class="item-progress-bar"
+                  :class="{ running: item.isRunning, done: item.remainingSeconds === 0 }"
+                  :style="{ width: `${((item.initialSeconds - item.remainingSeconds) / (item.initialSeconds || 1)) * 100}%` }"
+                ></div>
               </div>
             </div>
 
-            <div class="config-actions">
-              <button v-if="editingAlarmId" class="btn btn-outline" @click="resetFormForNew">
-                重置为新建
+            <div class="card-actions">
+              <button
+                class="btn-action-primary"
+                :class="{ running: item.isRunning }"
+                @click="toggleCountdownItem(item)"
+                :title="item.isRunning ? '暂停计时' : '开始计时'"
+              >
+                <Pause v-if="item.isRunning" :size="14" />
+                <Play v-else :size="14" />
+                <span>{{ item.isRunning ? '暂停' : '开始' }}</span>
               </button>
-              <button class="btn btn-primary btn-save-large" @click="saveAlarmForm">
-                <Check :size="16" /> {{ editingAlarmId ? '保存更改' : '直接添加闹钟' }}
+
+              <button
+                class="icon-btn-action reset"
+                @click="resetCountdownItem(item)"
+                title="重置倒计时"
+              >
+                <RotateCcw :size="14" />
+              </button>
+
+              <button
+                class="icon-btn-action edit"
+                @click="openEditCountdownModal(item)"
+                title="编辑倒计时"
+              >
+                <Sliders :size="14" />
+              </button>
+
+              <button
+                class="icon-btn-action delete"
+                @click="removeCountdownItem(item.id)"
+                title="删除倒计时"
+              >
+                <Trash2 :size="14" />
               </button>
             </div>
           </div>
@@ -411,14 +131,325 @@
       </div>
     </div>
 
-    <!-- Countdown Ringing/Finished Notification Modal -->
+    <!-- View 2: Alarm Mode List View -->
+    <div v-else class="pure-list-workspace">
+      <!-- Top Toolbar (Filters, Search, Add Button) -->
+      <div class="toolbar">
+        <div class="filter-group">
+          <button
+            class="filter-btn"
+            :class="{ active: alarmFilter === 'all' }"
+            @click="alarmFilter = 'all'"
+          >
+            全部 ({{ alarmList.length }})
+          </button>
+          <button
+            class="filter-btn"
+            :class="{ active: alarmFilter === 'enabled' }"
+            @click="alarmFilter = 'enabled'"
+          >
+            已启用 ({{ enabledAlarmCount }})
+          </button>
+          <button
+            class="filter-btn"
+            :class="{ active: alarmFilter === 'disabled' }"
+            @click="alarmFilter = 'disabled'"
+          >
+            已关闭 ({{ disabledAlarmCount }})
+          </button>
+        </div>
+
+        <div class="toolbar-right">
+          <div class="search-box">
+            <Search :size="14" class="search-icon" />
+            <input
+              type="text"
+              v-model="alarmSearch"
+              placeholder="搜索闹钟..."
+            />
+          </div>
+
+          <button class="btn btn-primary" @click="openAddAlarmModal">
+            <Plus :size="14" /> 新建闹钟
+          </button>
+        </div>
+      </div>
+
+      <!-- Alarm List Area -->
+      <div class="list-scroll-area">
+        <div v-if="filteredAlarmList.length === 0" class="empty-state">
+          <div class="empty-icon"><Bell :size="42" :stroke-width="1.5" /></div>
+          <p class="empty-text">暂无闹钟设置，点击右上角 "+ 新建闹钟" 添加吧！</p>
+        </div>
+
+        <div v-else class="items-grid">
+          <div
+            v-for="item in filteredAlarmList"
+            :key="item.id"
+            class="list-card-item animate-fade-in"
+            :class="{ disabled: !item.enabled }"
+          >
+            <div class="card-left-indicator">
+              <div class="mini-alarm-icon" :class="{ enabled: item.enabled }">
+                <Bell :size="20" />
+              </div>
+            </div>
+
+            <div class="card-body">
+              <div class="card-title-row">
+                <span class="alarm-time-huge">{{ item.time }}</span>
+                <span v-if="item.label" class="alarm-tag-label">
+                  <Tag :size="12" /> {{ item.label }}
+                </span>
+                <span class="alarm-tag-repeat">
+                  <Repeat :size="12" /> {{ formatRepeatText(item) }}
+                </span>
+                <span class="sound-tag">{{ soundTypeShortLabel(item.soundType) }}</span>
+              </div>
+
+              <div class="alarm-sub-desc">
+                <span v-if="item.repeatType === 'holiday_compensate'" class="smart-tip">
+                  <Sparkles :size="12" /> 法定假期自动跳过 · 调休补班日自动响铃
+                </span>
+                <span v-else-if="item.repeatType === 'compensate_only'" class="smart-tip">
+                  <Sparkles :size="12" /> 仅在周末补班日响铃
+                </span>
+                <span v-else class="normal-tip">
+                  {{ item.enabled ? '已激活响铃提醒' : '已关闭' }}
+                </span>
+              </div>
+            </div>
+
+            <div class="card-actions">
+              <!-- Switch Toggle -->
+              <label class="switch-toggle" title="开启/关闭闹钟">
+                <input
+                  type="checkbox"
+                  :checked="item.enabled"
+                  @change="item.enabled = !item.enabled"
+                />
+                <span class="slider-round"></span>
+              </label>
+
+              <button
+                class="icon-btn-action edit"
+                @click="openEditAlarmModal(item)"
+                title="编辑闹钟"
+              >
+                <Sliders :size="14" />
+              </button>
+
+              <button
+                class="icon-btn-action delete"
+                @click="removeAlarm(item.id)"
+                title="删除闹钟"
+              >
+                <Trash2 :size="14" />
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Countdown Modal (Add / Edit) -->
+    <div v-if="showCountdownModal" class="modal-backdrop" @click.self="showCountdownModal = false">
+      <div class="modal-card animate-scale-up">
+        <div class="modal-header">
+          <h3><Hourglass :size="18" /> {{ editingCountdownId ? '编辑倒计时' : '新建倒计时' }}</h3>
+          <button class="icon-btn-close" @click="showCountdownModal = false"><X :size="16" /></button>
+        </div>
+
+        <div class="modal-body">
+          <div class="form-group">
+            <label class="form-label">倒计时名称 *</label>
+            <input
+              type="text"
+              v-model="countdownForm.title"
+              class="text-input"
+              placeholder="例如: 番茄专注 / 煮面计时 / 敷面膜"
+            />
+          </div>
+
+          <div class="form-group">
+            <div class="label-with-presets">
+              <label class="form-label">预设快捷时长</label>
+              <div class="quick-preset-chips">
+                <button type="button" class="preset-chip" @click="setModalMinutes(1)">1分</button>
+                <button type="button" class="preset-chip" @click="setModalMinutes(3)">3分</button>
+                <button type="button" class="preset-chip" @click="setModalMinutes(5)">5分</button>
+                <button type="button" class="preset-chip" @click="setModalMinutes(10)">10分</button>
+                <button type="button" class="preset-chip" @click="setModalMinutes(15)">15分</button>
+                <button type="button" class="preset-chip" @click="setModalMinutes(25)">25分</button>
+                <button type="button" class="preset-chip" @click="setModalMinutes(30)">30分</button>
+                <button type="button" class="preset-chip" @click="setModalMinutes(60)">60分</button>
+              </div>
+            </div>
+
+            <div class="time-inputs-row">
+              <div class="time-unit-box">
+                <input type="number" min="0" max="99" v-model.number="countdownForm.hours" class="unit-input" />
+                <span class="unit-label">小时</span>
+              </div>
+              <span class="unit-colon">:</span>
+              <div class="time-unit-box">
+                <input type="number" min="0" max="59" v-model.number="countdownForm.minutes" class="unit-input" />
+                <span class="unit-label">分钟</span>
+              </div>
+              <span class="unit-colon">:</span>
+              <div class="time-unit-box">
+                <input type="number" min="0" max="59" v-model.number="countdownForm.seconds" class="unit-input" />
+                <span class="unit-label">秒</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">提示音效</label>
+            <div class="sound-select-row">
+              <select v-model="countdownForm.soundType" class="select-input flex-1">
+                <option value="chime">风铃清脆 (Chime)</option>
+                <option value="marimba">马林巴琴 (Marimba)</option>
+                <option value="cyber">赛博提示 (Cyber)</option>
+                <option value="beep">电子蜂鸣 (Beep)</option>
+                <option value="silent">静音 (无声音)</option>
+              </select>
+              <button
+                type="button"
+                class="btn btn-outline preview-btn"
+                @click="previewSound(countdownForm.soundType)"
+                title="试听当前提示音"
+              >
+                <Volume2 :size="14" /> 试听
+              </button>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">结束提醒提示词 / 消息说明</label>
+            <input
+              type="text"
+              v-model="countdownForm.finishMessage"
+              class="text-input"
+              placeholder="例如: 8分钟到了，温泉蛋煮好啦！"
+            />
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button class="btn btn-outline" @click="showCountdownModal = false">取消</button>
+          <button class="btn btn-primary" @click="saveCountdownModal">
+            <Check :size="14" /> 保存倒计时
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Alarm Modal (Add / Edit) -->
+    <div v-if="showAlarmModal" class="modal-backdrop" @click.self="showAlarmModal = false">
+      <div class="modal-card animate-scale-up">
+        <div class="modal-header">
+          <h3><Bell :size="18" /> {{ editingAlarmId ? '编辑闹钟' : '新建闹钟' }}</h3>
+          <button class="icon-btn-close" @click="showAlarmModal = false"><X :size="16" /></button>
+        </div>
+
+        <div class="modal-body">
+          <div class="form-group">
+            <label class="form-label">响铃时刻 (3D 轮盘调节) *</label>
+            <WheelTimePicker v-model="alarmForm.time" />
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">闹钟标签 / 备注说明</label>
+            <input
+              type="text"
+              v-model="alarmForm.label"
+              class="text-input"
+              placeholder="例如: 晨起早读 / 团队开会 / 喝水提醒..."
+            />
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">重复频率 / 智能调休模式</label>
+            <select v-model="alarmForm.repeatType" class="select-input">
+              <option value="holiday_compensate">智能调休闹钟 (工作日响 / 假关 / 补班响)</option>
+              <option value="compensate_only">仅调休补班日 (周六日补班时自动响)</option>
+              <option value="workday">工作日 (周一至周五)</option>
+              <option value="weekend">周末 (周六与周日)</option>
+              <option value="everyday">每天响铃</option>
+              <option value="once">单次响铃 (仅响一次)</option>
+              <option value="custom">自定义星期</option>
+            </select>
+          </div>
+
+          <div v-if="alarmForm.repeatType === 'holiday_compensate' || alarmForm.repeatType === 'compensate_only'" class="compensate-config-box">
+            <label class="checkbox-option">
+              <input type="checkbox" v-model="alarmForm.skipHolidays" />
+              <span>自动跳过法定节假日 (假期当天不响铃)</span>
+            </label>
+            <label class="checkbox-option">
+              <input type="checkbox" v-model="alarmForm.ringOnCompensate" />
+              <span>周末调休补班智能响铃 (补班日自动激活)</span>
+            </label>
+            <div class="compensate-tips">
+              <Sparkles :size="13" /> 已接入法定节假日与调休补班日历，自动识别调休日，避免假期误响与补班漏响。
+            </div>
+          </div>
+
+          <div v-if="alarmForm.repeatType === 'custom'" class="form-group">
+            <label class="form-label">选择重复星期:</label>
+            <div class="weekdays-selector">
+              <button
+                v-for="day in [1, 2, 3, 4, 5, 6, 0]"
+                :key="day"
+                type="button"
+                class="weekday-chip"
+                :class="{ active: alarmForm.customDays.includes(day) }"
+                @click="toggleCustomDay(day)"
+              >
+                {{ weekDayLabel(day) }}
+              </button>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">提示音效</label>
+            <div class="sound-select-row">
+              <select v-model="alarmForm.soundType" class="select-input flex-1">
+                <option value="chime">风铃清脆 (Chime)</option>
+                <option value="marimba">马林巴琴 (Marimba)</option>
+                <option value="cyber">赛博提示 (Cyber)</option>
+                <option value="beep">电子蜂鸣 (Beep)</option>
+                <option value="silent">静音 (无声音)</option>
+              </select>
+              <button
+                type="button"
+                class="btn btn-outline preview-btn"
+                @click="previewSound(alarmForm.soundType)"
+                title="试听当前提示音"
+              >
+                <Volume2 :size="14" /> 试听
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button class="btn btn-outline" @click="showAlarmModal = false">取消</button>
+          <button class="btn btn-primary" @click="saveAlarmModal">
+            <Check :size="14" /> 保存闹钟配置
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Countdown Ringing Modal -->
     <div v-if="ringingCountdown" class="modal-backdrop alarm-ringing-backdrop">
       <div class="modal-card ringing-card animate-pulse">
         <div class="ringing-icon"><Hourglass :size="40" /></div>
         <h2 class="ringing-title">倒计时结束提醒！</h2>
         <div class="ringing-time">{{ ringingCountdown.title }}</div>
         <p class="ringing-label">{{ ringingCountdown.finishMessage || '倒计时时间到！' }}</p>
-
         <div class="ringing-actions">
           <button class="btn btn-dismiss" @click="dismissRingingCountdown">
             <Check :size="16" /> 知道啦 (关闭提醒)
@@ -427,19 +458,17 @@
       </div>
     </div>
 
-    <!-- Alarm Ringing Snooze Notification Banner/Modal -->
+    <!-- Alarm Ringing Modal -->
     <div v-if="ringingAlarm" class="modal-backdrop alarm-ringing-backdrop">
       <div class="modal-card ringing-card animate-pulse">
         <div class="ringing-icon"><Bell :size="40" /></div>
         <h2 class="ringing-title">闹钟响铃提醒！</h2>
         <div class="ringing-time">{{ ringingAlarm.time }}</div>
         <p class="ringing-label" v-if="ringingAlarm.label">{{ ringingAlarm.label }}</p>
-
         <div class="ringing-actions">
           <button class="btn btn-snooze" @click="snoozeRingingAlarm">
             <Coffee :size="16" /> 稍后提醒 (贪睡 5 分钟)
           </button>
-
           <button class="btn btn-dismiss" @click="dismissRingingAlarm">
             <Check :size="16" /> 知道啦 (关闭闹钟)
           </button>
@@ -453,7 +482,7 @@
 import { ref, computed, onUnmounted, onMounted, watch } from 'vue'
 import {
   Hourglass, Bell, Play, Pause, RotateCcw,
-  Trash2, Plus, Tag, Repeat, Check, Coffee, Sliders, Sparkles, Volume2
+  Trash2, Plus, Tag, Repeat, Check, Coffee, Sliders, Sparkles, Volume2, Search, X
 } from 'lucide-vue-next'
 import { soundPlayer, type SoundType } from '../../utils/audio'
 import WheelTimePicker from '../widgets/WheelTimePicker.vue'
@@ -479,7 +508,9 @@ function previewSound(soundType: SoundType | 'silent') {
   }
 }
 
-// Multi-Countdown Timer State & Data Model
+// ----------------------------------------------------
+// 1. Countdown Logic & State
+// ----------------------------------------------------
 export interface CountdownItem {
   id: string
   title: string
@@ -528,8 +559,29 @@ const countdownList = ref<CountdownItem[]>(
   JSON.parse(localStorage.getItem('todo_pro_countdown_list') || 'null') || defaultCountdownItems
 )
 
-const selectedCountdownId = ref<string>(countdownList.value[0]?.id || '')
+const countdownFilter = ref<'all' | 'running' | 'completed'>('all')
+const countdownSearch = ref('')
 const ringingCountdown = ref<CountdownItem | null>(null)
+
+const showCountdownModal = ref(false)
+const editingCountdownId = ref<string | null>(null)
+const countdownForm = ref<{
+  title: string
+  hours: number
+  minutes: number
+  seconds: number
+  soundType: SoundType | 'silent'
+  notifyType: 'sound_and_popup' | 'sound_only' | 'popup_only'
+  finishMessage: string
+}>({
+  title: '',
+  hours: 0,
+  minutes: 10,
+  seconds: 0,
+  soundType: 'chime',
+  notifyType: 'sound_and_popup',
+  finishMessage: ''
+})
 
 watch(countdownList, (newVal) => {
   const serializable = newVal.map(item => ({
@@ -545,11 +597,21 @@ watch(countdownList, (newVal) => {
   localStorage.setItem('todo_pro_countdown_list', JSON.stringify(serializable))
 }, { deep: true })
 
-const activeCountdown = computed(() => {
-  return countdownList.value.find(item => item.id === selectedCountdownId.value) || countdownList.value[0]
+const runningCountdownCount = computed(() => countdownList.value.filter(i => i.isRunning).length)
+const completedCountdownCount = computed(() => countdownList.value.filter(i => i.remainingSeconds === 0).length)
+
+const filteredCountdownList = computed(() => {
+  return countdownList.value.filter(item => {
+    if (countdownFilter.value === 'running' && !item.isRunning) return false
+    if (countdownFilter.value === 'completed' && item.remainingSeconds !== 0) return false
+    if (countdownSearch.value.trim()) {
+      const q = countdownSearch.value.trim().toLowerCase()
+      if (!item.title.toLowerCase().includes(q)) return false
+    }
+    return true
+  })
 })
 
-// Global tick timer for all countdown items
 let globalCdInterval: any = null
 
 function updateGlobalCdInterval() {
@@ -608,37 +670,76 @@ function resetCountdownItem(item: CountdownItem) {
   updateGlobalCdInterval()
 }
 
-function adjustCountdownTime(item: CountdownItem, deltaMinutes: number) {
-  const newSecs = item.remainingSeconds + deltaMinutes * 60
-  if (newSecs >= 10) {
-    item.remainingSeconds = newSecs
-    if (!item.isRunning) {
-      item.initialSeconds = newSecs
-    }
-  }
-}
-
-function setCountdownPreset(item: CountdownItem, mins: number) {
-  item.isRunning = false
-  item.initialSeconds = mins * 60
-  item.remainingSeconds = mins * 60
-  updateGlobalCdInterval()
-}
-
-function createNewCountdown() {
-  const newId = 'cd_' + Date.now()
-  const newItem: CountdownItem = {
-    id: newId,
-    title: '新建倒计时',
-    initialSeconds: 10 * 60,
-    remainingSeconds: 10 * 60,
-    isRunning: false,
+function openAddCountdownModal() {
+  editingCountdownId.value = null
+  countdownForm.value = {
+    title: '',
+    hours: 0,
+    minutes: 10,
+    seconds: 0,
     soundType: 'chime',
     notifyType: 'sound_and_popup',
-    finishMessage: '⏰ 倒计时已完成！'
+    finishMessage: ''
   }
-  countdownList.value.unshift(newItem)
-  selectedCountdownId.value = newId
+  showCountdownModal.value = true
+}
+
+function openEditCountdownModal(item: CountdownItem) {
+  editingCountdownId.value = item.id
+  const totalSecs = item.initialSeconds
+  const h = Math.floor(totalSecs / 3600)
+  const m = Math.floor((totalSecs % 3600) / 60)
+  const s = totalSecs % 60
+  countdownForm.value = {
+    title: item.title,
+    hours: h,
+    minutes: m,
+    seconds: s,
+    soundType: item.soundType,
+    notifyType: item.notifyType,
+    finishMessage: item.finishMessage || ''
+  }
+  showCountdownModal.value = true
+}
+
+function setModalMinutes(mins: number) {
+  countdownForm.value.hours = Math.floor(mins / 60)
+  countdownForm.value.minutes = mins % 60
+  countdownForm.value.seconds = 0
+}
+
+function saveCountdownModal() {
+  const totalSecs = (countdownForm.value.hours * 3600) + (countdownForm.value.minutes * 60) + countdownForm.value.seconds
+  if (totalSecs <= 0) return
+
+  const title = countdownForm.value.title.trim() || `${formatDurationText(totalSecs)} 倒计时`
+
+  if (editingCountdownId.value) {
+    const idx = countdownList.value.findIndex(i => i.id === editingCountdownId.value)
+    if (idx !== -1) {
+      countdownList.value[idx].title = title
+      countdownList.value[idx].initialSeconds = totalSecs
+      countdownList.value[idx].remainingSeconds = totalSecs
+      countdownList.value[idx].soundType = countdownForm.value.soundType
+      countdownList.value[idx].finishMessage = countdownForm.value.finishMessage
+      countdownList.value[idx].isRunning = false
+    }
+  } else {
+    const newItem: CountdownItem = {
+      id: 'cd_' + Date.now(),
+      title,
+      initialSeconds: totalSecs,
+      remainingSeconds: totalSecs,
+      isRunning: false,
+      soundType: countdownForm.value.soundType,
+      notifyType: 'sound_and_popup',
+      finishMessage: countdownForm.value.finishMessage || '⏰ 倒计时已完成！'
+    }
+    countdownList.value.unshift(newItem)
+  }
+
+  showCountdownModal.value = false
+  updateGlobalCdInterval()
 }
 
 async function removeCountdownItem(id: string) {
@@ -650,977 +751,636 @@ async function removeCountdownItem(id: string) {
   })
   if (!confirmed) return
 
-  if (countdownList.value.length <= 1) {
-    alert('请至少保留一个倒计时项目！')
-    return
-  }
-
-  countdownList.value = countdownList.value.filter(c => c.id !== id)
-  if (selectedCountdownId.value === id) {
-    selectedCountdownId.value = countdownList.value[0]?.id || ''
-  }
+  countdownList.value = countdownList.value.filter(item => item.id !== id)
   updateGlobalCdInterval()
 }
 
-function formatDurationText(totalSeconds: number): string {
-  const h = Math.floor(totalSeconds / 3600)
-  const m = Math.floor((totalSeconds % 3600) / 60)
-  const s = totalSeconds % 60
+function formatDurationText(totalSec: number): string {
+  const h = Math.floor(totalSec / 3600)
+  const m = Math.floor((totalSec % 3600) / 60)
+  const s = totalSec % 60
   if (h > 0) {
     return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
   }
   return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
 }
 
-function soundTypeShortLabel(sound: SoundType | 'silent'): string {
+function soundTypeShortLabel(st: string): string {
   const map: Record<string, string> = {
-    chime: '🔔 拆分响铃',
-    marimba: '🪵 木音提醒',
-    cyber: '⚡ 科技音',
-    beep: '🚨 警报音',
-    silent: '🔇 静音'
+    chime: '风铃',
+    marimba: '马林巴',
+    cyber: '赛博',
+    beep: '蜂鸣',
+    silent: '静音'
   }
-  return map[sound] || sound
+  return map[st] || '默认铃声'
 }
 
-
-// Alarm State (Split View Pro Features)
-export type RepeatType = 'once' | 'workday' | 'holiday_compensate' | 'compensate_only' | 'weekend' | 'everyday' | 'custom'
-
+// ----------------------------------------------------
+// 2. Alarm Logic & State
+// ----------------------------------------------------
 export interface AlarmItem {
-  id: number
+  id: string
   time: string
   label: string
   enabled: boolean
-  repeatType: RepeatType
+  repeatType: 'holiday_compensate' | 'compensate_only' | 'workday' | 'weekend' | 'everyday' | 'once' | 'custom'
   customDays: number[]
-  skipHolidays?: boolean
-  ringOnCompensate?: boolean
+  skipHolidays: boolean
+  ringOnCompensate: boolean
+  soundType: SoundType | 'silent'
 }
 
-// 示例法定调休补班日与节假日库（支持智能调度）
-const compensateWorkdayList = ref<string[]>([
-  '2026-01-25', '2026-02-08', '2026-04-26', '2026-05-09',
-  '2026-09-27', '2026-10-10'
-])
-
-const officialHolidayList = ref<string[]>([
-  '2026-01-01', '2026-02-16', '2026-02-17', '2026-02-18',
-  '2026-04-05', '2026-05-01', '2026-10-01', '2026-10-02'
-])
+const defaultAlarms: AlarmItem[] = [
+  {
+    id: 'alarm-1',
+    time: '07:30',
+    label: '晨起早读与晨练',
+    enabled: true,
+    repeatType: 'holiday_compensate',
+    customDays: [1, 2, 3, 4, 5],
+    skipHolidays: true,
+    ringOnCompensate: true,
+    soundType: 'chime'
+  },
+  {
+    id: 'alarm-2',
+    time: '12:00',
+    label: '午餐及休息提醒',
+    enabled: true,
+    repeatType: 'workday',
+    customDays: [1, 2, 3, 4, 5],
+    skipHolidays: false,
+    ringOnCompensate: false,
+    soundType: 'cyber'
+  }
+]
 
 const alarmList = ref<AlarmItem[]>(
-  JSON.parse(localStorage.getItem('todo_pro_alarm_list') || '[]')
+  JSON.parse(localStorage.getItem('todo_pro_alarm_list') || 'null') || defaultAlarms
 )
-const ringingAlarm = ref<AlarmItem | null>(null)
-const editingAlarmId = ref<number | null>(null)
-const selectedAlarmId = ref<number | null>(null)
 
+const alarmFilter = ref<'all' | 'enabled' | 'disabled'>('all')
+const alarmSearch = ref('')
+const ringingAlarm = ref<AlarmItem | null>(null)
+
+const showAlarmModal = ref(false)
+const editingAlarmId = ref<string | null>(null)
 const alarmForm = ref({
   time: '08:00',
-  label: '晨起早读',
-  repeatType: 'holiday_compensate' as RepeatType,
-  customDays: [1, 2, 3, 4, 5] as number[],
+  label: '',
+  repeatType: 'holiday_compensate' as AlarmItem['repeatType'],
+  customDays: [1, 2, 3, 4, 5],
   skipHolidays: true,
-  ringOnCompensate: true
+  ringOnCompensate: true,
+  soundType: 'chime' as SoundType | 'silent'
 })
 
 watch(alarmList, (newVal) => {
   localStorage.setItem('todo_pro_alarm_list', JSON.stringify(newVal))
 }, { deep: true })
 
-function resetFormForNew() {
+const enabledAlarmCount = computed(() => alarmList.value.filter(i => i.enabled).length)
+const disabledAlarmCount = computed(() => alarmList.value.filter(i => !i.enabled).length)
+
+const filteredAlarmList = computed(() => {
+  return alarmList.value.filter(item => {
+    if (alarmFilter.value === 'enabled' && !item.enabled) return false
+    if (alarmFilter.value === 'disabled' && item.enabled) return false
+    if (alarmSearch.value.trim()) {
+      const q = alarmSearch.value.trim().toLowerCase()
+      const matchLabel = item.label.toLowerCase().includes(q)
+      const matchTime = item.time.includes(q)
+      if (!matchLabel && !matchTime) return false
+    }
+    return true
+  })
+})
+
+function openAddAlarmModal() {
   editingAlarmId.value = null
-  selectedAlarmId.value = null
   alarmForm.value = {
     time: '08:00',
     label: '',
     repeatType: 'holiday_compensate',
     customDays: [1, 2, 3, 4, 5],
     skipHolidays: true,
-    ringOnCompensate: true
+    ringOnCompensate: true,
+    soundType: 'chime'
   }
+  showAlarmModal.value = true
 }
 
-function selectAlarmToEdit(item: AlarmItem) {
+function openEditAlarmModal(item: AlarmItem) {
   editingAlarmId.value = item.id
-  selectedAlarmId.value = item.id
   alarmForm.value = {
     time: item.time,
     label: item.label,
     repeatType: item.repeatType,
     customDays: [...item.customDays],
-    skipHolidays: item.skipHolidays ?? true,
-    ringOnCompensate: item.ringOnCompensate ?? true
+    skipHolidays: item.skipHolidays,
+    ringOnCompensate: item.ringOnCompensate,
+    soundType: item.soundType
   }
+  showAlarmModal.value = true
 }
 
 function toggleCustomDay(day: number) {
   const idx = alarmForm.value.customDays.indexOf(day)
-  if (idx >= 0) {
+  if (idx > -1) {
     alarmForm.value.customDays.splice(idx, 1)
   } else {
     alarmForm.value.customDays.push(day)
   }
 }
 
-function weekDayLabel(day: number) {
-  const map: Record<number, string> = { 1: '一', 2: '二', 3: '三', 4: '四', 5: '五', 6: '六', 0: '日' }
-  return `周${map[day]}`
+function weekDayLabel(day: number): string {
+  const map: Record<number, string> = { 1: '周一', 2: '周二', 3: '周三', 4: '周四', 5: '周五', 6: '周六', 0: '周日' }
+  return map[day] || ''
 }
 
 function formatRepeatText(item: AlarmItem): string {
-  if (item.repeatType === 'once') return '单次响铃'
-  if (item.repeatType === 'holiday_compensate') return '⚡ 智能调休 (避假/补班响)'
-  if (item.repeatType === 'compensate_only') return '📅 仅调休补班日'
-  if (item.repeatType === 'workday') return '工作日 (周一至周五)'
-  if (item.repeatType === 'weekend') return '周末 (周六日)'
-  if (item.repeatType === 'everyday') return '每天响铃'
-  if (item.repeatType === 'custom') {
-    if (item.customDays.length === 0) return '不重复'
-    return '周 ' + item.customDays.map(d => weekDayLabel(d)).join(' ')
+  switch (item.repeatType) {
+    case 'holiday_compensate': return '智能调休 (工作日响/补班响)'
+    case 'compensate_only': return '仅调休补班日'
+    case 'workday': return '工作日 (周一至周五)'
+    case 'weekend': return '周末 (周六与周日)'
+    case 'everyday': return '每天'
+    case 'once': return '仅一次'
+    case 'custom':
+      if (item.customDays.length === 7) return '每天'
+      if (item.customDays.length === 0) return '未指定'
+      return item.customDays.map(d => weekDayLabel(d)).join('、')
+    default: return '每天'
   }
-  return '单次'
 }
 
-function saveAlarmForm() {
-  if (!alarmForm.value.time) {
-    alert('请选择响铃时间！')
-    return
-  }
-
+function saveAlarmModal() {
   if (editingAlarmId.value) {
     const idx = alarmList.value.findIndex(a => a.id === editingAlarmId.value)
-    if (idx >= 0) {
+    if (idx !== -1) {
       alarmList.value[idx].time = alarmForm.value.time
-      alarmList.value[idx].label = alarmForm.value.label.trim() || '响铃提醒'
+      alarmList.value[idx].label = alarmForm.value.label.trim()
       alarmList.value[idx].repeatType = alarmForm.value.repeatType
       alarmList.value[idx].customDays = [...alarmForm.value.customDays]
       alarmList.value[idx].skipHolidays = alarmForm.value.skipHolidays
       alarmList.value[idx].ringOnCompensate = alarmForm.value.ringOnCompensate
+      alarmList.value[idx].soundType = alarmForm.value.soundType
     }
   } else {
-    alarmList.value.unshift({
-      id: Date.now(),
+    const newAlarm: AlarmItem = {
+      id: 'alarm_' + Date.now(),
       time: alarmForm.value.time,
-      label: alarmForm.value.label.trim() || '响铃提醒',
+      label: alarmForm.value.label.trim(),
       enabled: true,
       repeatType: alarmForm.value.repeatType,
       customDays: [...alarmForm.value.customDays],
       skipHolidays: alarmForm.value.skipHolidays,
-      ringOnCompensate: alarmForm.value.ringOnCompensate
-    })
+      ringOnCompensate: alarmForm.value.ringOnCompensate,
+      soundType: alarmForm.value.soundType
+    }
+    alarmList.value.unshift(newAlarm)
   }
-  resetFormForNew()
+  showAlarmModal.value = false
 }
 
-function removeAlarm(id: number) {
-  alarmList.value = alarmList.value.filter(a => a.id !== id)
-  if (editingAlarmId.value === id) {
-    resetFormForNew()
-  }
-}
-
-function formatDateStr(d: Date): string {
-  const yyyy = d.getFullYear()
-  const mm = String(d.getMonth() + 1).padStart(2, '0')
-  const dd = String(d.getDate()).padStart(2, '0')
-  return `${yyyy}-${mm}-${dd}`
-}
-
-function shouldRingToday(item: AlarmItem, now: Date): boolean {
-  const dateStr = formatDateStr(now)
-  const isHoliday = officialHolidayList.value.includes(dateStr)
-  const isCompensateWorkday = compensateWorkdayList.value.includes(dateStr)
-
-  if (item.repeatType === 'holiday_compensate') {
-    if (item.skipHolidays && isHoliday) return false
-    if (item.ringOnCompensate && isCompensateWorkday) return true
-    const currentDay = now.getDay()
-    return currentDay >= 1 && currentDay <= 5
-  }
-
-  if (item.repeatType === 'compensate_only') {
-    return isCompensateWorkday
-  }
-
-  const currentDay = now.getDay()
-  if (item.repeatType === 'workday') return currentDay >= 1 && currentDay <= 5
-  if (item.repeatType === 'weekend') return currentDay === 0 || currentDay === 6
-  if (item.repeatType === 'everyday') return true
-  if (item.repeatType === 'custom') return item.customDays.includes(currentDay)
-  return true
-}
-
-let alarmCheckTimer: any = null
-
-function checkAlarms() {
-  const now = new Date()
-  const currentHM = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
-  const currentSec = now.getSeconds()
-
-  if (currentSec === 0) {
-    alarmList.value.forEach(a => {
-      if (a.enabled && a.time === currentHM && shouldRingToday(a, now)) {
-        soundPlayer.play(props.soundType || 'chime', props.soundVolume ?? 0.8)
-        ringingAlarm.value = a
-        if (a.repeatType === 'once') {
-          a.enabled = false
-        }
-      }
-    })
-  }
-}
-
-function snoozeRingingAlarm() {
-  soundPlayer.play(props.soundType || 'chime', props.soundVolume ?? 0.8)
-  const now = new Date()
-  now.setMinutes(now.getMinutes() + 5)
-  const snoozeTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
-
-  alarmList.value.unshift({
-    id: Date.now(),
-    time: snoozeTime,
-    label: `(贪睡) ${ringingAlarm.value?.label || '闹钟'}`,
-    enabled: true,
-    repeatType: 'once',
-    customDays: []
+async function removeAlarm(id: string) {
+  const confirmed = await showConfirm({
+    title: '删除闹钟',
+    message: '确定要删除该闹钟吗？',
+    confirmText: '确认删除',
+    type: 'danger'
   })
-  ringingAlarm.value = null
-  alert('💤 已开启贪睡模式，5 分钟后再次提醒！')
+  if (!confirmed) return
+  alarmList.value = alarmList.value.filter(a => a.id !== id)
 }
 
 function dismissRingingAlarm() {
   ringingAlarm.value = null
 }
 
+function snoozeRingingAlarm() {
+  ringingAlarm.value = null
+}
+
+// Check Alarms Routine
+let alarmTickerId: any = null
+function startAlarmTicker() {
+  alarmTickerId = setInterval(() => {
+    const now = new Date()
+    if (now.getSeconds() === 0) {
+      const currentHM = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
+      alarmList.value.forEach(alarm => {
+        if (alarm.enabled && alarm.time === currentHM) {
+          ringingAlarm.value = alarm
+          if (alarm.soundType !== 'silent') {
+            soundPlayer.play(alarm.soundType as SoundType, props.soundVolume ?? 0.8)
+          }
+        }
+      })
+    }
+  }, 1000)
+}
+
 onMounted(() => {
-  alarmCheckTimer = setInterval(checkAlarms, 1000)
   updateGlobalCdInterval()
+  startAlarmTicker()
 })
 
 onUnmounted(() => {
-  if (alarmCheckTimer) clearInterval(alarmCheckTimer)
   if (globalCdInterval) clearInterval(globalCdInterval)
+  if (alarmTickerId) clearInterval(alarmTickerId)
 })
 </script>
 
 <style scoped>
 .alarm-container {
   display: flex;
-  justify-content: center;
-  align-items: center;
+  flex-direction: column;
   height: 100%;
-  min-height: 100%;
-  width: 100%;
-  padding: 16px 0;
+  padding: 20px 24px;
   box-sizing: border-box;
   overflow-y: auto;
-  background: radial-gradient(circle at center, rgba(221, 107, 32, 0.05) 0%, transparent 70%);
 }
 
-.alarm-workspace {
-  width: 100%;
-  max-width: 1100px;
-  background-color: transparent;
+.pure-list-workspace {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 20px;
-  padding: 0 16px;
-  box-sizing: border-box;
-  margin: auto 0;
-}
-
-.sub-tabs {
-  display: flex;
-  gap: 8px;
-  background-color: var(--bg-surface);
-  padding: 5px;
-  border-radius: 20px;
-  border: 1px solid var(--border-color);
-  box-shadow: var(--shadow-sm);
-}
-
-.sub-tab-btn {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 16px;
-  border-radius: 16px;
-  border: none;
-  background: transparent;
-  color: var(--text-muted);
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.25s ease;
-}
-
-.sub-tab-btn.active {
-  background-color: var(--primary);
-  color: #ffffff;
-  box-shadow: 0 4px 12px rgba(49, 130, 206, 0.3);
-}
-
-/* 1. Countdown Full-screen Split Workspace Layout */
-.countdown-split-workspace {
-  display: flex;
-  flex-direction: row;
-  align-items: stretch;
-  gap: 24px;
+  height: 100%;
   width: 100%;
-  background-color: transparent;
-  border: none;
-  border-radius: 0;
-  padding: 0;
-  box-shadow: none;
-  box-sizing: border-box;
-  min-height: 520px;
-}
-
-.countdown-left-pane {
-  width: 320px;
-  flex-shrink: 0;
-  display: flex;
-  flex-direction: column;
+  max-width: 960px;
+  margin: 0 auto;
   gap: 16px;
 }
 
-.countdown-right-pane {
-  flex: 1;
-  min-width: 300px;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  border-left: 1px solid var(--border-color);
-  padding-left: 24px;
-}
-
-@media (max-width: 820px) {
-  .countdown-split-workspace {
-    flex-direction: column;
-  }
-  .countdown-left-pane {
-    width: 100%;
-  }
-  .countdown-right-pane {
-    border-left: none;
-    border-top: 1px solid var(--border-color);
-    padding-left: 0;
-    padding-top: 20px;
-  }
-}
-
-.count-badge {
-  font-size: 11px;
-  font-weight: 700;
-  background-color: rgba(221, 107, 32, 0.12);
-  color: #DD6B20;
-  padding: 2px 8px;
-  border-radius: 10px;
-}
-
-.countdown-list-scroll {
-  flex: 1;
-  overflow-y: auto;
-  max-height: 540px;
-  padding-right: 4px;
-}
-
-.countdown-cards-stack {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.countdown-card-item {
-  position: relative;
-  overflow: hidden;
-  background-color: var(--bg-surface);
-  border: 1px solid var(--border-color);
-  border-radius: 12px;
-  padding: 12px 14px;
+/* Toolbar & Filters (Modeled directly after Todos) */
+.toolbar {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+  flex-wrap: wrap;
+}
+
+.filter-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.filter-btn {
+  font-size: 12.5px;
+  padding: 6px 14px;
+  border-radius: 8px;
+  border: 1px solid var(--border-color, #e2e8f0);
+  background-color: var(--bg-surface, #ffffff);
+  color: var(--text-main, #0f172a);
   cursor: pointer;
+  font-weight: 500;
   transition: all 0.2s ease;
-  box-shadow: var(--shadow-sm);
 }
 
-.countdown-card-item:hover {
-  background-color: var(--bg-card-hover);
+.filter-btn:hover {
   border-color: var(--primary, #3b82f6);
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  color: var(--primary, #3b82f6);
 }
 
-.countdown-card-item.active {
-  background-color: rgba(99, 102, 241, 0.06);
-  border-color: #6366f1;
-  box-shadow: 0 0 0 1px #6366f1 inset, 0 4px 14px rgba(99, 102, 241, 0.12);
+.filter-btn.active {
+  background-color: var(--primary, #3b82f6);
+  color: #ffffff;
+  border-color: var(--primary, #3b82f6);
+  font-weight: 600;
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.25);
 }
 
-.card-progress-bar {
+.toolbar-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.search-box {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.search-icon {
   position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  height: 3px;
-  background: rgba(0, 0, 0, 0.05);
-  overflow: hidden;
+  left: 10px;
+  color: var(--text-muted, #94a3b8);
 }
 
-.card-progress-fill {
-  height: 100%;
-  background: #6366f1;
-  transition: width 0.8s ease;
+.search-box input {
+  padding: 6px 12px 6px 32px;
+  border-radius: 8px;
+  border: 1px solid var(--border-color, #e2e8f0);
+  background: var(--bg-surface, #ffffff);
+  color: var(--text-main, #0f172a);
+  font-size: 12.5px;
+  outline: none;
+  width: 180px;
+  transition: all 0.2s ease;
 }
 
-.card-progress-fill.running {
-  background: linear-gradient(90deg, #6366f1, #ec4899);
+.search-box input:focus {
+  border-color: var(--primary, #3b82f6);
+  width: 210px;
 }
 
-.card-item-left {
+/* List & Grid */
+.list-scroll-area {
+  flex: 1;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.empty-state {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  align-items: center;
+  justify-content: center;
+  min-height: 320px;
+  color: var(--text-muted, #94a3b8);
+  gap: 12px;
+}
+
+.items-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.list-card-item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  padding: 14px 18px;
+  background-color: var(--bg-card, #ffffff);
+  border: 1px solid var(--border-color, #e2e8f0);
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
+  gap: 16px;
+  transition: all 0.2s ease;
+}
+
+.list-card-item:hover {
+  border-color: var(--primary, #3b82f6);
+  box-shadow: 0 6px 16px rgba(59, 130, 246, 0.08);
+  transform: translateY(-1px);
+}
+
+.list-card-item.running {
+  border-color: #6366f1;
+  background: linear-gradient(135deg, var(--bg-card, #ffffff) 0%, rgba(99, 102, 241, 0.03) 100%);
+}
+
+.list-card-item.completed,
+.list-card-item.disabled {
+  opacity: 0.72;
+}
+
+.card-left-indicator {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.mini-timer-circle,
+.mini-alarm-icon {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  background: var(--bg-surface, #f8fafc);
+  border: 1px solid var(--border-color, #e2e8f0);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted, #64748b);
+  transition: all 0.2s ease;
+}
+
+.mini-timer-circle.running,
+.mini-alarm-icon.enabled {
+  background: rgba(59, 130, 246, 0.1);
+  color: var(--primary, #3b82f6);
+  border-color: rgba(59, 130, 246, 0.3);
+}
+
+.mini-timer-circle.done {
+  background: rgba(16, 185, 129, 0.1);
+  color: #10b981;
+  border-color: rgba(16, 185, 129, 0.3);
+}
+
+.card-body {
   flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
   min-width: 0;
 }
 
-.card-item-title {
-  font-size: 13.5px;
-  font-weight: 700;
-  color: var(--text-main);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.card-item-time {
-  display: flex;
-  align-items: baseline;
-  gap: 4px;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-}
-
-.time-main {
-  font-size: 16px;
-  font-weight: 700;
-  color: #6366f1;
-}
-
-.time-sub {
-  font-size: 11px;
-  color: var(--text-muted);
-}
-
-.card-item-tags {
+.card-title-row {
   display: flex;
   align-items: center;
-  gap: 6px;
-  margin-top: 2px;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.card-title {
+  font-size: 14.5px;
+  font-weight: 600;
+  color: var(--text-main, #0f172a);
+}
+
+.alarm-time-huge {
+  font-size: 20px;
+  font-weight: 800;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  color: var(--text-main, #0f172a);
 }
 
 .status-tag {
-  font-size: 10px;
-  font-weight: 600;
-  padding: 1px 6px;
-  border-radius: 4px;
-  background-color: var(--bg-app);
-  color: var(--text-muted);
   display: inline-flex;
   align-items: center;
   gap: 4px;
-}
-
-.status-tag.running {
-  background-color: rgba(99, 102, 241, 0.15);
-  color: #6366f1;
-}
-
-.status-tag.finished {
-  background-color: rgba(16, 185, 129, 0.15);
-  color: #10B981;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: var(--bg-app, #f1f5f9);
+  color: var(--text-muted, #64748b);
 }
 
 .status-tag .dot {
-  width: 5px;
-  height: 5px;
-  border-radius: 50%;
-  background-color: currentColor;
-}
-
-.sound-tag {
-  font-size: 10px;
-  color: var(--text-muted);
-  background-color: var(--bg-app);
-  padding: 1px 6px;
-  border-radius: 4px;
-}
-
-.card-item-right {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  flex-shrink: 0;
-}
-
-.action-play-btn {
-  background-color: rgba(99, 102, 241, 0.12);
-  color: #6366f1;
-  border-radius: 50%;
-  width: 32px;
-  height: 32px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: none;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.action-play-btn:hover {
-  transform: scale(1.1);
-  background-color: #6366f1;
-  color: #FFFFFF;
-}
-
-.action-play-btn.running {
-  background-color: #6366f1;
-  color: #FFFFFF;
-}
-
-.countdown-right-content {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-}
-
-.active-timer-focus-box {
-  position: relative;
-  background: var(--bg-surface, #ffffff);
-  border: 1px solid var(--border-color, #e2e8f0);
-  border-radius: 18px;
-  padding: 24px 20px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 18px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04);
-}
-
-.ambient-glow {
-  position: absolute;
-  top: 45%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: 220px;
-  height: 220px;
-  border-radius: 50%;
-  background: radial-gradient(circle, rgba(99, 102, 241, 0.12), transparent 70%);
-  pointer-events: none;
-  transition: all 0.5s ease;
-}
-
-.ambient-glow.running {
-  background: radial-gradient(circle, rgba(168, 85, 247, 0.22), transparent 70%);
-  animation: pulse-ambient 3s infinite ease-in-out;
-}
-
-@keyframes pulse-ambient {
-  0%, 100% { transform: translate(-50%, -50%) scale(1); opacity: 0.8; }
-  50% { transform: translate(-50%, -50%) scale(1.15); opacity: 1; }
-}
-
-.focus-display-section {
-  position: relative;
-  z-index: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 24px;
-  width: 100%;
-}
-
-.adjust-group {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.btn-adjust {
-  background-color: var(--bg-surface);
-  border: 1px solid var(--border-color);
-  color: var(--text-main);
-  width: 44px;
-  height: 44px;
-  border-radius: 50%;
-  font-size: 12px;
-  font-weight: 700;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s ease;
-  box-shadow: var(--shadow-sm);
-}
-
-.btn-adjust:hover:not(:disabled) {
-  border-color: #6366f1;
-  color: #6366f1;
-  transform: scale(1.08);
-}
-
-.btn-adjust:disabled {
-  opacity: 0.3;
-  cursor: not-allowed;
-}
-
-.timer-circle-wrapper {
-  position: relative;
-  width: 230px;
-  height: 230px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: transform 0.3s ease;
-}
-
-.timer-circle-wrapper.is-active {
-  transform: scale(1.02);
-}
-
-.progress-ring-bg {
-  fill: transparent;
-  stroke: rgba(0, 0, 0, 0.06);
-}
-
-.progress-ring-fill {
-  fill: transparent;
-  stroke-linecap: round;
-  transition: stroke-dashoffset 0.8s linear;
-  transform: rotate(-90deg);
-  transform-origin: 50% 50%;
-}
-
-.timer-center-text {
-  position: absolute;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 6px;
-}
-
-.time-number {
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-  font-size: 44px;
-  font-weight: 800;
-  color: var(--text-main);
-  letter-spacing: -1px;
-}
-
-.timer-status-badge {
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--text-muted);
-  background-color: var(--bg-surface);
-  padding: 3px 10px;
-  border-radius: 12px;
-  border: 1px solid var(--border-color);
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.timer-status-badge.running {
-  color: #6366f1;
-  border-color: rgba(99, 102, 241, 0.3);
-  background-color: rgba(99, 102, 241, 0.08);
-}
-
-.status-dot {
   width: 6px;
   height: 6px;
   border-radius: 50%;
   background-color: currentColor;
 }
 
-.focus-controls-row {
-  position: relative;
-  z-index: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 14px;
+.status-tag.running {
+  background: rgba(99, 102, 241, 0.12);
+  color: #6366f1;
 }
 
-.btn-toggle-run {
+.status-tag.running .dot {
+  animation: pulse 1.5s infinite;
+}
+
+.status-tag.finished {
+  background: rgba(16, 185, 129, 0.12);
+  color: #10b981;
+}
+
+.sound-tag,
+.alarm-tag-label,
+.alarm-tag-repeat {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  background: linear-gradient(135deg, #6366f1 0%, #a855f7 50%, #ec4899 100%);
-  color: #FFFFFF;
-  border: none;
-  font-size: 14px;
-  font-weight: 700;
-  padding: 11px 26px;
-  border-radius: 20px;
-  cursor: pointer;
-  transition: all 0.25s ease;
-  box-shadow: 0 4px 16px rgba(99, 102, 241, 0.35);
-}
-
-.btn-toggle-run:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(99, 102, 241, 0.45);
-}
-
-.btn-toggle-run.is-running {
-  background: linear-gradient(135deg, #ef4444 0%, #f97316 100%);
-  box-shadow: 0 4px 16px rgba(239, 68, 68, 0.35);
-}
-
-.preset-chips-row {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.chip-btn {
-  background-color: var(--bg-surface);
-  border: 1px solid var(--border-color);
-  border-radius: 16px;
-  padding: 5px 12px;
-  font-size: 11.5px;
+  gap: 4px;
+  font-size: 11px;
   font-weight: 600;
-  color: var(--text-main);
-  cursor: pointer;
-  transition: all 0.2s ease;
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: var(--bg-surface, #f8fafc);
+  border: 1px solid var(--border-color, #e2e8f0);
+  color: var(--text-muted, #64748b);
 }
 
-.chip-btn:hover, .chip-btn.active {
-  border-color: #6366f1;
-  color: #6366f1;
-  background-color: rgba(99, 102, 241, 0.08);
+.alarm-tag-repeat {
+  color: var(--primary, #3b82f6);
+  background: rgba(59, 130, 246, 0.08);
+  border-color: rgba(59, 130, 246, 0.2);
 }
 
-.sound-select-row {
+.card-time-display {
   display: flex;
-  align-items: center;
+  align-items: baseline;
   gap: 8px;
+  font-size: 13px;
 }
 
-.btn-sound-test {
+.digits-time {
+  font-size: 16px;
+  font-weight: 700;
+  font-family: ui-monospace, SFMono-Regular, monospace;
+  font-variant-numeric: tabular-nums;
+  color: var(--primary, #3b82f6);
+}
+
+.digits-total {
+  font-size: 12px;
+  color: var(--text-muted, #94a3b8);
+}
+
+.finish-msg-tip {
+  font-size: 12px;
+  color: var(--text-muted, #64748b);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.alarm-sub-desc {
+  font-size: 12px;
+  color: var(--text-muted, #64748b);
+}
+
+.smart-tip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: #8b5cf6;
+  font-weight: 500;
+}
+
+/* Progress bar inside card */
+.item-progress-track {
+  width: 100%;
+  height: 4px;
+  background: var(--border-color, #e2e8f0);
+  border-radius: 4px;
+  overflow: hidden;
+  margin-top: 4px;
+}
+
+.item-progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, #6366f1, #ec4899);
+  transition: width 0.5s ease;
+}
+
+.item-progress-bar.done {
+  background: #10b981;
+}
+
+/* Actions in Card */
+.card-actions {
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 8px 14px;
-  background: rgba(99, 102, 241, 0.08);
-  border: 1px solid rgba(99, 102, 241, 0.2);
-  color: #6366f1;
+  flex-shrink: 0;
+}
+
+.btn-action-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
   border-radius: 8px;
+  border: none;
+  background: var(--primary, #3b82f6);
+  color: #ffffff;
   font-size: 12px;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s ease;
-  white-space: nowrap;
 }
 
-.btn-sound-test:hover:not(:disabled) {
-  background: rgba(99, 102, 241, 0.16);
+.btn-action-primary:hover {
+  filter: brightness(1.1);
   transform: translateY(-1px);
 }
 
-.btn-sound-test:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
+.btn-action-primary.running {
+  background: #f59e0b;
 }
 
-
-/* 2. Alarm Split Workspace Layout */
-.alarm-split-workspace {
-  display: flex;
-  flex-direction: row;
-  align-items: stretch;
-  gap: 24px;
-  width: 100%;
-  background-color: var(--bg-card);
-  border: 1px solid var(--border-color);
-  border-radius: 16px;
-  padding: 24px;
-  box-shadow: var(--shadow-md);
-  box-sizing: border-box;
-  min-height: 520px;
-}
-
-.alarm-left-pane {
-  width: 320px;
-  flex-shrink: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.alarm-right-pane {
-  flex: 1;
-  min-width: 300px;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  border-left: 1px solid var(--border-color);
-  padding-left: 24px;
-}
-
-@media (max-width: 820px) {
-  .alarm-split-workspace {
-    flex-direction: column;
-  }
-  .alarm-left-pane {
-    width: 100%;
-  }
-  .alarm-right-pane {
-    border-left: none;
-    border-top: 1px solid var(--border-color);
-    padding-left: 0;
-    padding-top: 20px;
-  }
-}
-
-.pane-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  width: 100%;
-  padding-bottom: 12px;
-  border-bottom: 1px dashed var(--border-color);
-}
-
-.pane-header .header-title {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 15px;
-  font-weight: 700;
-  color: var(--text-main);
-}
-
-.icon-bell, .icon-hourglass, .icon-sliders {
-  color: var(--primary);
-}
-
-.alarm-count-badge {
-  font-size: 11px;
-  font-weight: 700;
-  background-color: rgba(49, 130, 206, 0.12);
-  color: var(--primary);
-  padding: 2px 8px;
-  border-radius: 10px;
-}
-
-.alarm-list-scroll {
-  flex: 1;
-  overflow-y: auto;
-  max-height: 540px;
-}
-
-.empty-alarm-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 40px 10px;
-  text-align: center;
-  color: var(--text-muted);
-}
-
-.empty-icon {
-  font-size: 36px;
-  margin: 0 0 10px 0;
-}
-
-.empty-text {
-  font-size: 13px;
-  margin: 0;
-}
-
-.alarm-cards-stack {
-  display: flex;
-  flex-direction: column;
-  gap: 0;
-}
-
-.alarm-card-item {
-  background-color: transparent;
-  border: none;
-  border-bottom: 1px solid var(--border-color);
-  border-radius: 0;
-  border-left: 3px solid transparent;
-  padding: 14px 10px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  box-shadow: none;
-}
-
-.alarm-card-item:hover {
-  background-color: var(--bg-card-hover);
-  border-left-color: var(--text-muted);
-}
-
-.alarm-card-item.active {
-  background-color: rgba(49, 130, 206, 0.08);
-  border-left-color: var(--primary);
-  box-shadow: none;
-}
-
-.alarm-card-item.disabled {
-  opacity: 0.5;
-}
-
-.alarm-item-left {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.alarm-time-display {
-  font-family: 'Roboto Mono', monospace, sans-serif;
-  font-size: 22px;
-  font-weight: 800;
-  color: var(--text-main);
-}
-
-.alarm-meta-info {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 11px;
-  color: var(--text-muted);
-}
-
-.alarm-tag-label, .alarm-tag-repeat {
+.icon-btn-action {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: 1px solid var(--border-color, #e2e8f0);
+  background: var(--bg-surface, #ffffff);
+  color: var(--text-muted, #64748b);
+  cursor: pointer;
+  transition: all 0.2s ease;
 }
 
-.alarm-item-right {
-  display: flex;
-  align-items: center;
-  gap: 12px;
+.icon-btn-action:hover {
+  border-color: var(--primary, #3b82f6);
+  color: var(--primary, #3b82f6);
+  background: var(--bg-hover, #f8fafc);
 }
 
+.icon-btn-action.delete:hover {
+  border-color: #ef4444;
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.08);
+}
+
+/* Switch Toggle */
 .switch-toggle {
   position: relative;
   display: inline-block;
-  width: 40px;
-  height: 22px;
+  width: 42px;
+  height: 24px;
 }
 
 .switch-toggle input {
@@ -1632,40 +1392,92 @@ onUnmounted(() => {
 .slider-round {
   position: absolute;
   cursor: pointer;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: var(--border-color);
+  top: 0; left: 0; right: 0; bottom: 0;
+  background-color: var(--border-color, #cbd5e1);
   transition: .3s;
-  border-radius: 22px;
+  border-radius: 24px;
 }
 
 .slider-round:before {
   position: absolute;
   content: "";
-  height: 16px;
-  width: 16px;
+  height: 18px;
+  width: 18px;
   left: 3px;
   bottom: 3px;
   background-color: white;
   transition: .3s;
   border-radius: 50%;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
 }
 
 input:checked + .slider-round {
-  background-color: var(--primary);
+  background-color: #10b981;
 }
 
 input:checked + .slider-round:before {
   transform: translateX(18px);
 }
 
-.config-form-card {
+/* Modal Windows */
+.modal-backdrop {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(15, 23, 42, 0.6);
+  backdrop-filter: blur(6px);
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+
+.modal-card {
+  width: 100%;
+  max-width: 500px;
+  background: var(--bg-card, #ffffff);
+  border: 1px solid var(--border-color, #e2e8f0);
+  border-radius: 20px;
+  box-shadow: 0 24px 48px -12px rgba(0, 0, 0, 0.18);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 22px;
+  border-bottom: 1px solid var(--border-color, #e2e8f0);
+}
+
+.modal-header h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-main, #0f172a);
+}
+
+.icon-btn-close {
+  background: transparent;
+  border: none;
+  color: var(--text-muted, #64748b);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 6px;
+}
+
+.modal-body {
+  padding: 20px 22px;
   display: flex;
   flex-direction: column;
   gap: 16px;
-  width: 100%;
+  max-height: 70vh;
+  overflow-y: auto;
 }
 
 .form-group {
@@ -1675,61 +1487,139 @@ input:checked + .slider-round:before {
 }
 
 .form-label {
-  font-size: 13px;
-  font-weight: 700;
-  color: var(--text-main);
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text-main, #1e293b);
 }
 
-.text-input, .select-input {
+.text-input,
+.select-input {
   width: 100%;
-  padding: 10px 14px;
-  border-radius: var(--radius-sm, 8px);
-  border: 1px solid var(--border-color);
-  background-color: var(--bg-app);
-  color: var(--text-main);
+  padding: 9px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border-color, #e2e8f0);
+  background: var(--bg-surface, #ffffff);
+  color: var(--text-main, #0f172a);
   font-size: 13px;
-  outline: none;
   box-sizing: border-box;
+  outline: none;
 }
 
-.text-input:focus, .select-input:focus {
-  border-color: var(--primary);
+.text-input:focus,
+.select-input:focus {
+  border-color: var(--primary, #3b82f6);
+}
+
+.label-with-presets {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.quick-preset-chips {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.preset-chip {
+  padding: 4px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--border-color, #e2e8f0);
+  background: var(--bg-surface, #f8fafc);
+  color: var(--text-main, #0f172a);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.preset-chip:hover {
+  background: rgba(59, 130, 246, 0.1);
+  border-color: var(--primary, #3b82f6);
+  color: var(--primary, #3b82f6);
+}
+
+.time-inputs-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.time-unit-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.unit-input {
+  width: 64px;
+  text-align: center;
+  font-size: 18px;
+  font-weight: 700;
+  font-family: ui-monospace, monospace;
+  padding: 8px 4px;
+  border-radius: 8px;
+  border: 1px solid var(--border-color, #e2e8f0);
+  background: var(--bg-surface, #ffffff);
+  color: var(--text-main, #0f172a);
+}
+
+.unit-label {
+  font-size: 11px;
+  color: var(--text-muted, #64748b);
+  font-weight: 600;
+}
+
+.unit-colon {
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--text-muted, #94a3b8);
+  margin-bottom: 16px;
+}
+
+.sound-select-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.preview-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 9px 12px;
+  white-space: nowrap;
 }
 
 .compensate-config-box {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  padding: 12px 14px;
-  background-color: rgba(221, 107, 32, 0.06);
-  border: 1px dashed rgba(221, 107, 32, 0.3);
-  border-radius: var(--radius-md, 8px);
-  margin-top: -4px;
+  gap: 8px;
+  padding: 12px;
+  background: var(--bg-surface, #f8fafc);
+  border: 1px dashed var(--border-color, #e2e8f0);
+  border-radius: 10px;
 }
 
 .checkbox-option {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--text-main);
-  cursor: pointer;
-}
-
-.checkbox-option input[type="checkbox"] {
-  accent-color: var(--primary);
-  width: 15px;
-  height: 15px;
+  font-size: 12.5px;
+  color: var(--text-main, #0f172a);
   cursor: pointer;
 }
 
 .compensate-tips {
-  font-size: 11px;
-  color: var(--text-muted);
-  line-height: 1.4;
-  padding-top: 4px;
-  border-top: 1px dashed var(--border-color);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11.5px;
+  color: var(--text-muted, #64748b);
 }
 
 .weekdays-selector {
@@ -1741,9 +1631,9 @@ input:checked + .slider-round:before {
 .weekday-chip {
   padding: 6px 12px;
   border-radius: 8px;
-  border: 1px solid var(--border-color);
-  background-color: var(--bg-app);
-  color: var(--text-main);
+  border: 1px solid var(--border-color, #e2e8f0);
+  background: var(--bg-surface, #f8fafc);
+  color: var(--text-main, #0f172a);
   font-size: 12px;
   font-weight: 600;
   cursor: pointer;
@@ -1751,75 +1641,57 @@ input:checked + .slider-round:before {
 }
 
 .weekday-chip.active {
-  background-color: var(--primary);
+  background: var(--primary, #3b82f6);
   color: #ffffff;
-  border-color: var(--primary);
+  border-color: var(--primary, #3b82f6);
 }
 
-.config-actions {
+.modal-footer {
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  gap: 12px;
-  margin-top: 8px;
+  gap: 10px;
+  padding: 14px 22px;
+  border-top: 1px solid var(--border-color, #e2e8f0);
 }
 
-.btn-save-large {
-  padding: 10px 24px;
-  font-size: 14px;
-  font-weight: 700;
-}
-
-.modal-backdrop {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
-  background-color: rgba(15, 23, 42, 0.65);
-  backdrop-filter: blur(6px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 99999;
-}
-
+/* Ringing Notifications */
 .ringing-card {
-  background-color: var(--bg-card);
-  border: 2px solid #DD6B20;
-  border-radius: 20px;
-  padding: 32px 40px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
   text-align: center;
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.4);
+  padding: 32px 24px;
+  align-items: center;
 }
 
 .ringing-icon {
-  font-size: 48px;
-  margin-bottom: 8px;
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: rgba(239, 68, 68, 0.12);
+  color: #ef4444;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 12px;
 }
 
 .ringing-title {
   font-size: 20px;
   font-weight: 800;
-  color: var(--text-main);
-  margin: 0 0 6px 0;
+  color: #ef4444;
+  margin: 0;
 }
 
 .ringing-time {
-  font-family: 'Roboto Mono', monospace, sans-serif;
   font-size: 24px;
   font-weight: 800;
-  color: #DD6B20;
-  margin-bottom: 8px;
+  color: var(--text-main, #0f172a);
+  margin: 8px 0;
 }
 
 .ringing-label {
   font-size: 14px;
-  color: var(--text-muted);
-  margin: 0 0 24px 0;
+  color: var(--text-muted, #64748b);
+  margin: 0 0 20px 0;
 }
 
 .ringing-actions {
@@ -1827,50 +1699,46 @@ input:checked + .slider-round:before {
   gap: 12px;
 }
 
+.btn-dismiss {
+  background: #10b981;
+  color: #ffffff;
+  padding: 10px 20px;
+  border-radius: 10px;
+  border: none;
+  font-weight: 700;
+  cursor: pointer;
+}
+
 .btn-snooze {
-  background-color: var(--bg-surface);
-  border: 1px solid var(--border-color);
-  color: var(--text-main);
+  background: var(--bg-surface, #f8fafc);
+  border: 1px solid var(--border-color, #e2e8f0);
+  color: var(--text-main, #0f172a);
   padding: 10px 18px;
   border-radius: 10px;
   font-weight: 600;
   cursor: pointer;
 }
 
-.btn-dismiss {
-  background-color: #DD6B20;
-  color: #ffffff;
-  border: none;
-  padding: 10px 24px;
-  border-radius: 10px;
-  font-weight: 700;
-  cursor: pointer;
-}
-
-.btn-dismiss:hover {
-  background-color: #C05621;
-}
-
-.icon-btn {
-  background: transparent;
-  border: none;
-  color: var(--text-muted);
-  cursor: pointer;
-  padding: 6px;
-  border-radius: 6px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.15s ease;
-}
-
-.icon-btn:hover {
-  background-color: var(--bg-card-hover);
-  color: var(--text-main);
-}
-
-.icon-btn.delete-btn:hover {
-  color: #EF4444;
-  background-color: rgba(239, 68, 68, 0.1);
+@media (max-width: 640px) {
+  .toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .toolbar-right {
+    justify-content: space-between;
+  }
+  .search-box {
+    flex: 1;
+  }
+  .search-box input {
+    width: 100%;
+  }
+  .list-card-item {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .card-actions {
+    justify-content: flex-end;
+  }
 }
 </style>

@@ -1,162 +1,251 @@
 <template>
   <div class="pomodoro-container animate-fade-in">
-    <div class="pomodoro-workspace">
-      <!-- Top Mode Tabs Switcher -->
-      <div class="mode-tabs">
-        <button
-          class="mode-btn"
-          :class="{ active: currentMode === 'focus' }"
-          @click="switchMode('focus')"
-        >
-          <Flame :size="15" /> 专注模式 ({{ modeMinutes.focus }}m)
-        </button>
-        <button
-          class="mode-btn"
-          :class="{ active: currentMode === 'shortBreak' }"
-          @click="switchMode('shortBreak')"
-        >
-          <Coffee :size="15" /> 短暂休息 ({{ modeMinutes.shortBreak }}m)
-        </button>
-        <button
-          class="mode-btn"
-          :class="{ active: currentMode === 'longBreak' }"
-          @click="switchMode('longBreak')"
-        >
-          <Smile :size="15" /> 深度休息 ({{ modeMinutes.longBreak }}m)
-        </button>
-      </div>
-
-      <!-- Main Focus Display Area -->
-      <div class="focus-display-section">
-        <!-- Time Quick Adjustment Left Buttons -->
-        <div class="adjust-group left">
-          <button class="btn-adjust" @click="adjustTime(-5)" title="减少5分钟" :disabled="timeLeft <= 300">
-            -5m
+    <div class="pure-list-workspace">
+      <!-- Top Toolbar (Filters, Search, Stats, Actions) -->
+      <div class="toolbar">
+        <div class="filter-group">
+          <button
+            class="filter-btn"
+            :class="{ active: currentFilter === 'all' }"
+            @click="currentFilter = 'all'"
+          >
+            全部 ({{ pomodoroList.length }})
           </button>
-          <button class="btn-adjust" @click="adjustTime(-1)" title="减少1分钟" :disabled="timeLeft <= 60">
-            -1m
+          <button
+            class="filter-btn"
+            :class="{ active: currentFilter === 'running' }"
+            @click="currentFilter = 'running'"
+          >
+            专注中 ({{ runningCount }})
+          </button>
+          <button
+            class="filter-btn"
+            :class="{ active: currentFilter === 'completed' }"
+            @click="currentFilter = 'completed'"
+          >
+            已达标 ({{ completedCount }})
           </button>
         </div>
 
-        <!-- Circular Progress Ring & Grand Timer Display -->
-        <div class="timer-circle-wrapper" :class="{ 'is-active': isRunning }">
-          <svg class="progress-ring" width="280" height="280">
-            <defs>
-              <linearGradient id="focusGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stop-color="#3182CE" />
-                <stop offset="100%" stop-color="#805AD5" />
-              </linearGradient>
-              <linearGradient id="breakGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stop-color="#38A169" />
-                <stop offset="100%" stop-color="#319795" />
-              </linearGradient>
-            </defs>
-            <circle
-              class="progress-ring-bg"
-              stroke-width="12"
-              r="124"
-              cx="140"
-              cy="140"
+        <div class="toolbar-right">
+          <div class="search-box">
+            <Search :size="14" class="search-icon" />
+            <input
+              type="text"
+              v-model="searchKeyword"
+              placeholder="搜索番茄任务..."
             />
-            <circle
-              class="progress-ring-fill"
-              stroke-width="12"
-              r="124"
-              cx="140"
-              cy="140"
-              :stroke="currentMode === 'focus' ? 'url(#focusGradient)' : 'url(#breakGradient)'"
-              :style="progressRingStyle"
-            />
-          </svg>
-
-          <div class="timer-center-text">
-            <span class="time-number">{{ formattedTime }}</span>
-            <span class="timer-status-badge" :class="{ running: isRunning }">
-              <span class="status-dot"></span>
-              {{ isRunning ? (currentMode === 'focus' ? '深度专注中' : '休息放松中') : '准备就绪' }}
-            </span>
           </div>
-        </div>
 
-        <!-- Time Quick Adjustment Right Buttons -->
-        <div class="adjust-group right">
-          <button class="btn-adjust" @click="adjustTime(1)" title="增加1分钟">
-            +1m
+          <button class="btn btn-outline" @click="showDurationModal = true" title="配置默认时长">
+            <Sliders :size="14" /> 默认时长
           </button>
-          <button class="btn-adjust" @click="adjustTime(5)" title="增加5分钟">
-            +5m
+
+          <button class="btn btn-primary" @click="openAddModal">
+            <Plus :size="14" /> 新建专注任务
           </button>
         </div>
       </div>
 
-      <!-- Control Action Buttons -->
-      <div class="controls-row">
-        <button class="btn btn-reset" @click="resetTimer" title="重置时间">
-          <RotateCcw :size="16" /> 重置
-        </button>
-
-        <button
-          class="btn btn-toggle-run"
-          :class="{ 'is-running': isRunning, 'is-break': currentMode !== 'focus' }"
-          @click="toggleTimer"
-        >
-          <Pause v-if="isRunning" :size="22" />
-          <Play v-else :size="22" />
-          <span>{{ isRunning ? '暂停计时' : '开启专注' }}</span>
-        </button>
-
-        <button class="btn btn-settings-toggle" @click="showDurationModal = true" title="自定义专注与休息时长">
-          <Sliders :size="16" /> 自定义时长
+      <!-- Stats Summary Banner -->
+      <div class="stats-banner-row">
+        <div class="stats-pill">
+          <Flame :size="14" class="icon-flame" />
+          <span>今日已完成 <strong>{{ totalCompletedTomatoes }}</strong> 个番茄</span>
+        </div>
+        <div class="stats-pill">
+          <Clock :size="14" class="icon-clock" />
+          <span>累计高效专注 <strong>{{ totalFocusMinutes }}</strong> 分钟</span>
+        </div>
+        <button class="clear-stats-btn" @click="clearStats" title="重置今日统计数据">
+          <Trash2 :size="12" /> 重置今日统计
         </button>
       </div>
 
-      <!-- Today's Stats Banner -->
-      <div class="stats-banner">
-        <div class="stat-item">
-          <span class="stat-icon"><Flame :size="18" class="icon-flame" /></span>
-          <div class="stat-info">
-            <span class="stat-val">{{ completedCount }}</span>
-            <span class="stat-lbl">今日完成番茄数</span>
-          </div>
+      <!-- Pomodoro Task List Area -->
+      <div class="list-scroll-area">
+        <div v-if="filteredList.length === 0" class="empty-state">
+          <div class="empty-icon"><Flame :size="42" :stroke-width="1.5" /></div>
+          <p class="empty-text">暂无番茄专注任务，点击右上角 "+ 新建专注任务" 开启高效时刻！</p>
         </div>
 
-        <div class="stat-item">
-          <span class="stat-icon"><Clock :size="18" class="icon-clock" /></span>
-          <div class="stat-info">
-            <span class="stat-val">{{ totalFocusMinutes }} 分钟</span>
-            <span class="stat-lbl">累计专注时长</span>
+        <div v-else class="items-grid">
+          <div
+            v-for="task in filteredList"
+            :key="task.id"
+            class="list-card-item animate-fade-in"
+            :class="{ running: task.isRunning, completed: task.completedTomatoes >= task.targetTomatoes }"
+          >
+            <div class="card-left-indicator">
+              <div class="mini-pomo-icon" :class="{ running: task.isRunning, done: task.completedTomatoes >= task.targetTomatoes }">
+                <Flame :size="20" />
+              </div>
+            </div>
+
+            <div class="card-body">
+              <div class="card-title-row">
+                <span class="card-title">{{ task.title }}</span>
+                <span class="tag tag-cat"><Folder :size="11" /> {{ task.category || '专注' }}</span>
+                <span class="mode-tag" :class="task.mode">
+                  {{ task.mode === 'focus' ? '深度专注' : task.mode === 'shortBreak' ? '短休' : '长休' }}
+                </span>
+                <span class="status-tag" :class="{ running: task.isRunning, finished: task.completedTomatoes >= task.targetTomatoes }">
+                  <span class="dot"></span>
+                  {{ task.isRunning ? '专注计时中' : task.completedTomatoes >= task.targetTomatoes ? '目标达成' : '待开启' }}
+                </span>
+              </div>
+
+              <div class="card-time-row">
+                <span class="digits-time">{{ formatTime(task.remainingSeconds) }}</span>
+                <span class="digits-sub">/ {{ task.focusMinutes }} 分钟</span>
+                <div class="tomatoes-counter">
+                  <span class="tomato-icons">
+                    <span v-for="n in Math.min(8, task.completedTomatoes)" :key="'t'+n" class="tomato-icon">🍅</span>
+                  </span>
+                  <span class="tomato-text">进度 {{ task.completedTomatoes }}/{{ task.targetTomatoes }} 目标</span>
+                </div>
+              </div>
+
+              <!-- Progress Track -->
+              <div class="item-progress-track">
+                <div
+                  class="item-progress-bar"
+                  :class="{ running: task.isRunning, done: task.completedTomatoes >= task.targetTomatoes }"
+                  :style="{ width: `${((task.focusMinutes * 60 - task.remainingSeconds) / (task.focusMinutes * 60 || 1)) * 100}%` }"
+                ></div>
+              </div>
+            </div>
+
+            <div class="card-actions">
+              <button
+                class="btn-action-primary"
+                :class="{ running: task.isRunning }"
+                @click="toggleTask(task)"
+                :title="task.isRunning ? '暂停专注' : '开启专注'"
+              >
+                <Pause v-if="task.isRunning" :size="14" />
+                <Play v-else :size="14" />
+                <span>{{ task.isRunning ? '暂停' : '开启' }}</span>
+              </button>
+
+              <button
+                class="icon-btn-action plus-tomato"
+                @click="manualAddTomato(task)"
+                title="快速打卡 +1 个番茄"
+              >
+                +🍅
+              </button>
+
+              <button
+                class="icon-btn-action reset"
+                @click="resetTask(task)"
+                title="重置当前计时"
+              >
+                <RotateCcw :size="14" />
+              </button>
+
+              <button
+                class="icon-btn-action edit"
+                @click="openEditModal(task)"
+                title="编辑任务"
+              >
+                <Sliders :size="14" />
+              </button>
+
+              <button
+                class="icon-btn-action delete"
+                @click="deleteTask(task.id)"
+                title="删除任务"
+              >
+                <Trash2 :size="14" />
+              </button>
+            </div>
           </div>
         </div>
-
-        <button class="btn btn-sm btn-outline clear-stats-btn" @click="clearStats" title="清空统计数据">
-          <Trash2 :size="12" /> 清空统计
-        </button>
       </div>
     </div>
 
-    <!-- Duration Customization Modal -->
+    <!-- Modal: Add / Edit Pomodoro Task -->
+    <div v-if="showTaskModal" class="modal-backdrop" @click.self="showTaskModal = false">
+      <div class="modal-card animate-scale-up">
+        <div class="modal-header">
+          <h3><Flame :size="18" /> {{ editingTaskId ? '编辑番茄任务' : '新建番茄任务' }}</h3>
+          <button class="icon-btn-close" @click="showTaskModal = false"><X :size="16" /></button>
+        </div>
+
+        <div class="modal-body">
+          <div class="form-group">
+            <label class="form-label">任务名称 *</label>
+            <input
+              type="text"
+              v-model="taskForm.title"
+              class="text-input"
+              placeholder="例如: 编写核心功能模块 / 阅读技术白皮书"
+            />
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">任务分类</label>
+            <input
+              type="text"
+              v-model="taskForm.category"
+              class="text-input"
+              placeholder="例如: 工作 / 学习 / 研发"
+            />
+          </div>
+
+          <div class="form-row-2">
+            <div class="form-group flex-1">
+              <label class="form-label">单次专注时长 (分钟)</label>
+              <input type="number" v-model.number="taskForm.focusMinutes" min="1" max="180" class="text-input" />
+            </div>
+
+            <div class="form-group flex-1">
+              <label class="form-label">目标番茄数 (个)</label>
+              <input type="number" v-model.number="taskForm.targetTomatoes" min="1" max="50" class="text-input" />
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button class="btn btn-outline" @click="showTaskModal = false">取消</button>
+          <button class="btn btn-primary" @click="saveTaskModal">
+            <Check :size="14" /> 保存任务
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal: Default Duration Settings -->
     <div v-if="showDurationModal" class="modal-backdrop" @click.self="showDurationModal = false">
-      <div class="modal-card animate-fade-in">
-        <h3 class="modal-title"><Sliders :size="18" /> 自定义番茄钟时长 (分钟)</h3>
-
-        <div class="form-group">
-          <label><Flame :size="14" /> 专注模式时长 (分钟)</label>
-          <input type="number" v-model.number="tempModeMinutes.focus" min="1" max="180" />
+      <div class="modal-card animate-scale-up">
+        <div class="modal-header">
+          <h3><Sliders :size="18" /> 默认番茄时长配置</h3>
+          <button class="icon-btn-close" @click="showDurationModal = false"><X :size="16" /></button>
         </div>
 
-        <div class="form-group">
-          <label><Coffee :size="14" /> 短暂休息时长 (分钟)</label>
-          <input type="number" v-model.number="tempModeMinutes.shortBreak" min="1" max="60" />
+        <div class="modal-body">
+          <div class="form-group">
+            <label class="form-label"><Flame :size="14" /> 默认专注模式时长 (分钟)</label>
+            <input type="number" v-model.number="tempModeMinutes.focus" min="1" max="180" class="text-input" />
+          </div>
+
+          <div class="form-group">
+            <label class="form-label"><Coffee :size="14" /> 默认短休时长 (分钟)</label>
+            <input type="number" v-model.number="tempModeMinutes.shortBreak" min="1" max="60" class="text-input" />
+          </div>
+
+          <div class="form-group">
+            <label class="form-label"><Smile :size="14" /> 默认长休时长 (分钟)</label>
+            <input type="number" v-model.number="tempModeMinutes.longBreak" min="1" max="120" class="text-input" />
+          </div>
         </div>
 
-        <div class="form-group">
-          <label><Smile :size="14" /> 深度休息时长 (分钟)</label>
-          <input type="number" v-model.number="tempModeMinutes.longBreak" min="1" max="120" />
-        </div>
-
-        <div class="modal-actions">
-          <button class="btn" @click="showDurationModal = false">取消</button>
-          <button class="btn btn-primary" @click="saveCustomDurations">保存时长配置</button>
+        <div class="modal-footer">
+          <button class="btn btn-outline" @click="showDurationModal = false">取消</button>
+          <button class="btn btn-primary" @click="saveCustomDurations">
+            <Check :size="14" /> 保存默认时长
+          </button>
         </div>
       </div>
     </div>
@@ -164,8 +253,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onUnmounted } from 'vue'
-import { Play, Pause, RotateCcw, Flame, Coffee, Smile, Sliders, Trash2, Clock } from 'lucide-vue-next'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import {
+  Play, Pause, RotateCcw, Flame, Coffee, Smile,
+  Sliders, Trash2, Clock, Plus, Search, Check, X, Folder
+} from 'lucide-vue-next'
 import { soundPlayer, type SoundType } from '../../utils/audio'
 import { showConfirm } from '../../utils/confirmState'
 
@@ -174,459 +266,771 @@ const props = defineProps<{
   soundVolume?: number
 }>()
 
-type TimerMode = 'focus' | 'shortBreak' | 'longBreak'
+export interface PomodoroItem {
+  id: string
+  title: string
+  category: string
+  focusMinutes: number
+  remainingSeconds: number
+  completedTomatoes: number
+  targetTomatoes: number
+  mode: 'focus' | 'shortBreak' | 'longBreak'
+  isRunning: boolean
+}
 
-// Persistent Mode Durations (in minutes)
-const modeMinutes = ref<Record<TimerMode, number>>({
+// Global default durations
+const modeMinutes = ref<{ focus: number; shortBreak: number; longBreak: number }>({
   focus: Number(localStorage.getItem('pomo_min_focus') || '25'),
   shortBreak: Number(localStorage.getItem('pomo_min_short') || '5'),
   longBreak: Number(localStorage.getItem('pomo_min_long') || '15')
 })
 
-const currentMode = ref<TimerMode>('focus')
-const timeLeft = ref(modeMinutes.value.focus * 60)
-const isRunning = ref(false)
-const completedCount = ref(Number(localStorage.getItem('pomo_completed_count') || '0'))
-const totalFocusMinutes = computed(() => completedCount.value * modeMinutes.value.focus)
+const defaultPomodoroTasks: PomodoroItem[] = [
+  {
+    id: 'pomo-1',
+    title: '系统核心功能代码编写与重构',
+    category: '工作',
+    focusMinutes: 25,
+    remainingSeconds: 25 * 60,
+    completedTomatoes: 2,
+    targetTomatoes: 4,
+    mode: 'focus',
+    isRunning: false
+  },
+  {
+    id: 'pomo-2',
+    title: '深度阅读与技术方案设计',
+    category: '学习',
+    focusMinutes: 30,
+    remainingSeconds: 30 * 60,
+    completedTomatoes: 1,
+    targetTomatoes: 3,
+    mode: 'focus',
+    isRunning: false
+  },
+  {
+    id: 'pomo-3',
+    title: '团队沟通与每日任务梳理',
+    category: '常规',
+    focusMinutes: 15,
+    remainingSeconds: 15 * 60,
+    completedTomatoes: 2,
+    targetTomatoes: 2,
+    mode: 'focus',
+    isRunning: false
+  }
+]
 
-let timerId: any = null
+const pomodoroList = ref<PomodoroItem[]>(
+  JSON.parse(localStorage.getItem('todo_pro_pomodoro_list') || 'null') || defaultPomodoroTasks
+)
 
-// Modal for customizing durations
+const currentFilter = ref<'all' | 'running' | 'completed'>('all')
+const searchKeyword = ref('')
+const totalCompletedTomatoes = ref(Number(localStorage.getItem('pomo_completed_count') || '5'))
+
+const totalFocusMinutes = computed(() => {
+  return totalCompletedTomatoes.value * modeMinutes.value.focus
+})
+
+const runningCount = computed(() => pomodoroList.value.filter(i => i.isRunning).length)
+const completedCount = computed(() => pomodoroList.value.filter(i => i.completedTomatoes >= i.targetTomatoes).length)
+
+watch(pomodoroList, (newVal) => {
+  const serializable = newVal.map(item => ({
+    id: item.id,
+    title: item.title,
+    category: item.category,
+    focusMinutes: item.focusMinutes,
+    remainingSeconds: item.remainingSeconds,
+    completedTomatoes: item.completedTomatoes,
+    targetTomatoes: item.targetTomatoes,
+    mode: item.mode,
+    isRunning: item.isRunning
+  }))
+  localStorage.setItem('todo_pro_pomodoro_list', JSON.stringify(serializable))
+}, { deep: true })
+
+const filteredList = computed(() => {
+  return pomodoroList.value.filter(item => {
+    if (currentFilter.value === 'running' && !item.isRunning) return false
+    if (currentFilter.value === 'completed' && item.completedTomatoes < item.targetTomatoes) return false
+    if (searchKeyword.value.trim()) {
+      const q = searchKeyword.value.trim().toLowerCase()
+      const matchTitle = item.title.toLowerCase().includes(q)
+      const matchCat = (item.category || '').toLowerCase().includes(q)
+      if (!matchTitle && !matchCat) return false
+    }
+    return true
+  })
+})
+
+// Modal states
+const showTaskModal = ref(false)
+const editingTaskId = ref<string | null>(null)
+const taskForm = ref({
+  title: '',
+  category: '工作',
+  focusMinutes: 25,
+  targetTomatoes: 4
+})
+
 const showDurationModal = ref(false)
 const tempModeMinutes = ref({ ...modeMinutes.value })
 
-const formattedTime = computed(() => {
-  const m = Math.floor(timeLeft.value / 60)
-  const s = timeLeft.value % 60
-  return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
-})
+let globalInterval: any = null
 
-const progressPercent = computed(() => {
-  const total = modeMinutes.value[currentMode.value] * 60
-  return Math.min(100, Math.max(0, ((total - timeLeft.value) / total) * 100))
-})
-
-const progressRingStyle = computed(() => {
-  const circumference = 2 * Math.PI * 124
-  const strokeDashoffset = circumference - (progressPercent.value / 100) * circumference
-  return {
-    strokeDasharray: `${circumference} ${circumference}`,
-    strokeDashoffset: `${strokeDashoffset}`
+function updateGlobalTimer() {
+  const hasRunning = pomodoroList.value.some(t => t.isRunning)
+  if (hasRunning && !globalInterval) {
+    globalInterval = setInterval(() => {
+      let stillRunning = false
+      pomodoroList.value.forEach(task => {
+        if (task.isRunning) {
+          if (task.remainingSeconds > 0) {
+            task.remainingSeconds--
+            stillRunning = true
+          } else {
+            task.isRunning = false
+            onTaskTimerFinished(task)
+          }
+        }
+      })
+      if (!stillRunning && globalInterval) {
+        clearInterval(globalInterval)
+        globalInterval = null
+      }
+    }, 1000)
+  } else if (!hasRunning && globalInterval) {
+    clearInterval(globalInterval)
+    globalInterval = null
   }
-})
-
-function switchMode(mode: TimerMode) {
-  if (isRunning.value) pauseTimer()
-  currentMode.value = mode
-  timeLeft.value = modeMinutes.value[mode] * 60
 }
 
-function adjustTime(deltaMinutes: number) {
-  const newSeconds = timeLeft.value + deltaMinutes * 60
-  if (newSeconds >= 10) {
-    timeLeft.value = newSeconds
+function onTaskTimerFinished(task: PomodoroItem) {
+  task.completedTomatoes++
+  totalCompletedTomatoes.value++
+  localStorage.setItem('pomo_completed_count', String(totalCompletedTomatoes.value))
+
+  soundPlayer.play((props.soundType as SoundType) || 'chime', props.soundVolume ?? 0.8)
+
+  if (task.completedTomatoes % 4 === 0) {
+    task.mode = 'longBreak'
+    task.remainingSeconds = modeMinutes.value.longBreak * 60
+  } else {
+    task.mode = 'shortBreak'
+    task.remainingSeconds = modeMinutes.value.shortBreak * 60
   }
+}
+
+function toggleTask(task: PomodoroItem) {
+  if (task.remainingSeconds <= 0) {
+    task.remainingSeconds = task.focusMinutes * 60
+  }
+  task.isRunning = !task.isRunning
+  updateGlobalTimer()
+}
+
+function manualAddTomato(task: PomodoroItem) {
+  task.completedTomatoes++
+  totalCompletedTomatoes.value++
+  localStorage.setItem('pomo_completed_count', String(totalCompletedTomatoes.value))
+}
+
+function resetTask(task: PomodoroItem) {
+  task.isRunning = false
+  task.mode = 'focus'
+  task.remainingSeconds = task.focusMinutes * 60
+  updateGlobalTimer()
+}
+
+function openAddModal() {
+  editingTaskId.value = null
+  taskForm.value = {
+    title: '',
+    category: '工作',
+    focusMinutes: modeMinutes.value.focus,
+    targetTomatoes: 4
+  }
+  showTaskModal.value = true
+}
+
+function openEditModal(task: PomodoroItem) {
+  editingTaskId.value = task.id
+  taskForm.value = {
+    title: task.title,
+    category: task.category || '工作',
+    focusMinutes: task.focusMinutes,
+    targetTomatoes: task.targetTomatoes
+  }
+  showTaskModal.value = true
+}
+
+function saveTaskModal() {
+  const title = taskForm.value.title.trim()
+  if (!title) return
+
+  if (editingTaskId.value) {
+    const idx = pomodoroList.value.findIndex(t => t.id === editingTaskId.value)
+    if (idx !== -1) {
+      pomodoroList.value[idx].title = title
+      pomodoroList.value[idx].category = taskForm.value.category.trim()
+      pomodoroList.value[idx].focusMinutes = taskForm.value.focusMinutes
+      pomodoroList.value[idx].targetTomatoes = taskForm.value.targetTomatoes
+    }
+  } else {
+    const newTask: PomodoroItem = {
+      id: 'pomo_' + Date.now(),
+      title,
+      category: taskForm.value.category.trim() || '工作',
+      focusMinutes: taskForm.value.focusMinutes,
+      remainingSeconds: taskForm.value.focusMinutes * 60,
+      completedTomatoes: 0,
+      targetTomatoes: taskForm.value.targetTomatoes,
+      mode: 'focus',
+      isRunning: false
+    }
+    pomodoroList.value.unshift(newTask)
+  }
+
+  showTaskModal.value = false
+}
+
+async function deleteTask(id: string) {
+  const confirmed = await showConfirm({
+    title: '删除番茄任务',
+    message: '确定要删除该番茄任务吗？',
+    confirmText: '确认删除',
+    type: 'danger'
+  })
+  if (!confirmed) return
+
+  pomodoroList.value = pomodoroList.value.filter(t => t.id !== id)
+  updateGlobalTimer()
 }
 
 function saveCustomDurations() {
-  modeMinutes.value = {
-    focus: Math.max(1, tempModeMinutes.value.focus || 25),
-    shortBreak: Math.max(1, tempModeMinutes.value.shortBreak || 5),
-    longBreak: Math.max(1, tempModeMinutes.value.longBreak || 15)
-  }
+  modeMinutes.value = { ...tempModeMinutes.value }
   localStorage.setItem('pomo_min_focus', String(modeMinutes.value.focus))
   localStorage.setItem('pomo_min_short', String(modeMinutes.value.shortBreak))
   localStorage.setItem('pomo_min_long', String(modeMinutes.value.longBreak))
-
-  if (!isRunning.value) {
-    timeLeft.value = modeMinutes.value[currentMode.value] * 60
-  }
   showDurationModal.value = false
-}
-
-function toggleTimer() {
-  if (isRunning.value) {
-    pauseTimer()
-  } else {
-    startTimer()
-  }
-}
-
-function startTimer() {
-  if (isRunning.value) return
-  isRunning.value = true
-  timerId = setInterval(() => {
-    if (timeLeft.value > 0) {
-      timeLeft.value--
-    } else {
-      onTimerFinished()
-    }
-  }, 1000)
-}
-
-function pauseTimer() {
-  isRunning.value = false
-  if (timerId) clearInterval(timerId)
-  timerId = null
-}
-
-async function resetTimer() {
-  if (isRunning.value || timeLeft.value < modeMinutes.value[currentMode.value] * 60) {
-    const confirmed = await showConfirm({
-      title: '重置番茄钟',
-      message: '确定要重置当前的番茄钟倒计时吗？',
-      confirmText: '重置计时',
-      cancelText: '取消',
-      type: 'warning'
-    })
-    if (!confirmed) return
-  }
-  pauseTimer()
-  timeLeft.value = modeMinutes.value[currentMode.value] * 60
 }
 
 async function clearStats() {
   const confirmed = await showConfirm({
-    title: '清空专注统计',
-    message: '确定要清空累计的番茄钟完成数与专注时长吗？',
-    detail: '数据清空后不可恢复。',
-    confirmText: '清空统计',
-    cancelText: '取消',
+    title: '清空统计数据',
+    message: '确定要重置今日的番茄数与专注时长吗？',
+    confirmText: '确认重置',
     type: 'danger'
   })
   if (!confirmed) return
-  completedCount.value = 0
+  totalCompletedTomatoes.value = 0
   localStorage.setItem('pomo_completed_count', '0')
 }
 
-function onTimerFinished() {
-  pauseTimer()
-  soundPlayer.play(props.soundType || 'chime', props.soundVolume ?? 0.8)
-
-  if (currentMode.value === 'focus') {
-    completedCount.value++
-    localStorage.setItem('pomo_completed_count', String(completedCount.value))
-    alert(`🎉 恭喜！您已成功完成一次 ${modeMinutes.value.focus} 分钟专注！休息一下吧。`)
-    switchMode('shortBreak')
-  } else {
-    alert('☕ 休息结束！回到专注状态吧。')
-    switchMode('focus')
-  }
+function formatTime(totalSec: number): string {
+  const m = Math.floor(totalSec / 60)
+  const s = totalSec % 60
+  return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
 }
 
+onMounted(() => {
+  updateGlobalTimer()
+})
+
 onUnmounted(() => {
-  pauseTimer()
+  if (globalInterval) clearInterval(globalInterval)
 })
 </script>
 
 <style scoped>
 .pomodoro-container {
   display: flex;
-  justify-content: center;
-  align-items: center;
+  flex-direction: column;
   height: 100%;
-  padding: 0;
+  padding: 20px 24px;
+  box-sizing: border-box;
+  overflow-y: auto;
+}
+
+.pure-list-workspace {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
   width: 100%;
-  background: radial-gradient(circle at center, rgba(49, 130, 206, 0.06) 0%, transparent 70%);
-}
-
-.pomodoro-workspace {
-  width: 100%;
-  max-width: 760px;
-  background-color: transparent;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 28px;
-  padding: 24px;
-}
-
-.mode-tabs {
-  display: flex;
-  gap: 8px;
-  background-color: var(--bg-surface);
-  padding: 5px;
-  border-radius: 20px;
-  border: 1px solid var(--border-color);
-  box-shadow: var(--shadow-sm);
-}
-
-.mode-btn {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 16px;
-  border-radius: 16px;
-  border: none;
-  background: transparent;
-  color: var(--text-muted);
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.25s ease;
-}
-
-.mode-btn.active {
-  background-color: var(--primary);
-  color: #ffffff;
-  box-shadow: 0 4px 12px rgba(49, 130, 206, 0.3);
-}
-
-.focus-display-section {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 24px;
-  width: 100%;
-}
-
-.adjust-group {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.btn-adjust {
-  background-color: var(--bg-surface);
-  border: 1px solid var(--border-color);
-  color: var(--text-main);
-  width: 48px;
-  height: 48px;
-  border-radius: 50%;
-  font-size: 13px;
-  font-weight: 700;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s ease;
-  box-shadow: var(--shadow-sm);
-}
-
-.btn-adjust:hover:not(:disabled) {
-  border-color: var(--primary);
-  color: var(--primary);
-  transform: scale(1.08);
-  box-shadow: 0 4px 12px rgba(49, 130, 206, 0.2);
-}
-
-.btn-adjust:disabled {
-  opacity: 0.3;
-  cursor: not-allowed;
-}
-
-.timer-circle-wrapper {
-  position: relative;
-  width: 280px;
-  height: 280px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: transform 0.3s ease;
-}
-
-.timer-circle-wrapper.is-active {
-  animation: pulse-glow 3s infinite ease-in-out;
-}
-
-@keyframes pulse-glow {
-  0%, 100% {
-    filter: drop-shadow(0 0 10px rgba(49, 130, 206, 0.15));
-  }
-  50% {
-    filter: drop-shadow(0 0 24px rgba(128, 90, 213, 0.35));
-  }
-}
-
-.progress-ring {
-  transform: rotate(-90deg);
-}
-
-.progress-ring-bg {
-  fill: none;
-  stroke: var(--border-color);
-  opacity: 0.5;
-}
-
-.progress-ring-fill {
-  fill: none;
-  stroke-linecap: round;
-  transition: stroke-dashoffset 0.4s ease;
-}
-
-.timer-center-text {
-  position: absolute;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 6px;
-}
-
-.time-number {
-  font-size: clamp(52px, 6.5vw, 72px);
-  font-weight: 800;
-  color: var(--text-main);
-  font-family: 'Outfit', 'Inter', system-ui, sans-serif;
-  font-variant-numeric: tabular-nums;
-  letter-spacing: -2px;
-  line-height: 1;
-}
-
-.timer-status-badge {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--text-muted);
-  background-color: var(--bg-surface);
-  padding: 4px 12px;
-  border-radius: 12px;
-  border: 1px solid var(--border-color);
-}
-
-.timer-status-badge.running {
-  color: var(--primary);
-  border-color: rgba(49, 130, 206, 0.3);
-}
-
-.status-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background-color: var(--text-muted);
-}
-
-.timer-status-badge.running .status-dot {
-  background-color: #38A169;
-  box-shadow: 0 0 8px #38A169;
-}
-
-.controls-row {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-}
-
-.btn-reset, .btn-settings-toggle {
-  background-color: var(--bg-surface);
-  border: 1px solid var(--border-color);
-  color: var(--text-main);
-  padding: 10px 18px;
-  border-radius: 20px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 13px;
-  font-weight: 600;
-  transition: all 0.2s ease;
-  box-shadow: var(--shadow-sm);
-}
-
-.btn-reset:hover, .btn-settings-toggle:hover {
-  border-color: var(--primary);
-  color: var(--primary);
-  transform: translateY(-1px);
-}
-
-.btn-toggle-run {
-  background: linear-gradient(135deg, var(--primary) 0%, var(--ai-purple) 100%);
-  color: #ffffff;
-  border: none;
-  padding: 12px 32px;
-  border-radius: 24px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 15px;
-  font-weight: 700;
-  box-shadow: 0 6px 18px rgba(49, 130, 206, 0.35);
-  transition: all 0.2s ease;
-}
-
-.btn-toggle-run.is-running {
-  background: linear-gradient(135deg, #DD6B20 0%, #E53E3E 100%);
-  box-shadow: 0 6px 18px rgba(221, 107, 32, 0.35);
-}
-
-.btn-toggle-run:hover {
-  transform: translateY(-2px);
-  filter: brightness(1.05);
-}
-
-.stats-banner {
-  display: flex;
-  width: 100%;
-  max-width: 500px;
-  justify-content: space-around;
-  padding-top: 20px;
-  border-top: 1px solid var(--border-color);
-}
-
-.stat-item {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.stat-icon {
-  font-size: 26px;
-}
-
-.stat-info {
-  display: flex;
-  flex-direction: column;
-}
-
-.stat-val {
-  font-size: 18px;
-  font-weight: 800;
-  color: var(--primary);
-}
-
-.stat-lbl {
-  font-size: 11px;
-  color: var(--text-muted);
-}
-
-/* Modal styles for Customizing Duration */
-.modal-backdrop {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
-  background-color: rgba(0, 0, 0, 0.45);
-  backdrop-filter: blur(4px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-}
-
-.modal-card {
-  background-color: var(--bg-surface);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-lg);
-  padding: 24px;
-  width: 90%;
-  max-width: 420px;
-  box-shadow: var(--shadow-lg);
-  display: flex;
-  flex-direction: column;
+  max-width: 960px;
+  margin: 0 auto;
   gap: 16px;
 }
 
-.modal-title {
-  font-size: 16px;
-  font-weight: 700;
-  color: var(--text-main);
+/* Toolbar */
+.toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.filter-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.filter-btn {
+  font-size: 12.5px;
+  padding: 6px 14px;
+  border-radius: 8px;
+  border: 1px solid var(--border-color, #e2e8f0);
+  background-color: var(--bg-surface, #ffffff);
+  color: var(--text-main, #0f172a);
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.filter-btn:hover {
+  border-color: var(--primary, #3b82f6);
+  color: var(--primary, #3b82f6);
+}
+
+.filter-btn.active {
+  background-color: var(--primary, #3b82f6);
+  color: #ffffff;
+  border-color: var(--primary, #3b82f6);
+  font-weight: 600;
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.25);
+}
+
+.toolbar-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.search-box {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.search-icon {
+  position: absolute;
+  left: 10px;
+  color: var(--text-muted, #94a3b8);
+}
+
+.search-box input {
+  padding: 6px 12px 6px 32px;
+  border-radius: 8px;
+  border: 1px solid var(--border-color, #e2e8f0);
+  background: var(--bg-surface, #ffffff);
+  color: var(--text-main, #0f172a);
+  font-size: 12.5px;
+  outline: none;
+  width: 180px;
+  transition: all 0.2s ease;
+}
+
+.search-box input:focus {
+  border-color: var(--primary, #3b82f6);
+  width: 210px;
+}
+
+/* Stats Banner Row */
+.stats-banner-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px;
+  background: var(--bg-surface, #f8fafc);
+  border: 1px solid var(--border-color, #e2e8f0);
+  border-radius: 10px;
+  flex-wrap: wrap;
+}
+
+.stats-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+  color: var(--text-main, #1e293b);
+}
+
+.icon-flame {
+  color: #ef4444;
+}
+
+.icon-clock {
+  color: var(--primary, #3b82f6);
+}
+
+.clear-stats-btn {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11.5px;
+  color: var(--text-muted, #94a3b8);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.clear-stats-btn:hover {
+  color: #ef4444;
+}
+
+/* List & Cards */
+.list-scroll-area {
+  flex: 1;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 320px;
+  color: var(--text-muted, #94a3b8);
+  gap: 12px;
+}
+
+.items-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.list-card-item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  padding: 14px 18px;
+  background-color: var(--bg-card, #ffffff);
+  border: 1px solid var(--border-color, #e2e8f0);
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
+  gap: 16px;
+  transition: all 0.2s ease;
+}
+
+.list-card-item:hover {
+  border-color: var(--primary, #3b82f6);
+  box-shadow: 0 6px 16px rgba(59, 130, 246, 0.08);
+  transform: translateY(-1px);
+}
+
+.list-card-item.running {
+  border-color: #ef4444;
+  background: linear-gradient(135deg, var(--bg-card, #ffffff) 0%, rgba(239, 68, 68, 0.03) 100%);
+}
+
+.list-card-item.completed {
+  opacity: 0.85;
+}
+
+.card-left-indicator {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.mini-pomo-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: var(--bg-surface, #f8fafc);
+  border: 1px solid var(--border-color, #e2e8f0);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ef4444;
+  transition: all 0.2s ease;
+}
+
+.mini-pomo-icon.running {
+  background: rgba(239, 68, 68, 0.12);
+  border-color: rgba(239, 68, 68, 0.35);
+  box-shadow: 0 0 12px rgba(239, 68, 68, 0.2);
+  animation: pulse 1.5s infinite;
+}
+
+.mini-pomo-icon.done {
+  background: rgba(16, 185, 129, 0.1);
+  color: #10b981;
+  border-color: rgba(16, 185, 129, 0.3);
+}
+
+.card-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.card-title-row {
   display: flex;
   align-items: center;
   gap: 8px;
+  flex-wrap: wrap;
+}
+
+.card-title {
+  font-size: 14.5px;
+  font-weight: 600;
+  color: var(--text-main, #0f172a);
+}
+
+.tag-cat {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: var(--bg-surface, #f8fafc);
+  border: 1px solid var(--border-color, #e2e8f0);
+  color: var(--text-muted, #64748b);
+}
+
+.mode-tag {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: rgba(59, 130, 246, 0.1);
+  color: var(--primary, #3b82f6);
+}
+
+.mode-tag.shortBreak,
+.mode-tag.longBreak {
+  background: rgba(16, 185, 129, 0.1);
+  color: #10b981;
+}
+
+.status-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: var(--bg-app, #f1f5f9);
+  color: var(--text-muted, #64748b);
+}
+
+.status-tag .dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: currentColor;
+}
+
+.status-tag.running {
+  background: rgba(239, 68, 68, 0.12);
+  color: #ef4444;
+}
+
+.status-tag.running .dot {
+  animation: pulse 1.5s infinite;
+}
+
+.status-tag.finished {
+  background: rgba(16, 185, 129, 0.12);
+  color: #10b981;
+}
+
+.card-time-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.digits-time {
+  font-size: 17px;
+  font-weight: 700;
+  font-family: ui-monospace, SFMono-Regular, monospace;
+  font-variant-numeric: tabular-nums;
+  color: #ef4444;
+}
+
+.digits-sub {
+  font-size: 12px;
+  color: var(--text-muted, #94a3b8);
+}
+
+.tomatoes-counter {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: 8px;
+}
+
+.tomato-icons {
+  font-size: 13px;
+  letter-spacing: -1px;
+}
+
+.tomato-text {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--text-muted, #64748b);
+}
+
+/* Progress bar inside card */
+.item-progress-track {
+  width: 100%;
+  height: 4px;
+  background: var(--border-color, #e2e8f0);
+  border-radius: 4px;
+  overflow: hidden;
+  margin-top: 4px;
+}
+
+.item-progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, #ef4444, #f59e0b);
+  transition: width 0.5s ease;
+}
+
+.item-progress-bar.done {
+  background: #10b981;
+}
+
+/* Actions in Card */
+.card-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.btn-action-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: 8px;
+  border: none;
+  background: #ef4444;
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-action-primary:hover {
+  filter: brightness(1.1);
+  transform: translateY(-1px);
+}
+
+.btn-action-primary.running {
+  background: #f59e0b;
+}
+
+.icon-btn-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: 1px solid var(--border-color, #e2e8f0);
+  background: var(--bg-surface, #ffffff);
+  color: var(--text-muted, #64748b);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 700;
+  transition: all 0.2s ease;
+}
+
+.icon-btn-action:hover {
+  border-color: var(--primary, #3b82f6);
+  color: var(--primary, #3b82f6);
+  background: var(--bg-hover, #f8fafc);
+}
+
+.icon-btn-action.plus-tomato:hover {
+  border-color: #ef4444;
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.08);
+}
+
+.icon-btn-action.delete:hover {
+  border-color: #ef4444;
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.08);
+}
+
+/* Modal Windows */
+.modal-backdrop {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(15, 23, 42, 0.6);
+  backdrop-filter: blur(6px);
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+
+.modal-card {
+  width: 100%;
+  max-width: 480px;
+  background: var(--bg-card, #ffffff);
+  border: 1px solid var(--border-color, #e2e8f0);
+  border-radius: 20px;
+  box-shadow: 0 24px 48px -12px rgba(0, 0, 0, 0.18);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 22px;
+  border-bottom: 1px solid var(--border-color, #e2e8f0);
+}
+
+.modal-header h3 {
   margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-main, #0f172a);
+}
+
+.icon-btn-close {
+  background: transparent;
+  border: none;
+  color: var(--text-muted, #64748b);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 6px;
+}
+
+.modal-body {
+  padding: 20px 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 
 .form-group {
@@ -635,47 +1039,65 @@ onUnmounted(() => {
   gap: 6px;
 }
 
-.form-group label {
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--text-muted);
+.form-row-2 {
+  display: flex;
+  gap: 12px;
 }
 
-.form-group input {
-  padding: 8px 12px;
-  border-radius: 6px;
-  border: 1px solid var(--border-color);
-  background-color: var(--bg-app);
-  color: var(--text-main);
-  font-size: 14px;
+.form-label {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text-main, #1e293b);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.text-input {
+  width: 100%;
+  padding: 9px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border-color, #e2e8f0);
+  background: var(--bg-surface, #ffffff);
+  color: var(--text-main, #0f172a);
+  font-size: 13px;
+  box-sizing: border-box;
   outline: none;
 }
 
-.form-group input:focus {
-  border-color: var(--primary);
+.text-input:focus {
+  border-color: var(--primary, #3b82f6);
 }
 
-.modal-actions {
+.modal-footer {
   display: flex;
+  align-items: center;
   justify-content: flex-end;
   gap: 10px;
-  margin-top: 8px;
+  padding: 14px 22px;
+  border-top: 1px solid var(--border-color, #e2e8f0);
 }
 
-.btn {
-  padding: 8px 16px;
-  border-radius: 6px;
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-  border: 1px solid var(--border-color);
-  background-color: transparent;
-  color: var(--text-main);
-}
-
-.btn-primary {
-  background-color: var(--primary);
-  color: #ffffff;
-  border: none;
+@media (max-width: 640px) {
+  .toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .toolbar-right {
+    justify-content: space-between;
+  }
+  .search-box {
+    flex: 1;
+  }
+  .search-box input {
+    width: 100%;
+  }
+  .list-card-item {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .card-actions {
+    justify-content: flex-end;
+  }
 }
 </style>
