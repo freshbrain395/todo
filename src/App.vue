@@ -165,100 +165,142 @@
 
       <!-- Tab 1: Todos List View -->
       <template v-else-if="currentTab === 'todos'">
-        <!-- Filter & Search Toolbar -->
-        <div class="toolbar">
-          <div class="filter-group">
-            <span class="label-sm">筛选:</span>
-            <button
-              class="filter-btn"
-              :class="{ active: currentFilter === 'all' }"
-              @click="setFilter('all')"
-            >
-              全部
-            </button>
-            <button
-              class="filter-btn"
-              :class="{ active: currentFilter === 'pending' }"
-              @click="setFilter('pending')"
-            >
-              未完成
-            </button>
-            <button
-              class="filter-btn"
-              :class="{ active: currentFilter === 'completed' }"
-              @click="setFilter('completed')"
-            >
-              已完成
-            </button>
-          </div>
-
-          <div class="toolbar-right">
-            <div class="search-box">
-              <Search :size="14" class="search-icon" />
-              <input
-                type="text"
-                v-model="searchKeyword"
-                placeholder="搜索待办事项..."
-                @input="loadTodos"
-              />
+        <div class="pure-list-workspace">
+          <!-- Filter & Search Toolbar (modeled after PomodoroTimer) -->
+          <div class="toolbar">
+            <div class="filter-group">
+              <button
+                class="filter-btn"
+                :class="{ active: currentFilter === 'all' }"
+                @click="setFilter('all')"
+              >
+                全部 ({{ todos.length }})
+              </button>
+              <button
+                class="filter-btn"
+                :class="{ active: currentFilter === 'pending' }"
+                @click="setFilter('pending')"
+              >
+                未完成 ({{ pendingTodosCount }})
+              </button>
+              <button
+                class="filter-btn"
+                :class="{ active: currentFilter === 'completed' }"
+                @click="setFilter('completed')"
+              >
+                已完成 ({{ completedTodosCount }})
+              </button>
             </div>
 
-            <button class="btn btn-primary" @click="openAddModal">
-              <Plus :size="14" /> 新建任务
-            </button>
-          </div>
-        </div>
-
-        <!-- Todo List Grid / Card View -->
-        <div class="todo-scroll-area">
-          <div v-if="loading" class="empty-state">
-            <div class="spinner"></div>
-            <p>加载中...</p>
-          </div>
-
-          <div v-else-if="todos.length === 0" class="empty-state">
-            <div class="empty-icon"><Inbox :size="42" :stroke-width="1.5" /></div>
-            <p class="empty-text">暂无待办事项，点击右上角 "+ 新建任务" 或使用快捷创建吧！</p>
-          </div>
-
-          <div v-else class="todo-grid">
-            <div
-              v-for="todo in todos"
-              :key="todo.id"
-              class="todo-card animate-fade-in"
-              :class="{ completed: todo.completed }"
-            >
-              <div class="card-left">
+            <div class="toolbar-right">
+              <div class="search-box">
+                <Search :size="14" class="search-icon" />
                 <input
-                  type="checkbox"
-                  class="todo-checkbox"
-                  :checked="todo.completed"
-                  @change="toggleStatus(todo)"
+                  type="text"
+                  v-model="searchKeyword"
+                  placeholder="搜索待办事项..."
+                  @input="loadTodos"
                 />
               </div>
 
-              <div class="card-body">
-                <div class="card-title" :class="{ strike: todo.completed }">
-                  {{ todo.title }}
-                </div>
-                <div class="card-meta">
-                  <span class="tag tag-category"><Folder :size="11" /> {{ todo.category }}</span>
-                  <span class="tag" :class="'tag-prio-' + todo.priority">
-                    {{ priorityLabel(todo.priority) }}
-                  </span>
-                  <span v-if="todo.remind_at" class="tag tag-reminder">
-                    <Clock :size="11" /> {{ todo.remind_at }}
-                  </span>
-                </div>
-              </div>
+              <button class="btn btn-primary" @click="openAddModal">
+                <Plus :size="14" /> 新建任务
+              </button>
+            </div>
+          </div>
 
-              <div class="card-actions">
-                <button class="icon-btn edit-btn" @click="openEditModal(todo)" title="编辑任务">
-                  <Edit3 :size="14" />
-                </button>
-                <button class="icon-btn delete-btn" @click="deleteTodo(todo.id)" title="删除任务">
-                  <Trash2 :size="14" />
-                </button>
+          <!-- Stats Summary Banner (matching PomodoroTimer layout) -->
+          <div class="stats-banner-row">
+            <div class="stats-pill">
+              <CheckSquare :size="14" class="icon-primary" />
+              <span>待完成 <strong>{{ pendingTodosCount }}</strong> 项</span>
+            </div>
+            <div class="stats-pill">
+              <Check :size="14" class="icon-success" />
+              <span>已完成 <strong>{{ completedTodosCount }}</strong> 项</span>
+            </div>
+            <div class="stats-pill">
+              <Flame :size="14" class="icon-flame" />
+              <span>高优先级 <strong>{{ highPriorityTodosCount }}</strong> 项</span>
+            </div>
+            <button
+              v-if="completedTodosCount > 0"
+              class="clear-stats-btn"
+              @click="clearCompletedTodos"
+              title="清理已完成的待办任务"
+            >
+              <Trash2 :size="12" /> 清理已完成
+            </button>
+          </div>
+
+          <!-- Todo List Grid / Card View (matching Pomodoro list card structure) -->
+          <div class="list-scroll-area">
+            <div v-if="loading" class="empty-state">
+              <div class="spinner"></div>
+              <p>加载中...</p>
+            </div>
+
+            <div v-else-if="todos.length === 0" class="empty-state">
+              <div class="empty-icon"><Inbox :size="42" :stroke-width="1.5" /></div>
+              <p class="empty-text">暂无待办事项，点击右上角 "+ 新建任务" 或使用快捷创建吧！</p>
+            </div>
+
+            <div v-else class="items-grid">
+              <div
+                v-for="todo in todos"
+                :key="todo.id"
+                class="list-card-item animate-fade-in"
+                :class="{ completed: todo.completed, 'prio-high': todo.priority === 'high' }"
+              >
+                <div class="card-left-indicator">
+                  <div
+                    class="mini-todo-icon"
+                    :class="{ checked: todo.completed }"
+                    @click="toggleStatus(todo)"
+                    title="切换完成状态"
+                  >
+                    <Check v-if="todo.completed" :size="18" />
+                    <Square v-else :size="18" />
+                  </div>
+                </div>
+
+                <div class="card-body">
+                  <div class="card-title-row">
+                    <span class="card-title" :class="{ strike: todo.completed }">{{ todo.title }}</span>
+                    <span class="tag-cat"><Folder :size="11" /> {{ todo.category || '默认' }}</span>
+                    <span class="prio-tag" :class="todo.priority">
+                      {{ priorityLabel(todo.priority) }}
+                    </span>
+                    <span v-if="todo.remind_at" class="tag-reminder">
+                      <Clock :size="11" /> {{ todo.remind_at }}
+                    </span>
+                    <span class="status-tag" :class="{ finished: todo.completed, pending: !todo.completed }">
+                      <span class="dot"></span>
+                      {{ todo.completed ? '已完成' : '待处理' }}
+                    </span>
+                  </div>
+                </div>
+
+                <div class="card-actions">
+                  <button
+                    class="btn-action-primary"
+                    :class="{ done: todo.completed }"
+                    @click="toggleStatus(todo)"
+                    :title="todo.completed ? '标记为未完成' : '标记为已完成'"
+                  >
+                    <Check v-if="todo.completed" :size="14" />
+                    <Square v-else :size="14" />
+                    <span>{{ todo.completed ? '已完成' : '完成' }}</span>
+                  </button>
+
+                  <button class="icon-btn-action edit" @click="openEditModal(todo)" title="编辑任务">
+                    <Edit3 :size="14" />
+                  </button>
+
+                  <button class="icon-btn-action delete" @click="deleteTodo(todo.id)" title="删除任务">
+                    <Trash2 :size="14" />
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -502,10 +544,10 @@
 
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import {
   CheckSquare, Calendar, Clock, Flame, Settings, Menu, X, Hourglass, Bell,
-  Plus, Edit3, Trash2, Folder, Search, ListTodo, Inbox, LayoutGrid
+  Plus, Edit3, Trash2, Folder, Search, ListTodo, Inbox, LayoutGrid, Check, Square
 } from 'lucide-vue-next'
 import type { Todo, LlmConfig, FilterType, ThemeType, NavPosition, User } from './types'
 import { showConfirm } from './utils/confirmState'
@@ -809,9 +851,28 @@ async function tauriInvoke<T>(cmd: string, args: Record<string, any> = {}): Prom
 
 // Priority Helpers
 function priorityLabel(prio: string) {
-  if (prio === 'high') return '🔴 高优'
-  if (prio === 'low') return '🔵 低优'
-  return '🟡 中优'
+  if (prio === 'high') return '高优'
+  if (prio === 'low') return '低优'
+  return '中优'
+}
+
+const pendingTodosCount = computed(() => todos.value.filter(t => !t.completed).length)
+const completedTodosCount = computed(() => todos.value.filter(t => t.completed).length)
+const highPriorityTodosCount = computed(() => todos.value.filter(t => t.priority === 'high' && !t.completed).length)
+
+async function clearCompletedTodos() {
+  const completedList = todos.value.filter(t => t.completed)
+  if (completedList.length === 0) return
+  const confirmed = await showConfirm({
+    title: '清理已完成待办',
+    message: `确定要清理已完成的 ${completedList.length} 项待办任务吗？`,
+    confirmText: '确认清理',
+    type: 'danger'
+  })
+  if (!confirmed) return
+  for (const item of completedList) {
+    await deleteTodo(item.id, true)
+  }
 }
 
 // Load Todos
@@ -1431,17 +1492,22 @@ onMounted(() => {
   }
 }
 
+.pure-list-workspace {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+  max-width: 960px;
+  margin: 0 auto;
+  gap: 16px;
+}
+
 .toolbar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 16px;
-}
-
-.toolbar-right {
-  display: flex;
-  align-items: center;
-  gap: 10px;
+  gap: 12px;
+  flex-wrap: wrap;
 }
 
 .filter-group {
@@ -1451,23 +1517,106 @@ onMounted(() => {
 }
 
 .filter-btn {
-  font-size: 12px;
-  padding: 5px 12px;
-  border-radius: 6px;
-  border: 1px solid var(--border-color);
-  background-color: var(--bg-surface);
-  color: var(--text-main);
+  font-size: 12.5px;
+  padding: 6px 14px;
+  border-radius: 8px;
+  border: 1px solid var(--border-color, #e2e8f0);
+  background-color: var(--bg-surface, #ffffff);
+  color: var(--text-main, #0f172a);
   cursor: pointer;
-  transition: all 0.2s;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.filter-btn:hover {
+  border-color: var(--primary, #3b82f6);
+  color: var(--primary, #3b82f6);
 }
 
 .filter-btn.active {
-  background-color: var(--primary);
-  color: #FFFFFF;
-  border-color: var(--primary);
+  background-color: var(--primary, #3b82f6);
+  color: #ffffff;
+  border-color: var(--primary, #3b82f6);
+  font-weight: 600;
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.25);
 }
 
-.todo-scroll-area {
+.toolbar-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.search-box {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.search-icon {
+  position: absolute;
+  left: 10px;
+  color: var(--text-muted, #94a3b8);
+}
+
+.search-box input {
+  padding: 6px 12px 6px 32px;
+  border-radius: 8px;
+  border: 1px solid var(--border-color, #e2e8f0);
+  background: var(--bg-surface, #ffffff);
+  color: var(--text-main, #0f172a);
+  font-size: 12.5px;
+  outline: none;
+  width: 180px;
+  transition: all 0.2s ease;
+}
+
+.search-box input:focus {
+  border-color: var(--primary, #3b82f6);
+  width: 210px;
+}
+
+/* Stats Banner Row */
+.stats-banner-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px;
+  background: var(--bg-surface, #f8fafc);
+  border: 1px solid var(--border-color, #e2e8f0);
+  border-radius: 10px;
+  flex-wrap: wrap;
+}
+
+.stats-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+  color: var(--text-main, #1e293b);
+}
+
+.icon-primary { color: var(--primary, #3b82f6); }
+.icon-success { color: #10b981; }
+.icon-flame { color: #ef4444; }
+
+.clear-stats-btn {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11.5px;
+  color: var(--text-muted, #94a3b8);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.clear-stats-btn:hover { color: #ef4444; }
+
+/* List & Grid */
+.list-scroll-area {
   flex: 1;
   overflow-y: auto;
   padding-right: 4px;
@@ -1478,125 +1627,229 @@ onMounted(() => {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  height: 240px;
-  color: var(--text-muted);
+  min-height: 280px;
+  color: var(--text-muted, #94a3b8);
+  gap: 12px;
 }
 
-.empty-icon {
-  font-size: 40px;
-  margin-bottom: 8px;
-}
-
-.todo-grid {
+.items-grid {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 12px;
 }
 
-.todo-card {
+.list-card-item {
+  position: relative;
   display: flex;
   align-items: center;
-  padding: 12px 16px;
-  background-color: var(--bg-card);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-sm);
+  padding: 14px 18px;
+  background-color: var(--bg-card, #ffffff);
+  border: 1px solid var(--border-color, #e2e8f0);
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
+  gap: 16px;
   transition: all 0.2s ease;
 }
 
-.todo-card:hover {
-  border-color: var(--border-color-focus);
-  background-color: var(--bg-card-hover);
-
+.list-card-item:hover {
+  border-color: var(--primary, #3b82f6);
+  box-shadow: 0 6px 16px rgba(59, 130, 246, 0.08);
+  transform: translateY(-1px);
 }
 
-.todo-card.completed {
-  opacity: 0.7;
+.list-card-item.completed {
+  opacity: 0.72;
 }
 
-.card-left {
-  margin-right: 14px;
+.card-left-indicator {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-.todo-checkbox {
-  width: 18px;
-  height: 18px;
+.mini-todo-icon {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  background: var(--bg-surface, #f8fafc);
+  border: 1px solid var(--border-color, #e2e8f0);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted, #64748b);
   cursor: pointer;
-  accent-color: var(--primary);
+  transition: all 0.2s ease;
+}
+
+.mini-todo-icon:hover {
+  border-color: var(--primary, #3b82f6);
+  color: var(--primary, #3b82f6);
+}
+
+.mini-todo-icon.checked {
+  background: rgba(16, 185, 129, 0.1);
+  color: #10b981;
+  border-color: rgba(16, 185, 129, 0.3);
 }
 
 .card-body {
   flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.card-title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 .card-title {
-  font-size: 14px;
-  font-weight: 500;
-  color: var(--text-main);
-  margin-bottom: 4px;
+  font-size: 14.5px;
+  font-weight: 600;
+  color: var(--text-main, #0f172a);
 }
 
 .card-title.strike {
   text-decoration: line-through;
-  color: var(--text-muted);
+  color: var(--text-muted, #94a3b8);
 }
 
-.card-meta {
-  display: flex;
+.tag-cat {
+  display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: 4px;
   font-size: 11px;
-}
-
-.tag {
+  font-weight: 600;
   padding: 2px 8px;
-  border-radius: 4px;
-  font-weight: 500;
+  border-radius: 6px;
+  background: var(--bg-surface, #f8fafc);
+  border: 1px solid var(--border-color, #e2e8f0);
+  color: var(--text-muted, #64748b);
 }
 
-.tag-category {
-  background-color: rgba(113, 128, 150, 0.15);
-  color: var(--text-muted);
+.prio-tag {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 6px;
 }
 
-.tag-prio-high {
-  background-color: rgba(229, 62, 62, 0.15);
-  color: #E53E3E;
+.prio-tag.high {
+  background: rgba(239, 68, 68, 0.12);
+  color: #ef4444;
 }
 
-.tag-prio-medium {
-  background-color: rgba(221, 107, 32, 0.15);
-  color: #DD6B20;
+.prio-tag.medium {
+  background: rgba(245, 158, 11, 0.12);
+  color: #f59e0b;
 }
 
-.tag-prio-low {
-  background-color: rgba(49, 130, 206, 0.15);
-  color: #3182CE;
+.prio-tag.low {
+  background: rgba(59, 130, 246, 0.12);
+  color: var(--primary, #3b82f6);
 }
 
 .tag-reminder {
-  background-color: rgba(128, 90, 213, 0.15);
-  color: var(--ai-purple);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: rgba(128, 90, 213, 0.12);
+  color: var(--ai-purple, #805ad5);
+}
+
+.status-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: var(--bg-app, #f1f5f9);
+  color: var(--text-muted, #64748b);
+}
+
+.status-tag .dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: currentColor;
+}
+
+.status-tag.pending {
+  background: rgba(59, 130, 246, 0.1);
+  color: var(--primary, #3b82f6);
+}
+
+.status-tag.finished {
+  background: rgba(16, 185, 129, 0.12);
+  color: #10b981;
 }
 
 .card-actions {
   display: flex;
   align-items: center;
   gap: 6px;
+  flex-shrink: 0;
 }
 
-.icon-btn {
-  background: transparent;
+.btn-action-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: 8px;
   border: none;
+  background: var(--primary, #3b82f6);
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 600;
   cursor: pointer;
-  padding: 4px 6px;
-  border-radius: 4px;
-  font-size: 14px;
-  transition: background-color 0.2s;
+  transition: all 0.2s ease;
 }
 
-.icon-btn:hover {
-  background-color: var(--border-color);
+.btn-action-primary:hover {
+  filter: brightness(1.1);
+  transform: translateY(-1px);
+}
+
+.btn-action-primary.done {
+  background: #10b981;
+}
+
+.icon-btn-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: 1px solid var(--border-color, #e2e8f0);
+  background: var(--bg-surface, #ffffff);
+  color: var(--text-muted, #64748b);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.icon-btn-action:hover {
+  border-color: var(--primary, #3b82f6);
+  color: var(--primary, #3b82f6);
+  background: var(--bg-hover, #f8fafc);
+}
+
+.icon-btn-action.delete:hover {
+  border-color: #ef4444;
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.08);
 }
 
 .ai-input-bar {
