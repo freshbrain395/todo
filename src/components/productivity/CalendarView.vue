@@ -634,30 +634,35 @@ function selectDate(d: Date) {
 
 <style scoped>
 .calendar-view-container {
-  display: flex;
-  justify-content: center;
-  align-items: flex-start;
   height: 100%;
   width: 100%;
-  padding: 20px 24px;
+  padding: 16px 20px;
   box-sizing: border-box;
   overflow-y: auto;
+  display: flex;
+  flex-direction: column;
 }
 
 .calendar-single-workspace {
   display: flex;
   flex-direction: column;
-  gap: 28px;
+  gap: 16px;
   width: 100%;
-  max-width: 960px;
-  margin: 0 auto;
+  height: 100%;
+  max-width: 100%;
+  margin: 0;
+  flex: 1;
+  min-height: 0;
 }
 
 .calendar-main-section {
   width: 100%;
+  height: 100%;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 12px;
+  flex: 1;
+  min-height: 0;
 }
 
 .calendar-schedule-section {
@@ -735,6 +740,14 @@ function selectDate(d: Date) {
   color: #DD6B20;
 }
 
+.month-view-wrapper {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+}
+
 .weekdays-grid {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
@@ -742,7 +755,7 @@ function selectDate(d: Date) {
   font-size: 12px;
   font-weight: 700;
   color: var(--text-muted);
-  padding: 6px 0;
+  padding: 8px 0;
   border-bottom: 1px solid var(--border-color);
 }
 
@@ -753,23 +766,26 @@ function selectDate(d: Date) {
 .days-grid {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
-  grid-template-rows: repeat(6, minmax(50px, 1fr));
-  gap: 4px;
-  padding-top: 4px;
+  grid-template-rows: repeat(6, minmax(64px, 1fr));
+  gap: 8px;
+  padding-top: 8px;
+  flex: 1;
+  min-height: 0;
 }
 
 .day-cell {
   position: relative;
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
-  min-height: 52px;
-  padding: 4px 6px;
-  border-radius: 8px;
-  border: 1px solid transparent;
+  justify-content: flex-start;
+  min-height: 60px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid var(--border-color);
   cursor: pointer;
   transition: all 0.2s ease;
-  background-color: transparent;
+  background-color: var(--bg-surface);
+  box-sizing: border-box;
 }
 
 .day-cell.is-holiday {
@@ -1125,22 +1141,26 @@ function selectDate(d: Date) {
   border: 1px solid var(--border-color);
   border-radius: 12px;
   background-color: var(--bg-surface);
-  max-height: 480px;
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
   overflow-y: auto;
 }
 
 .day-timeline-scroll {
   display: flex;
   flex-direction: column;
+  flex: 1;
 }
 
 .time-slot-row {
   display: flex;
   align-items: flex-start;
-  min-height: 44px;
+  min-height: 48px;
   border-bottom: 1px dashed var(--border-color);
-  padding: 6px 12px;
-  gap: 12px;
+  padding: 8px 14px;
+  gap: 14px;
 }
 
 .slot-time-label {
@@ -1188,26 +1208,36 @@ function selectDate(d: Date) {
 
 /* 2. Week View Styles */
 .week-view-wrapper {
+  display: flex;
+  flex-direction: column;
   flex: 1;
+  min-height: 0;
+  height: 100%;
+  width: 100%;
 }
 
 .week-columns-grid {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
-  gap: 8px;
-  min-height: 420px;
+  gap: 10px;
+  flex: 1;
+  min-height: 0;
+  height: 100%;
 }
 
 .week-column {
   background-color: var(--bg-surface);
   border: 1px solid var(--border-color);
   border-radius: 10px;
-  padding: 8px;
+  padding: 10px;
   display: flex;
   flex-direction: column;
   gap: 8px;
   cursor: pointer;
   transition: all 0.2s ease;
+  height: 100%;
+  box-sizing: border-box;
+  overflow-y: auto;
 }
 
 .week-column:hover {
@@ -1447,12 +1477,28 @@ function selectDate(d: Date) {
 /* 4. Year View Styles */
 .year-view-wrapper {
   flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  width: 100%;
 }
 
 .year-months-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 12px;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+  width: 100%;
+}
+
+@media (max-width: 1024px) {
+  .year-months-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  .year-months-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
 }
 
 .mini-month-card {
