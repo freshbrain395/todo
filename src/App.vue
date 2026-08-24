@@ -250,7 +250,11 @@
                 v-for="todo in todos"
                 :key="todo.id"
                 class="list-card-item animate-fade-in"
-                :class="{ completed: todo.completed, 'prio-high': todo.priority === 'high' }"
+                :class="{
+                  completed: todo.completed,
+                  'prio-high': todo.priority === 'high',
+                  'has-active-menu': activeMenuId && activeMenuId.endsWith('-' + todo.id)
+                }"
               >
                 <div class="card-left-indicator">
                   <div
@@ -293,9 +297,14 @@
 
                   <!-- Row 2: Interactive Metadata & Configuration Row (Hover/Click to edit) -->
                   <div class="card-meta-row">
-                    <!-- 1. Priority Selector with Custom Rounded Dropdown -->
-                    <div class="meta-item-config" @click.stop="toggleMenu('prio-' + todo.id)">
-                      <div class="interactive-pill prio-pill" :class="todo.priority" title="修改优先级">
+                    <!-- 1. Priority Selector with Custom Rounded Dropdown (Hover to auto-expand) -->
+                    <div
+                      class="meta-item-config hover-expand"
+                      @mouseenter="openMenuHover('prio-' + todo.id)"
+                      @mouseleave="closeMenuHover()"
+                      @click.stop="toggleMenu('prio-' + todo.id)"
+                    >
+                      <div class="interactive-pill prio-pill" :class="todo.priority" title="鼠标悬浮展开/修改优先级">
                         <span class="prio-dot"></span>
                         <span class="prio-text">{{ priorityLabel(todo.priority) }}</span>
                         <ChevronDown :size="10" class="pill-arrow" :class="{ rotated: activeMenuId === 'prio-' + todo.id }" />
@@ -336,9 +345,14 @@
                       </div>
                     </div>
 
-                    <!-- 2. Category / Tag Selector with Custom Rounded Dropdown -->
-                    <div class="meta-item-config" @click.stop="toggleMenu('cat-' + todo.id)">
-                      <div class="interactive-pill cat-pill" title="修改标签分类">
+                    <!-- 2. Category / Tag Selector with Custom Rounded Dropdown (Hover to auto-expand) -->
+                    <div
+                      class="meta-item-config hover-expand"
+                      @mouseenter="openMenuHover('cat-' + todo.id)"
+                      @mouseleave="closeMenuHover()"
+                      @click.stop="toggleMenu('cat-' + todo.id)"
+                    >
+                      <div class="interactive-pill cat-pill" title="鼠标悬浮展开/修改标签分类">
                         <Folder :size="12" />
                         <span class="cat-text">{{ todo.category || '默认' }}</span>
                         <ChevronDown :size="10" class="pill-arrow" :class="{ rotated: activeMenuId === 'cat-' + todo.id }" />
@@ -729,17 +743,45 @@ void toggleUserMenu
 
 // Popover Menus State
 const activeMenuId = ref<string | null>(null)
+let menuCloseTimer: any = null
+
+function openMenuHover(id: string) {
+  if (menuCloseTimer) {
+    clearTimeout(menuCloseTimer)
+    menuCloseTimer = null
+  }
+  activeMenuId.value = id
+}
+
+function closeMenuHover() {
+  menuCloseTimer = setTimeout(() => {
+    activeMenuId.value = null
+    menuCloseTimer = null
+  }, 180)
+}
 
 function toggleMenu(id: string) {
+  if (menuCloseTimer) {
+    clearTimeout(menuCloseTimer)
+    menuCloseTimer = null
+  }
   activeMenuId.value = activeMenuId.value === id ? null : id
 }
 
 function selectPriority(todo: Todo, prio: 'high' | 'medium' | 'low') {
+  if (menuCloseTimer) {
+    clearTimeout(menuCloseTimer)
+    menuCloseTimer = null
+  }
   activeMenuId.value = null
   updateTodoPriority(todo, prio)
 }
 
 function selectCategory(todo: Todo, cat: string) {
+  if (menuCloseTimer) {
+    clearTimeout(menuCloseTimer)
+    menuCloseTimer = null
+  }
   activeMenuId.value = null
   updateTodoCategory(todo, cat)
 }
@@ -1928,6 +1970,7 @@ onMounted(() => {
   flex: 1;
   overflow-y: auto;
   padding-right: 4px;
+  padding-bottom: 80px;
 }
 
 .empty-state {
@@ -1948,6 +1991,7 @@ onMounted(() => {
 
 .list-card-item {
   position: relative;
+  z-index: 1;
   display: flex;
   align-items: center;
   padding: 14px 18px;
@@ -1959,10 +2003,12 @@ onMounted(() => {
   transition: all 0.2s ease;
 }
 
-.list-card-item:hover {
+.list-card-item:hover,
+.list-card-item.has-active-menu {
   border-color: var(--primary, #3b82f6);
   box-shadow: 0 6px 16px rgba(59, 130, 246, 0.08);
   transform: translateY(-1px);
+  z-index: 40;
 }
 
 .list-card-item.completed {
@@ -2075,6 +2121,7 @@ onMounted(() => {
   position: relative;
   display: inline-flex;
   align-items: center;
+  z-index: 50;
 }
 
 .interactive-pill {
@@ -2157,22 +2204,33 @@ onMounted(() => {
   opacity: 1;
 }
 
-/* Custom Rounded Popover Menus */
+/* Custom Rounded Popover Menus (Highest Layer to avoid occlusion) */
 .custom-dropdown-menu {
   position: absolute;
-  top: calc(100% + 6px);
+  top: calc(100% + 4px);
   left: 0;
-  z-index: 100;
-  min-width: 140px;
+  z-index: 1000;
+  min-width: 145px;
   background: var(--bg-surface, #ffffff);
   border: 1px solid var(--border-color, #e2e8f0);
   border-radius: 12px;
   padding: 6px;
-  box-shadow: 0 10px 25px -3px rgba(0, 0, 0, 0.12), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  box-shadow: 0 12px 28px -4px rgba(0, 0, 0, 0.18), 0 6px 14px -2px rgba(0, 0, 0, 0.08);
   display: flex;
   flex-direction: column;
   gap: 2px;
   animation: modalScale 0.15s ease-out;
+  backdrop-filter: blur(12px);
+}
+
+/* Hover bridge so moving mouse between pill and menu stays connected */
+.custom-dropdown-menu::before {
+  content: '';
+  position: absolute;
+  top: -8px;
+  left: 0;
+  right: 0;
+  height: 8px;
 }
 
 .dropdown-header {
