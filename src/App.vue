@@ -306,88 +306,90 @@
     </main>
 
     <!-- Floating Desktop Dock Bar (When in Desktop OS Layout Mode) -->
-    <div v-if="navPosition === 'desktop'" class="desktop-dock-bar animate-fade-in">
-      <button
-        class="dock-btn"
-        :class="{ active: currentTab === 'desktop' }"
-        @click="currentTab = 'desktop'"
-        title="返回桌面"
-      >
-        <LayoutGrid :size="20" />
-        <span class="dock-tooltip">桌面</span>
-      </button>
+    <div v-if="navPosition === 'desktop'" class="desktop-dock-wrapper">
+      <div class="desktop-dock-bar">
+        <button
+          class="dock-btn"
+          :class="{ active: currentTab === 'desktop' }"
+          @click="currentTab = 'desktop'"
+          title="返回桌面"
+        >
+          <LayoutGrid :size="20" />
+          <span class="dock-tooltip">桌面</span>
+        </button>
 
-      <div class="dock-divider"></div>
+        <div class="dock-divider"></div>
 
-      <button
-        class="dock-btn"
-        :class="{ active: currentTab === 'todos' }"
-        @click="currentTab = 'todos'"
-        title="待办事项"
-      >
-        <CheckSquare :size="20" />
-        <span class="dock-tooltip">待办事项</span>
-      </button>
+        <button
+          class="dock-btn"
+          :class="{ active: currentTab === 'todos' }"
+          @click="currentTab = 'todos'"
+          title="待办事项"
+        >
+          <CheckSquare :size="20" />
+          <span class="dock-tooltip">待办事项</span>
+        </button>
 
-      <button
-        class="dock-btn"
-        :class="{ active: currentTab === 'calendar' }"
-        @click="currentTab = 'calendar'"
-        title="任务日历"
-      >
-        <Calendar :size="20" />
-        <span class="dock-tooltip">任务日历</span>
-      </button>
+        <button
+          class="dock-btn"
+          :class="{ active: currentTab === 'calendar' }"
+          @click="currentTab = 'calendar'"
+          title="任务日历"
+        >
+          <Calendar :size="20" />
+          <span class="dock-tooltip">任务日历</span>
+        </button>
 
-      <button
-        class="dock-btn"
-        :class="{ active: currentTab === 'local-clock' }"
-        @click="currentTab = 'local-clock'"
-        title="本地时钟"
-      >
-        <Clock :size="20" />
-        <span class="dock-tooltip">本地时钟</span>
-      </button>
+        <button
+          class="dock-btn"
+          :class="{ active: currentTab === 'local-clock' }"
+          @click="currentTab = 'local-clock'"
+          title="本地时钟"
+        >
+          <Clock :size="20" />
+          <span class="dock-tooltip">本地时钟</span>
+        </button>
 
-      <button
-        class="dock-btn"
-        :class="{ active: currentTab === 'countdown' }"
-        @click="currentTab = 'countdown'"
-        title="倒计时"
-      >
-        <Hourglass :size="20" />
-        <span class="dock-tooltip">倒计时</span>
-      </button>
+        <button
+          class="dock-btn"
+          :class="{ active: currentTab === 'countdown' }"
+          @click="currentTab = 'countdown'"
+          title="倒计时"
+        >
+          <Hourglass :size="20" />
+          <span class="dock-tooltip">倒计时</span>
+        </button>
 
-      <button
-        class="dock-btn"
-        :class="{ active: currentTab === 'alarm' }"
-        @click="currentTab = 'alarm'"
-        title="闹钟"
-      >
-        <Bell :size="20" />
-        <span class="dock-tooltip">闹钟</span>
-      </button>
+        <button
+          class="dock-btn"
+          :class="{ active: currentTab === 'alarm' }"
+          @click="currentTab = 'alarm'"
+          title="闹钟"
+        >
+          <Bell :size="20" />
+          <span class="dock-tooltip">闹钟</span>
+        </button>
 
-      <button
-        class="dock-btn"
-        :class="{ active: currentTab === 'pomodoro' }"
-        @click="currentTab = 'pomodoro'"
-        title="番茄时钟"
-      >
-        <Flame :size="20" />
-        <span class="dock-tooltip">番茄时钟</span>
-      </button>
+        <button
+          class="dock-btn"
+          :class="{ active: currentTab === 'pomodoro' }"
+          @click="currentTab = 'pomodoro'"
+          title="番茄时钟"
+        >
+          <Flame :size="20" />
+          <span class="dock-tooltip">番茄时钟</span>
+        </button>
 
-      <button
-        class="dock-btn"
-        :class="{ active: currentTab === 'settings' }"
-        @click="currentTab = 'settings'"
-        title="系统设置"
-      >
-        <Settings :size="20" />
-        <span class="dock-tooltip">系统设置</span>
-      </button>
+        <button
+          class="dock-btn"
+          :class="{ active: currentTab === 'settings' }"
+          @click="currentTab = 'settings'"
+          title="系统设置"
+        >
+          <Settings :size="20" />
+          <span class="dock-tooltip">系统设置</span>
+        </button>
+      </div>
     </div>
 
     <!-- Modals -->
@@ -1919,14 +1921,21 @@ onMounted(() => {
   padding-bottom: 84px;
 }
 
-.desktop-dock-bar {
+.desktop-dock-wrapper {
   position: fixed;
   bottom: 20px;
-  left: 50%;
-  transform: translateX(-50%);
-  margin: 0 auto;
-  width: max-content;
-  max-width: calc(100vw - 32px);
+  left: 0;
+  right: 0;
+  width: 100vw;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  pointer-events: none;
+  z-index: 9999;
+}
+
+.desktop-dock-bar {
+  pointer-events: auto;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1938,7 +1947,7 @@ onMounted(() => {
   border: 1px solid var(--border-color, rgba(226, 232, 240, 0.8));
   border-radius: 24px;
   box-shadow: 0 16px 36px -6px rgba(0, 0, 0, 0.18), 0 0 0 1px rgba(255, 255, 255, 0.2) inset;
-  z-index: 999;
+  margin: 0 auto;
 }
 
 .dock-btn {
@@ -1998,8 +2007,10 @@ onMounted(() => {
 }
 
 @media (max-width: 640px) {
-  .desktop-dock-bar {
+  .desktop-dock-wrapper {
     bottom: 12px;
+  }
+  .desktop-dock-bar {
     padding: 6px 10px;
     gap: 4px;
   }
