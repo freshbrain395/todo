@@ -134,43 +134,32 @@
               <text x="50" y="146" class="clock-number" text-anchor="middle">9</text>
 
               <!-- Hour Hand (时针) -->
-              <line
-                x1="140"
-                y1="140"
-                x2="140"
-                y2="76"
-                :transform="`rotate(${analogAngles.hour} 140 140)`"
-                class="hand hour-hand"
-                filter="url(#handShadow)"
-              />
+              <g :transform="`rotate(${analogAngles.hour}, 140, 140)`">
+                <!-- Counter-balance back part -->
+                <line x1="140" y1="152" x2="140" y2="76" class="hand hour-hand" />
+                <!-- Accent tip -->
+                <circle cx="140" cy="76" r="3.5" class="hour-tip" />
+              </g>
 
               <!-- Minute Hand (分针) -->
-              <line
-                x1="140"
-                y1="140"
-                x2="140"
-                y2="50"
-                :transform="`rotate(${analogAngles.minute} 140 140)`"
-                class="hand minute-hand"
-                filter="url(#handShadow)"
-              />
+              <g :transform="`rotate(${analogAngles.minute}, 140, 140)`">
+                <!-- Counter-balance back part -->
+                <line x1="140" y1="156" x2="140" y2="48" class="hand minute-hand" />
+                <!-- Accent tip -->
+                <circle cx="140" cy="48" r="2.5" class="minute-tip" />
+              </g>
 
               <!-- Second Hand (秒针) -->
-              <g v-if="showSeconds" :transform="`rotate(${analogAngles.second} 140 140)`">
-                <line
-                  x1="140"
-                  y1="160"
-                  x2="140"
-                  y2="36"
-                  class="hand second-hand"
-                  filter="url(#handShadow)"
-                />
-                <circle cx="140" cy="160" r="4.5" class="second-tail" />
+              <g v-if="showSeconds" :transform="`rotate(${analogAngles.second}, 140, 140)`">
+                <!-- Tail with counterbalance disc -->
+                <line x1="140" y1="165" x2="140" y2="32" class="hand second-hand" />
+                <circle cx="140" cy="165" r="4.5" class="second-tail" />
               </g>
 
               <!-- Center Hub / Cap -->
-              <circle cx="140" cy="140" r="7" class="center-pin" />
-              <circle cx="140" cy="140" r="3" class="center-jewel" />
+              <circle cx="140" cy="140" r="7.5" class="center-pin-base" />
+              <circle cx="140" cy="140" r="5" class="center-pin" />
+              <circle cx="140" cy="140" r="2.5" class="center-jewel" />
             </svg>
           </div>
 
@@ -651,12 +640,15 @@ onUnmounted(() => { stopClockLoop(); window.removeEventListener('keydown', handl
 
 .hand {
   stroke-linecap: round;
-  transform-origin: 140px 140px;
 }
 
 .hour-hand {
   stroke: var(--text-main, #0f172a);
-  stroke-width: 6;
+  stroke-width: 6.5;
+}
+
+.hour-tip {
+  fill: var(--text-main, #0f172a);
 }
 
 .minute-hand {
@@ -664,13 +656,23 @@ onUnmounted(() => { stopClockLoop(); window.removeEventListener('keydown', handl
   stroke-width: 4.5;
 }
 
+.minute-tip {
+  fill: var(--primary, #3b82f6);
+}
+
 .second-hand {
   stroke: #ef4444;
-  stroke-width: 2.5;
+  stroke-width: 2.2;
 }
 
 .second-tail {
   fill: #ef4444;
+}
+
+.center-pin-base {
+  fill: var(--bg-surface, #ffffff);
+  stroke: var(--border-color, #cbd5e1);
+  stroke-width: 1.5;
 }
 
 .center-pin {
