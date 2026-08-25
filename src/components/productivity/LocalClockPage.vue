@@ -1,5 +1,5 @@
 <template>
-  <div class="local-clock-container animate-fade-in" :class="{ 'zen-fullscreen': isZenMode }">
+  <div class="local-clock-container animate-fade-in" :class="{ 'zen-fullscreen': isZenMode, 'is-fullscreen': isFullscreen }">
     <!-- Header Control Toolbar (Hidden in Zen Mode) -->
     <div v-if="!isZenMode" class="clock-toolbar">
       <div class="toolbar-left">
@@ -937,6 +937,98 @@ onUnmounted(() => {
   background: linear-gradient(90deg, #3b82f6 0%, #8b5cf6 50%, #ec4899 100%);
   border-radius: 6px;
   transition: width 1s linear;
+}
+
+/* ============================================================
+   Enhanced Large-Scale Fullscreen & Zen Immersion Mode Styles
+   ============================================================ */
+.local-clock-container.is-fullscreen,
+.local-clock-container.zen-fullscreen {
+  padding: 16px 24px;
+}
+
+.is-fullscreen .clock-showcase-card,
+.zen-fullscreen .clock-showcase-card {
+  max-width: 1200px;
+}
+
+/* Analog Clock in Fullscreen: Expand SVG dial from 210px to min(420px, 52vh) */
+.is-fullscreen .analog-stage,
+.zen-fullscreen .analog-stage {
+  gap: 20px;
+}
+
+.is-fullscreen .analog-clock-svg,
+.zen-fullscreen .analog-clock-svg {
+  width: min(420px, 52vh);
+  height: min(420px, 52vh);
+  filter: drop-shadow(0 20px 48px rgba(0, 0, 0, 0.22));
+}
+
+.is-fullscreen .analog-info-footer,
+.zen-fullscreen .analog-info-footer {
+  max-width: 620px;
+  gap: 12px;
+}
+
+.is-fullscreen .analog-info-footer .time-header-pill,
+.zen-fullscreen .analog-info-footer .time-header-pill {
+  padding: 6px 18px;
+  font-size: 13.5px;
+}
+
+.is-fullscreen .detail-pill,
+.zen-fullscreen .detail-pill {
+  padding: 10px 20px;
+  font-size: 15px;
+  border-radius: 14px;
+}
+
+.is-fullscreen .greeting-text,
+.zen-fullscreen .greeting-text {
+  font-size: 15px;
+}
+
+.is-fullscreen .progress-percent,
+.zen-fullscreen .progress-percent {
+  font-size: 14px;
+}
+
+.is-fullscreen .day-progress-track,
+.zen-fullscreen .day-progress-track {
+  height: 8px;
+}
+
+/* Digital Clock in Fullscreen: Giant crystal-clear typography */
+.is-fullscreen .digital-stage,
+.zen-fullscreen .digital-stage {
+  max-width: 1080px;
+  gap: 24px;
+}
+
+.is-fullscreen .digital-stage .time-header-pill,
+.zen-fullscreen .digital-stage .time-header-pill {
+  padding: 8px 22px;
+  font-size: 15px;
+  border-radius: 24px;
+}
+
+.is-fullscreen .digits-group,
+.zen-fullscreen .digits-group {
+  font-size: clamp(64px, 12vw, 136px);
+  letter-spacing: -3px;
+  text-shadow: 0 10px 40px rgba(99, 102, 241, 0.3);
+}
+
+.is-fullscreen .digit-ampm,
+.zen-fullscreen .digit-ampm {
+  font-size: clamp(24px, 3vw, 42px);
+}
+
+.is-fullscreen .day-progress-section,
+.zen-fullscreen .day-progress-section {
+  max-width: 640px;
+  width: 100%;
 }
 
 /* Responsive Breakpoints */
