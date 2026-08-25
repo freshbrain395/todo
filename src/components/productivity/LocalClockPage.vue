@@ -207,7 +207,7 @@
 
           <!-- 3. Flip Clock View (经典 Fliqlo 拟真机械翻页时钟) -->
           <div v-else-if="displayMode === 'flip'" class="flip-clock-wrapper animate-fade-in">
-            <div class="flip-clock-stage">
+            <div class="flip-clock-stage" :class="{ 'has-seconds': showSeconds }">
               <!-- Hours Flip Card -->
               <div class="flip-card-unit" :class="{ 'is-flipping': hoursFlip.flipping }">
                 <!-- Static Background Upper (Shows target/current value) -->
@@ -263,9 +263,9 @@
                 <div class="flip-hinge-pin flip-pin-right"></div>
               </div>
 
-              <!-- Seconds Flip Card (Optional companion unit) -->
+              <!-- Seconds Flip Card (Identical in size to Hours & Minutes) -->
               <template v-if="showSeconds">
-                <div class="flip-card-unit flip-card-seconds" :class="{ 'is-flipping': secondsFlip.flipping }">
+                <div class="flip-card-unit" :class="{ 'is-flipping': secondsFlip.flipping }">
                   <!-- Static Background Upper -->
                   <div class="flip-half flip-upper flip-back-card">
                     <span class="flip-num">{{ secondsFlip.current }}</span>
@@ -1176,14 +1176,19 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: clamp(10px, 1.8vw, 20px);
+  gap: clamp(10px, 1.8vw, 22px);
   padding: 4px;
 }
 
+.flip-clock-stage.has-seconds {
+  gap: clamp(6px, 1.2vw, 14px);
+}
+
+/* Standard 2-cards (Hours + Minutes) */
 .flip-card-unit {
   position: relative;
-  width: clamp(96px, 13vw, 145px);
-  height: clamp(110px, 15vw, 165px);
+  width: clamp(100px, 14vw, 148px);
+  height: clamp(115px, 16vw, 170px);
   perspective: 600px;
   border-radius: 12px;
   box-shadow:
@@ -1194,12 +1199,11 @@ onUnmounted(() => {
   background: #18181c;
 }
 
-/* Second companion card unit (scaled down proportionally) */
-.flip-card-unit.flip-card-seconds {
-  width: clamp(64px, 8.5vw, 96px);
-  height: clamp(74px, 10vw, 110px);
-  border-radius: 8px;
-  margin-left: 2px;
+/* 3-cards: Hours + Minutes + Seconds (All 3 identical in size) */
+.flip-clock-stage.has-seconds .flip-card-unit {
+  width: clamp(78px, 10vw, 114px);
+  height: clamp(94px, 12vw, 136px);
+  border-radius: 10px;
 }
 
 .flip-half {
@@ -1223,9 +1227,9 @@ onUnmounted(() => {
   background: linear-gradient(180deg, #222228 0%, #1a1a20 100%);
 }
 
-.flip-card-seconds .flip-upper {
-  border-top-left-radius: 8px;
-  border-top-right-radius: 8px;
+.flip-clock-stage.has-seconds .flip-upper {
+  border-top-left-radius: 10px;
+  border-top-right-radius: 10px;
 }
 
 .flip-upper .flip-num {
@@ -1237,7 +1241,7 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: clamp(62px, 8.5vw, 96px);
+  font-size: clamp(64px, 9vw, 98px);
   font-weight: 800;
   letter-spacing: -2px;
   color: #ffffff;
@@ -1245,9 +1249,9 @@ onUnmounted(() => {
   line-height: 1;
 }
 
-.flip-card-seconds .flip-upper .flip-num {
-  font-size: clamp(40px, 5.5vw, 62px);
-  letter-spacing: -1px;
+.flip-clock-stage.has-seconds .flip-upper .flip-num {
+  font-size: clamp(48px, 6.4vw, 76px);
+  letter-spacing: -1.5px;
 }
 
 .flip-lower {
@@ -1258,9 +1262,9 @@ onUnmounted(() => {
   background: linear-gradient(180deg, #16161a 0%, #121215 100%);
 }
 
-.flip-card-seconds .flip-lower {
-  border-bottom-left-radius: 8px;
-  border-bottom-right-radius: 8px;
+.flip-clock-stage.has-seconds .flip-lower {
+  border-bottom-left-radius: 10px;
+  border-bottom-right-radius: 10px;
 }
 
 .flip-lower .flip-num {
@@ -1272,7 +1276,7 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: clamp(62px, 8.5vw, 96px);
+  font-size: clamp(64px, 9vw, 98px);
   font-weight: 800;
   letter-spacing: -2px;
   color: #f1f5f9;
@@ -1280,9 +1284,9 @@ onUnmounted(() => {
   line-height: 1;
 }
 
-.flip-card-seconds .flip-lower .flip-num {
-  font-size: clamp(40px, 5.5vw, 62px);
-  letter-spacing: -1px;
+.flip-clock-stage.has-seconds .flip-lower .flip-num {
+  font-size: clamp(48px, 6.4vw, 76px);
+  letter-spacing: -1.5px;
 }
 
 /* 3D Dynamic Flap Animations */
@@ -2002,22 +2006,27 @@ onUnmounted(() => {
 /* Flip Clock in Fullscreen & Zen Mode */
 .is-fullscreen .flip-clock-stage,
 .zen-fullscreen .flip-clock-stage {
-  gap: clamp(16px, 2.5vw, 32px);
+  gap: clamp(18px, 2.8vw, 36px);
+}
+
+.is-fullscreen .flip-clock-stage.has-seconds,
+.zen-fullscreen .flip-clock-stage.has-seconds {
+  gap: clamp(12px, 1.8vw, 24px);
 }
 
 .is-fullscreen .flip-card-unit,
 .zen-fullscreen .flip-card-unit {
-  width: clamp(140px, 18vw, 220px);
-  height: clamp(160px, 20vw, 240px);
+  width: clamp(150px, 19vw, 230px);
+  height: clamp(170px, 22vw, 255px);
   border-radius: 18px;
   box-shadow: 0 20px 48px rgba(0, 0, 0, 0.5), 0 6px 16px rgba(0, 0, 0, 0.3);
 }
 
-.is-fullscreen .flip-card-unit.flip-card-seconds,
-.zen-fullscreen .flip-card-unit.flip-card-seconds {
-  width: clamp(90px, 11vw, 140px);
-  height: clamp(105px, 13vw, 160px);
-  border-radius: 12px;
+.is-fullscreen .flip-clock-stage.has-seconds .flip-card-unit,
+.zen-fullscreen .flip-clock-stage.has-seconds .flip-card-unit {
+  width: clamp(118px, 14.5vw, 172px);
+  height: clamp(138px, 16.5vw, 195px);
+  border-radius: 15px;
 }
 
 .is-fullscreen .flip-upper,
@@ -2026,36 +2035,36 @@ onUnmounted(() => {
   border-top-right-radius: 18px;
 }
 
+.is-fullscreen .flip-clock-stage.has-seconds .flip-upper,
+.zen-fullscreen .flip-clock-stage.has-seconds .flip-upper {
+  border-top-left-radius: 15px;
+  border-top-right-radius: 15px;
+}
+
 .is-fullscreen .flip-lower,
 .zen-fullscreen .flip-lower {
   border-bottom-left-radius: 18px;
   border-bottom-right-radius: 18px;
 }
 
-.is-fullscreen .flip-card-seconds .flip-upper,
-.zen-fullscreen .flip-card-seconds .flip-upper {
-  border-top-left-radius: 12px;
-  border-top-right-radius: 12px;
-}
-
-.is-fullscreen .flip-card-seconds .flip-lower,
-.zen-fullscreen .flip-card-seconds .flip-lower {
-  border-bottom-left-radius: 12px;
-  border-bottom-right-radius: 12px;
+.is-fullscreen .flip-clock-stage.has-seconds .flip-lower,
+.zen-fullscreen .flip-clock-stage.has-seconds .flip-lower {
+  border-bottom-left-radius: 15px;
+  border-bottom-right-radius: 15px;
 }
 
 .is-fullscreen .flip-upper .flip-num,
 .zen-fullscreen .flip-upper .flip-num,
 .is-fullscreen .flip-lower .flip-num,
 .zen-fullscreen .flip-lower .flip-num {
-  font-size: clamp(90px, 12vw, 150px);
+  font-size: clamp(96px, 13vw, 160px);
 }
 
-.is-fullscreen .flip-card-seconds .flip-upper .flip-num,
-.zen-fullscreen .flip-card-seconds .flip-upper .flip-num,
-.is-fullscreen .flip-card-seconds .flip-lower .flip-num,
-.zen-fullscreen .flip-card-seconds .flip-lower .flip-num {
-  font-size: clamp(56px, 7.5vw, 92px);
+.is-fullscreen .flip-clock-stage.has-seconds .flip-upper .flip-num,
+.zen-fullscreen .flip-clock-stage.has-seconds .flip-upper .flip-num,
+.is-fullscreen .flip-clock-stage.has-seconds .flip-lower .flip-num,
+.zen-fullscreen .flip-clock-stage.has-seconds .flip-lower .flip-num {
+  font-size: clamp(74px, 9.6vw, 116px);
 }
 
 .is-fullscreen .flip-ampm-tag,
@@ -2140,20 +2149,20 @@ onUnmounted(() => {
     font-size: 38px;
   }
   .flip-card-unit {
-    width: 72px;
-    height: 84px;
+    width: 82px;
+    height: 96px;
   }
-  .flip-card-unit.flip-card-seconds {
-    width: 50px;
-    height: 60px;
+  .flip-clock-stage.has-seconds .flip-card-unit {
+    width: 62px;
+    height: 74px;
   }
   .flip-upper .flip-num,
   .flip-lower .flip-num {
-    font-size: 46px;
+    font-size: 52px;
   }
-  .flip-card-seconds .flip-upper .flip-num,
-  .flip-card-seconds .flip-lower .flip-num {
-    font-size: 30px;
+  .flip-clock-stage.has-seconds .flip-upper .flip-num,
+  .flip-clock-stage.has-seconds .flip-lower .flip-num {
+    font-size: 38px;
   }
   .nixie-tube {
     width: 36px;
