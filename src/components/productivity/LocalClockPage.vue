@@ -547,7 +547,7 @@
                     class="compass-text shichen-text"
                     :class="{ active: i === compassRotations.currentShichenIdx }"
                   >
-                    {{ item.name }} {{ item.gua }}
+                    {{ item.name }} · {{ item.detail }}
                   </text>
                 </g>
               </g>
@@ -1000,38 +1000,31 @@ function isCharActive(_char: string, rIdx: number, cIdx: number): boolean {
   return activeChineseChars.value.has(`${rIdx},${cIdx}`)
 }
 
-// 8. Bagua Chrono Compass (八卦时辰天体罗盘时钟)
-const compassMonths = ['一月', '二月', '三月', '四月', '五月', '六月', '七月', '八月', '九月', '十月', '冬月', '腊月']
-const compassDays = [
-  '初一', '初二', '初三', '初四', '初五', '初六', '初七', '初八', '初九', '初十',
-  '十一', '十二', '十三', '十四', '十五', '十六', '十七', '十八', '十九', '二十',
-  '廿一', '廿二', '廿三', '廿四', '廿五', '廿六', '廿七', '廿八', '廿九', '三十', '卅一'
+// 8. Bagua Chrono Compass (八卦时辰天体罗盘时钟 - 阳历/公历模式)
+const compassMonths = [
+  '01月', '02月', '03月', '04月', '05月', '06月',
+  '07月', '08月', '09月', '10月', '11月', '12月'
 ]
+const compassDays = Array.from({ length: 31 }, (_, i) => `${i + 1 < 10 ? '0' + (i + 1) : i + 1}日`)
 const compassShiChen = [
-  { name: '子时', gua: '☵ 坎' },
-  { name: '丑时', gua: '☶ 艮' },
-  { name: '寅时', gua: '☶ 艮' },
-  { name: '卯时', gua: '☳ 震' },
-  { name: '辰时', gua: '☴ 巽' },
-  { name: '巳时', gua: '☴ 巽' },
-  { name: '午时', gua: '☲ 离' },
-  { name: '未时', gua: '☷ 坤' },
-  { name: '申时', gua: '☷ 坤' },
-  { name: '酉时', gua: '☱ 兑' },
-  { name: '戌时', gua: '☰ 乾' },
-  { name: '亥时', gua: '☰ 乾' }
+  { name: '子时', detail: '23-01' },
+  { name: '丑时', detail: '01-03' },
+  { name: '寅时', detail: '03-05' },
+  { name: '卯时', detail: '05-07' },
+  { name: '辰时', detail: '07-09' },
+  { name: '巳时', detail: '09-11' },
+  { name: '午时', detail: '11-13' },
+  { name: '未时', detail: '13-15' },
+  { name: '申时', detail: '15-17' },
+  { name: '酉时', detail: '17-19' },
+  { name: '戌时', detail: '19-21' },
+  { name: '亥时', detail: '21-23' }
 ]
 const compassMinutes = Array.from({ length: 60 }, (_, i) => `${i < 10 ? '0' + i : i}分`)
 const compassSeconds = Array.from({ length: 60 }, (_, i) => `${i < 10 ? '0' + i : i}秒`)
 
-const GAN_NAMES = ['甲', '乙', '丙', '丁', '戊', '己', '庚', '辛', '壬', '癸']
-const ZHI_NAMES = ['子', '丑', '寅', '卯', '辰', '巳', '午', '未', '申', '酉', '戌', '亥']
-
 const compassYearText = computed(() => {
-  const y = now.value.getFullYear()
-  const gan = GAN_NAMES[(y - 4 + 10000) % 10]
-  const zhi = ZHI_NAMES[(y - 4 + 12000) % 12]
-  return `${y} · ${gan}${zhi}`
+  return `${now.value.getFullYear()}年`
 })
 
 const compassRotations = computed(() => {
