@@ -64,6 +64,18 @@
           <span>{{ use12Hour ? '12小时制' : '24小时制' }}</span>
         </button>
 
+        <!-- Fullscreen Button -->
+        <button
+          class="control-btn btn-fullscreen"
+          :class="{ active: isFullscreen }"
+          @click="toggleFullscreen"
+          :title="isFullscreen ? '退出全屏显示 (ESC)' : '进入全屏大屏时钟 (F11)'"
+        >
+          <Minimize v-if="isFullscreen" :size="14" />
+          <Maximize v-else :size="14" />
+          <span>{{ isFullscreen ? '退出全屏' : '全屏显示' }}</span>
+        </button>
+
         <!-- Zen Fullscreen Immersion Button -->
         <button class="control-btn btn-zen" @click="isZenMode = true" title="进入全屏沉浸大钟模式">
           <Maximize2 :size="14" />
@@ -72,11 +84,18 @@
       </div>
     </div>
 
-    <!-- Exit Zen Mode Floating Button -->
-    <button v-if="isZenMode" class="btn-exit-zen" @click="isZenMode = false" title="退出沉浸模式 (ESC)">
-      <Minimize2 :size="16" />
-      <span>退出沉浸</span>
-    </button>
+    <!-- Exit Zen Mode Floating Actions -->
+    <div v-if="isZenMode" class="zen-floating-actions">
+      <button class="btn-exit-zen" @click="toggleFullscreen" :title="isFullscreen ? '退出全屏' : '全屏显示'">
+        <Minimize v-if="isFullscreen" :size="15" />
+        <Maximize v-else :size="15" />
+        <span>{{ isFullscreen ? '退出全屏' : '全屏' }}</span>
+      </button>
+      <button class="btn-exit-zen btn-exit-zen-primary" @click="isZenMode = false" title="退出沉浸模式 (ESC)">
+        <Minimize2 :size="15" />
+        <span>退出沉浸</span>
+      </button>
+    </div>
 
     <!-- Main Clock Stage Area -->
     <div class="clock-stage-wrapper">
@@ -252,6 +271,8 @@ import {
   Tv,
   Disc,
   Sparkles,
+  Maximize,
+  Minimize,
   Maximize2,
   Minimize2
 } from 'lucide-vue-next'
@@ -263,9 +284,26 @@ const showMilliseconds = ref<boolean>(false)
 const use12Hour = ref<boolean>(false)
 const displayMode = ref<'analog' | 'digital'>('analog')
 const isZenMode = ref<boolean>(false)
+const isFullscreen = ref<boolean>(false)
 
 let animationFrameId: number | null = null
 let intervalTimerId: any = null
+
+function toggleFullscreen() {
+  if (!document.fullscreenElement) {
+    document.documentElement.requestFullscreen().catch(() => {})
+    isFullscreen.value = true
+  } else {
+    if (document.exitFullscreen) {
+      document.exitFullscreen().catch(() => {})
+    }
+    isFullscreen.value = false
+  }
+}
+
+function handleFullscreenChange() {
+  isFullscreen.value = !!document.fullscreenElement
+}
 
 function handleKeyDown(e: KeyboardEvent) {
   if (e.key === 'Escape' && isZenMode.value) isZenMode.value = false
@@ -356,8 +394,16 @@ const greetingText = computed(() => {
 
 const dayProgressPercent = computed(() => (((now.value.getHours() * 3600 + now.value.getMinutes() * 60 + now.value.getSeconds()) / 86400) * 100).toFixed(1))
 
-onMounted(() => { startClockLoop(); window.addEventListener('keydown', handleKeyDown) })
-onUnmounted(() => { stopClockLoop(); window.removeEventListener('keydown', handleKeyDown) })
+onMounted(() => {
+  startClockLoop()
+  window.addEventListener('keydown', handleKeyDown)
+  document.addEventListener('fullscreenchange', handleFullscreenChange)
+})
+onUnmounted(() => {
+  stopClockLoop()
+  window.removeEventListener('keydown', handleKeyDown)
+  document.removeEventListener('fullscreenchange', handleFullscreenChange)
+})
 </script>
 
 <style scoped>
@@ -387,21 +433,27 @@ onUnmounted(() => { stopClockLoop(); window.removeEventListener('keydown', handl
   justify-content: center;
 }
 
-.btn-exit-zen {
+.zen-floating-actions {
   position: fixed;
-  top: 24px;
-  right: 24px;
+  top: 20px;
+  right: 20px;
   z-index: 100000;
-  display: inline-flex;
+  display: flex;
   align-items: center;
   gap: 8px;
-  padding: 8px 16px;
+}
+
+.btn-exit-zen {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
   background: rgba(15, 23, 42, 0.75);
   backdrop-filter: blur(12px);
   border: 1px solid rgba(255, 255, 255, 0.15);
   border-radius: 20px;
   color: #ffffff;
-  font-size: 13px;
+  font-size: 12.5px;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s ease;
@@ -410,7 +462,16 @@ onUnmounted(() => { stopClockLoop(); window.removeEventListener('keydown', handl
 
 .btn-exit-zen:hover {
   background: var(--primary, #3b82f6);
-  transform: translateY(-2px);
+  transform: translateY(-1px);
+}
+
+.btn-exit-zen-primary {
+  background: rgba(59, 130, 246, 0.85);
+  border-color: rgba(59, 130, 246, 0.4);
+}
+
+.btn-exit-zen-primary:hover {
+  background: #2563eb;
 }
 
 /* Header Control Toolbar */
@@ -516,6 +577,18 @@ onUnmounted(() => { stopClockLoop(); window.removeEventListener('keydown', handl
   background: rgba(59, 130, 246, 0.08);
   border-color: var(--primary, #3b82f6);
   color: var(--primary, #3b82f6);
+}
+
+.btn-fullscreen {
+  background: rgba(59, 130, 246, 0.08);
+  border-color: rgba(59, 130, 246, 0.25);
+  color: var(--primary, #3b82f6);
+}
+
+.btn-fullscreen:hover {
+  background: var(--primary, #3b82f6);
+  color: #ffffff;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.35);
 }
 
 .btn-zen {
