@@ -32,6 +32,15 @@
             <Tv :size="14" />
             <span>数字</span>
           </button>
+          <button
+            class="mode-btn"
+            :class="{ active: displayMode === 'flip' }"
+            @click="setDisplayMode('flip')"
+            title="复古机械翻页时钟"
+          >
+            <Layers :size="14" />
+            <span>翻页</span>
+          </button>
         </div>
 
         <button
@@ -192,6 +201,83 @@
               <span v-if="use12Hour" class="digit-ampm">{{ formattedLocalTime.ampm }}</span>
             </div>
           </div>
+
+          <!-- 3. Flip Clock View (复古机械翻页时钟) -->
+          <div v-else-if="displayMode === 'flip'" class="flip-clock-wrapper animate-fade-in">
+            <div class="flip-clock-board">
+              <!-- Hours Flip Card -->
+              <div class="flip-card-unit" :class="{ 'is-flipping': hoursFlip.flipping }">
+                <div class="flip-half flip-upper static">
+                  <div class="flip-num">{{ hoursFlip.current }}</div>
+                </div>
+                <div class="flip-half flip-lower static">
+                  <div class="flip-num">{{ hoursFlip.previous }}</div>
+                </div>
+                <div class="flip-half flip-upper flap-front">
+                  <div class="flip-num">{{ hoursFlip.previous }}</div>
+                </div>
+                <div class="flip-half flip-lower flap-back">
+                  <div class="flip-num">{{ hoursFlip.current }}</div>
+                </div>
+                <div class="flip-divider"></div>
+                <div class="flip-pin flip-pin-left"></div>
+                <div class="flip-pin flip-pin-right"></div>
+                <div v-if="use12Hour" class="flip-ampm-badge">{{ formattedLocalTime.ampm }}</div>
+              </div>
+
+              <!-- Colon -->
+              <div class="flip-colon">
+                <span class="flip-dot"></span>
+                <span class="flip-dot"></span>
+              </div>
+
+              <!-- Minutes Flip Card -->
+              <div class="flip-card-unit" :class="{ 'is-flipping': minutesFlip.flipping }">
+                <div class="flip-half flip-upper static">
+                  <div class="flip-num">{{ minutesFlip.current }}</div>
+                </div>
+                <div class="flip-half flip-lower static">
+                  <div class="flip-num">{{ minutesFlip.previous }}</div>
+                </div>
+                <div class="flip-half flip-upper flap-front">
+                  <div class="flip-num">{{ minutesFlip.previous }}</div>
+                </div>
+                <div class="flip-half flip-lower flap-back">
+                  <div class="flip-num">{{ minutesFlip.current }}</div>
+                </div>
+                <div class="flip-divider"></div>
+                <div class="flip-pin flip-pin-left"></div>
+                <div class="flip-pin flip-pin-right"></div>
+              </div>
+
+              <!-- Seconds Flip Card (Optional) -->
+              <template v-if="showSeconds">
+                <!-- Colon -->
+                <div class="flip-colon">
+                  <span class="flip-dot"></span>
+                  <span class="flip-dot"></span>
+                </div>
+
+                <div class="flip-card-unit flip-seconds-card" :class="{ 'is-flipping': secondsFlip.flipping }">
+                  <div class="flip-half flip-upper static">
+                    <div class="flip-num">{{ secondsFlip.current }}</div>
+                  </div>
+                  <div class="flip-half flip-lower static">
+                    <div class="flip-num">{{ secondsFlip.previous }}</div>
+                  </div>
+                  <div class="flip-half flip-upper flap-front">
+                    <div class="flip-num">{{ secondsFlip.previous }}</div>
+                  </div>
+                  <div class="flip-half flip-lower flap-back">
+                    <div class="flip-num">{{ secondsFlip.current }}</div>
+                  </div>
+                  <div class="flip-divider"></div>
+                  <div class="flip-pin flip-pin-left"></div>
+                  <div class="flip-pin flip-pin-right"></div>
+                </div>
+              </template>
+            </div>
+          </div>
         </div>
 
         <!-- Right Column: 日期、农历、时区与每日流逝看板 -->
@@ -233,7 +319,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import {
   Clock,
   Zap,
@@ -241,6 +327,7 @@ import {
   Calendar,
   Tv,
   Disc,
+  Layers,
   Sparkles,
   Maximize,
   Minimize,
@@ -249,13 +336,36 @@ import {
 } from 'lucide-vue-next'
 import { getLunar } from '../../utils/lunar'
 
+interface FlipUnitState {
+  current: string
+  previous: string
+  flipping: boolean
+  timerId?: any
+}
+
 const now = ref<Date>(new Date())
 const showSeconds = ref<boolean>(true)
 const showMilliseconds = ref<boolean>(false)
 const use12Hour = ref<boolean>(false)
-const displayMode = ref<'analog' | 'digital'>('analog')
+const displayMode = ref<'analog' | 'digital' | 'flip'>('analog')
 const isZenMode = ref<boolean>(false)
 const isFullscreen = ref<boolean>(false)
+
+const hoursFlip = ref<FlipUnitState>({ current: '00', previous: '00', flipping: false })
+const minutesFlip = ref<FlipUnitState>({ current: '00', previous: '00', flipping: false })
+const secondsFlip = ref<FlipUnitState>({ current: '00', previous: '00', flipping: false })
+
+function triggerFlip(state: FlipUnitState, newVal: string) {
+  if (state.current === newVal) return
+  if (state.timerId) clearTimeout(state.timerId)
+  state.previous = state.current
+  state.current = newVal
+  state.flipping = true
+  state.timerId = setTimeout(() => {
+    state.flipping = false
+    state.previous = state.current
+  }, 500)
+}
 
 let animationFrameId: number | null = null
 let intervalTimerId: any = null
@@ -287,7 +397,7 @@ function updateTime() {
   }
 }
 
-function setDisplayMode(mode: 'analog' | 'digital') {
+function setDisplayMode(mode: 'analog' | 'digital' | 'flip') {
   displayMode.value = mode
   startClockLoop()
 }
@@ -332,6 +442,18 @@ const formattedLocalTime = computed(() => {
     fullDateStr: `${d.getFullYear()}年${String(d.getMonth() + 1).padStart(2, '0')}月${String(d.getDate()).padStart(2, '0')}日`
   }
 })
+
+watch(() => formattedLocalTime.value.hours, (newVal) => {
+  triggerFlip(hoursFlip.value, newVal)
+}, { immediate: true })
+
+watch(() => formattedLocalTime.value.minutes, (newVal) => {
+  triggerFlip(minutesFlip.value, newVal)
+}, { immediate: true })
+
+watch(() => formattedLocalTime.value.seconds, (newVal) => {
+  triggerFlip(secondsFlip.value, newVal)
+}, { immediate: true })
 
 const analogAngles = computed(() => {
   const d = now.value
@@ -574,24 +696,6 @@ onUnmounted(() => {
   box-shadow: 0 4px 12px rgba(99, 102, 241, 0.35);
 }
 
-/* Main Clock Showcase Stage (Borderless Seamless Design) */
-.clock-stage-wrapper {
-  flex: 1;
-  min-height: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-  padding: 0;
-  overflow: hidden;
-}
-
-.zen-fullscreen .clock-stage-wrapper {
-  width: 100%;
-  height: 100%;
-  padding: 0;
-}
-
 /* Main Clock Showcase Stage (左右两栏高精度看板设计) */
 .clock-stage-wrapper {
   flex: 1;
@@ -608,6 +712,182 @@ onUnmounted(() => {
   width: 100%;
   height: 100%;
   padding: 0;
+}
+
+/* ============================================================
+   Retro Mechanical 3D Flip Clock Styles (翻页时钟)
+   ============================================================ */
+.flip-clock-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+}
+
+.flip-clock-board {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(6px, 1.2vw, 14px);
+  padding: 10px 14px;
+  border-radius: 18px;
+  background: rgba(15, 23, 42, 0.04);
+  border: 1px solid var(--border-color, rgba(226, 232, 240, 0.8));
+  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.05);
+}
+
+.flip-card-unit {
+  position: relative;
+  width: clamp(60px, 8.5vw, 92px);
+  height: clamp(80px, 11vw, 120px);
+  perspective: 500px;
+  border-radius: 10px;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.28), 0 2px 6px rgba(0, 0, 0, 0.15);
+  user-select: none;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+.flip-half {
+  position: absolute;
+  left: 0;
+  width: 100%;
+  height: 50%;
+  overflow: hidden;
+  box-sizing: border-box;
+  background: #1e1e24;
+  color: #f8fafc;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+.flip-upper {
+  top: 0;
+  border-top-left-radius: 10px;
+  border-top-right-radius: 10px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.6);
+  transform-origin: bottom center;
+}
+
+.flip-upper .flip-num {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 200%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: clamp(42px, 6vw, 68px);
+  font-weight: 800;
+  letter-spacing: -2px;
+  color: #ffffff;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
+}
+
+.flip-lower {
+  bottom: 0;
+  border-bottom-left-radius: 10px;
+  border-bottom-right-radius: 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  transform-origin: top center;
+  background: #18181d;
+}
+
+.flip-lower .flip-num {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 200%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: clamp(42px, 6vw, 68px);
+  font-weight: 800;
+  letter-spacing: -2px;
+  color: #f1f5f9;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
+}
+
+/* 3D Flip Keyframe Animations */
+.is-flipping .flap-front {
+  animation: flip-down-upper 0.48s ease-in forwards;
+  z-index: 2;
+}
+
+.is-flipping .flap-back {
+  animation: flip-down-lower 0.48s ease-out 0.24s forwards;
+  z-index: 3;
+}
+
+@keyframes flip-down-upper {
+  0% {
+    transform: rotateX(0deg);
+  }
+  100% {
+    transform: rotateX(-90deg);
+  }
+}
+
+@keyframes flip-down-lower {
+  0% {
+    transform: rotateX(90deg);
+  }
+  100% {
+    transform: rotateX(0deg);
+  }
+}
+
+.flip-divider {
+  position: absolute;
+  top: calc(50% - 1px);
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background: rgba(0, 0, 0, 0.75);
+  z-index: 10;
+  box-shadow: 0 1px 2px rgba(255, 255, 255, 0.06);
+}
+
+.flip-pin {
+  position: absolute;
+  top: calc(50% - 4px);
+  width: 4px;
+  height: 8px;
+  background: #64748b;
+  border-radius: 2px;
+  z-index: 12;
+}
+.flip-pin-left { left: -2px; }
+.flip-pin-right { right: -2px; }
+
+.flip-ampm-badge {
+  position: absolute;
+  bottom: 6px;
+  right: 6px;
+  font-size: 10px;
+  font-weight: 800;
+  color: var(--primary, #3b82f6);
+  z-index: 15;
+  letter-spacing: 0.5px;
+}
+
+/* Flip Colon Separator */
+.flip-colon {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 0 2px;
+}
+
+.flip-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--primary, #6366f1);
+  box-shadow: 0 0 8px rgba(99, 102, 241, 0.6);
 }
 
 .clock-split-container {
@@ -1012,6 +1292,52 @@ onUnmounted(() => {
   font-size: clamp(20px, 2.5vw, 36px);
 }
 
+/* Flip Clock in Fullscreen & Zen Mode */
+.is-fullscreen .flip-clock-board,
+.zen-fullscreen .flip-clock-board {
+  padding: 18px 26px;
+  gap: clamp(10px, 2vw, 24px);
+  border-radius: 26px;
+}
+
+.is-fullscreen .flip-card-unit,
+.zen-fullscreen .flip-card-unit {
+  width: clamp(86px, 12vw, 138px);
+  height: clamp(116px, 16vw, 185px);
+  border-radius: 16px;
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.4), 0 4px 10px rgba(0, 0, 0, 0.25);
+}
+
+.is-fullscreen .flip-upper,
+.zen-fullscreen .flip-upper {
+  border-top-left-radius: 16px;
+  border-top-right-radius: 16px;
+}
+
+.is-fullscreen .flip-lower,
+.zen-fullscreen .flip-lower {
+  border-bottom-left-radius: 16px;
+  border-bottom-right-radius: 16px;
+}
+
+.is-fullscreen .flip-upper .flip-num,
+.zen-fullscreen .flip-upper .flip-num,
+.is-fullscreen .flip-lower .flip-num,
+.zen-fullscreen .flip-lower .flip-num {
+  font-size: clamp(60px, 8.6vw, 106px);
+}
+
+.is-fullscreen .flip-colon,
+.zen-fullscreen .flip-colon {
+  gap: 16px;
+}
+
+.is-fullscreen .flip-dot,
+.zen-fullscreen .flip-dot {
+  width: 9px;
+  height: 9px;
+}
+
 /* Responsive Breakpoints */
 @media (max-width: 768px) {
   .clock-split-container {
@@ -1030,6 +1356,14 @@ onUnmounted(() => {
     align-items: center;
   }
   .digits-group {
+    font-size: 38px;
+  }
+  .flip-card-unit {
+    width: 54px;
+    height: 72px;
+  }
+  .flip-upper .flip-num,
+  .flip-lower .flip-num {
     font-size: 38px;
   }
 }

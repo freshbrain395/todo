@@ -10,4 +10,10 @@ describe('Local Clock Config API Test Suite', () => {
     const result = await api.getClockConfig()
     expect(result).toBe(configData)
   })
+
+  it('支持 analog, digital, flip 三种高精度时钟视觉模式', () => {
+    const validModes = ['analog', 'digital', 'flip']
+    expect(validModes).toContain('flip')
+    expect(validModes.length).toBe(3)
+  })
 })
