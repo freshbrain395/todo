@@ -492,28 +492,28 @@
               </defs>
 
               <!-- Base Concentric Grid Rings -->
-              <circle cx="270" cy="270" r="260" class="compass-ring-line outer-border" />
-              <circle cx="270" cy="270" r="226" class="compass-ring-line" />
-              <circle cx="270" cy="270" r="182" class="compass-ring-line" />
-              <circle cx="270" cy="270" r="138" class="compass-ring-line" />
-              <circle cx="270" cy="270" r="98" class="compass-ring-line" />
-              <circle cx="270" cy="270" r="58" class="compass-ring-line" />
+              <circle cx="270" cy="270" r="264" class="compass-ring-line outer-border" />
+              <circle cx="270" cy="270" r="224" class="compass-ring-line" />
+              <circle cx="270" cy="270" r="184" class="compass-ring-line" />
+              <circle cx="270" cy="270" r="126" class="compass-ring-line" />
+              <circle cx="270" cy="270" r="84" class="compass-ring-line" />
+              <circle cx="270" cy="270" r="46" class="compass-ring-line" />
 
               <!-- Crosshairs Axis Lines -->
-              <line x1="270" y1="10" x2="270" y2="530" class="compass-axis-line" />
-              <line x1="10" y1="270" x2="530" y2="270" class="compass-axis-line" />
+              <line x1="270" y1="6" x2="270" y2="534" class="compass-axis-line" />
+              <line x1="6" y1="270" x2="534" y2="270" class="compass-axis-line" />
 
               <!-- Horizontal 3 o'clock Active Reading Beam -->
-              <rect x="270" y="257" width="258" height="26" rx="4" class="compass-active-beam" />
+              <rect x="270" y="257" width="260" height="26" rx="4" class="compass-active-beam" />
               <polygon points="536,270 526,264 526,276" class="compass-pointer-head" />
 
-              <!-- Ring 6: Seconds (r=243, 60 items) -->
+              <!-- Ring 6: Seconds (r=224~264, center r=244, 60 items) -->
               <g class="compass-ring-group sec-ring" :transform="`rotate(${compassRotations.secDeg} 270 270)`">
                 <g v-for="(item, i) in compassSeconds" :key="'sec-' + i" :transform="`rotate(${i * 6} 270 270)`">
                   <text
-                    x="513"
-                    y="273"
-                    text-anchor="end"
+                    x="514"
+                    y="273.5"
+                    text-anchor="middle"
                     class="compass-text sec-text"
                     :class="{ active: i === compassRotations.currentSecIdx }"
                   >
@@ -522,13 +522,13 @@
                 </g>
               </g>
 
-              <!-- Ring 5: Minutes (r=202, 60 items) -->
+              <!-- Ring 5: Minutes (r=184~224, center r=204, 60 items) -->
               <g class="compass-ring-group min-ring" :transform="`rotate(${compassRotations.minDeg} 270 270)`">
                 <g v-for="(item, i) in compassMinutes" :key="'min-' + i" :transform="`rotate(${i * 6} 270 270)`">
                   <text
-                    x="472"
-                    y="273"
-                    text-anchor="end"
+                    x="474"
+                    y="273.5"
+                    text-anchor="middle"
                     class="compass-text min-text"
                     :class="{ active: i === compassRotations.currentMinIdx }"
                   >
@@ -537,13 +537,13 @@
                 </g>
               </g>
 
-              <!-- Ring 4: ShiChen + Bagua Trigram (r=160, 12 items) -->
+              <!-- Ring 4: ShiChen (r=126~184, center r=155, 12 items) -->
               <g class="compass-ring-group shichen-ring" :transform="`rotate(${compassRotations.shichenDeg} 270 270)`">
                 <g v-for="(item, i) in compassShiChen" :key="'shichen-' + i" :transform="`rotate(${i * 30} 270 270)`">
                   <text
-                    x="430"
+                    x="425"
                     y="273.5"
-                    text-anchor="end"
+                    text-anchor="middle"
                     class="compass-text shichen-text"
                     :class="{ active: i === compassRotations.currentShichenIdx }"
                   >
@@ -552,13 +552,13 @@
                 </g>
               </g>
 
-              <!-- Ring 3: Days (r=118, 31 items) -->
+              <!-- Ring 3: Days (r=84~126, center r=105, 31 items) -->
               <g class="compass-ring-group day-ring" :transform="`rotate(${compassRotations.dayDeg} 270 270)`">
                 <g v-for="(item, i) in compassDays" :key="'day-' + i" :transform="`rotate(${i * (360 / 31)} 270 270)`">
                   <text
-                    x="388"
+                    x="375"
                     y="273.5"
-                    text-anchor="end"
+                    text-anchor="middle"
                     class="compass-text day-text"
                     :class="{ active: i === compassRotations.currentDayIdx }"
                   >
@@ -567,13 +567,13 @@
                 </g>
               </g>
 
-              <!-- Ring 2: Months (r=78, 12 items) -->
+              <!-- Ring 2: Months (r=46~84, center r=65, 12 items) -->
               <g class="compass-ring-group month-ring" :transform="`rotate(${compassRotations.monthDeg} 270 270)`">
                 <g v-for="(item, i) in compassMonths" :key="'month-' + i" :transform="`rotate(${i * 30} 270 270)`">
                   <text
-                    x="348"
-                    y="274"
-                    text-anchor="end"
+                    x="335"
+                    y="273.5"
+                    text-anchor="middle"
                     class="compass-text month-text"
                     :class="{ active: i === compassRotations.currentMonthIdx }"
                   >
@@ -582,20 +582,20 @@
                 </g>
               </g>
 
-              <!-- Ring 1: Central Core: Taiji Yin-Yang & Year (r=50) -->
-              <circle cx="270" cy="270" r="50" class="compass-center-circle" fill="url(#compassCenterGlow)" />
+              <!-- Ring 1: Central Core: Taiji Yin-Yang & Year (r=0~46) -->
+              <circle cx="270" cy="270" r="44" class="compass-center-circle" fill="url(#compassCenterGlow)" />
 
               <!-- Taiji Rotating Graphic -->
               <g class="taiji-group" transform="translate(270, 270)">
-                <circle cx="0" cy="0" r="22" fill="#09090b" stroke="#f59e0b" stroke-width="1.5" />
-                <path d="M 0,-22 A 22,22 0 0,1 0,22 A 11,11 0 0,1 0,0 A 11,11 0 0,0 0,-22 Z" fill="#fbbf24" />
-                <path d="M 0,22 A 22,22 0 0,1 0,-22 A 11,11 0 0,1 0,0 A 11,11 0 0,0 0,22 Z" fill="#18181b" />
-                <circle cx="0" cy="-11" r="3.2" fill="#18181b" />
-                <circle cx="0" cy="11" r="3.2" fill="#fbbf24" />
+                <circle cx="0" cy="0" r="19" fill="#09090b" stroke="#f59e0b" stroke-width="1.5" />
+                <path d="M 0,-19 A 19,19 0 0,1 0,19 A 9.5,9.5 0 0,1 0,0 A 9.5,9.5 0 0,0 0,-19 Z" fill="#fbbf24" />
+                <path d="M 0,19 A 19,19 0 0,1 0,-19 A 9.5,9.5 0 0,1 0,0 A 9.5,9.5 0 0,0 0,19 Z" fill="#18181b" />
+                <circle cx="0" cy="-9.5" r="2.8" fill="#18181b" />
+                <circle cx="0" cy="9.5" r="2.8" fill="#fbbf24" />
               </g>
 
               <!-- Year Text Badge -->
-              <text x="270" y="306" text-anchor="middle" class="compass-year-badge">
+              <text x="270" y="304" text-anchor="middle" class="compass-year-badge">
                 {{ compassYearText }}
               </text>
             </svg>
@@ -1904,7 +1904,7 @@ onUnmounted(() => {
 }
 
 .shichen-text {
-  font-size: 9px;
+  font-size: 8px;
   font-weight: 700;
 }
 
