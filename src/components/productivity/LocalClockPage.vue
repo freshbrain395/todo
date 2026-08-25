@@ -474,6 +474,132 @@
               </div>
             </div>
           </div>
+
+          <!-- 8. Bagua Chrono Compass (八卦时辰天体罗盘时钟) -->
+          <div v-else-if="displayMode === 'compass'" class="bagua-compass-stage animate-fade-in">
+            <svg class="compass-svg" viewBox="0 0 540 540">
+              <defs>
+                <radialGradient id="compassCenterGlow" cx="50%" cy="50%" r="50%">
+                  <stop offset="0%" stop-color="#fbbf24" stop-opacity="0.35" />
+                  <stop offset="60%" stop-color="#18181b" stop-opacity="0.95" />
+                  <stop offset="100%" stop-color="#09090b" stop-opacity="1" />
+                </radialGradient>
+                <linearGradient id="activeBeamGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                  <stop offset="0%" stop-color="#f59e0b" stop-opacity="0.05" />
+                  <stop offset="60%" stop-color="#fbbf24" stop-opacity="0.3" />
+                  <stop offset="100%" stop-color="#fef08a" stop-opacity="0.85" />
+                </linearGradient>
+              </defs>
+
+              <!-- Base Concentric Grid Rings -->
+              <circle cx="270" cy="270" r="260" class="compass-ring-line outer-border" />
+              <circle cx="270" cy="270" r="226" class="compass-ring-line" />
+              <circle cx="270" cy="270" r="182" class="compass-ring-line" />
+              <circle cx="270" cy="270" r="138" class="compass-ring-line" />
+              <circle cx="270" cy="270" r="98" class="compass-ring-line" />
+              <circle cx="270" cy="270" r="58" class="compass-ring-line" />
+
+              <!-- Crosshairs Axis Lines -->
+              <line x1="270" y1="10" x2="270" y2="530" class="compass-axis-line" />
+              <line x1="10" y1="270" x2="530" y2="270" class="compass-axis-line" />
+
+              <!-- Horizontal 3 o'clock Active Reading Beam -->
+              <rect x="270" y="257" width="258" height="26" rx="4" class="compass-active-beam" />
+              <polygon points="536,270 526,264 526,276" class="compass-pointer-head" />
+
+              <!-- Ring 6: Seconds (r=243, 60 items) -->
+              <g class="compass-ring-group sec-ring" :transform="`rotate(${compassRotations.secDeg} 270 270)`">
+                <g v-for="(item, i) in compassSeconds" :key="'sec-' + i" :transform="`rotate(${i * 6} 270 270)`">
+                  <text
+                    x="513"
+                    y="273"
+                    text-anchor="end"
+                    class="compass-text sec-text"
+                    :class="{ active: i === compassRotations.currentSecIdx }"
+                  >
+                    {{ item }}
+                  </text>
+                </g>
+              </g>
+
+              <!-- Ring 5: Minutes (r=202, 60 items) -->
+              <g class="compass-ring-group min-ring" :transform="`rotate(${compassRotations.minDeg} 270 270)`">
+                <g v-for="(item, i) in compassMinutes" :key="'min-' + i" :transform="`rotate(${i * 6} 270 270)`">
+                  <text
+                    x="472"
+                    y="273"
+                    text-anchor="end"
+                    class="compass-text min-text"
+                    :class="{ active: i === compassRotations.currentMinIdx }"
+                  >
+                    {{ item }}
+                  </text>
+                </g>
+              </g>
+
+              <!-- Ring 4: ShiChen + Bagua Trigram (r=160, 12 items) -->
+              <g class="compass-ring-group shichen-ring" :transform="`rotate(${compassRotations.shichenDeg} 270 270)`">
+                <g v-for="(item, i) in compassShiChen" :key="'shichen-' + i" :transform="`rotate(${i * 30} 270 270)`">
+                  <text
+                    x="430"
+                    y="273.5"
+                    text-anchor="end"
+                    class="compass-text shichen-text"
+                    :class="{ active: i === compassRotations.currentShichenIdx }"
+                  >
+                    {{ item.name }} {{ item.gua }}
+                  </text>
+                </g>
+              </g>
+
+              <!-- Ring 3: Days (r=118, 31 items) -->
+              <g class="compass-ring-group day-ring" :transform="`rotate(${compassRotations.dayDeg} 270 270)`">
+                <g v-for="(item, i) in compassDays" :key="'day-' + i" :transform="`rotate(${i * (360 / 31)} 270 270)`">
+                  <text
+                    x="388"
+                    y="273.5"
+                    text-anchor="end"
+                    class="compass-text day-text"
+                    :class="{ active: i === compassRotations.currentDayIdx }"
+                  >
+                    {{ item }}
+                  </text>
+                </g>
+              </g>
+
+              <!-- Ring 2: Months (r=78, 12 items) -->
+              <g class="compass-ring-group month-ring" :transform="`rotate(${compassRotations.monthDeg} 270 270)`">
+                <g v-for="(item, i) in compassMonths" :key="'month-' + i" :transform="`rotate(${i * 30} 270 270)`">
+                  <text
+                    x="348"
+                    y="274"
+                    text-anchor="end"
+                    class="compass-text month-text"
+                    :class="{ active: i === compassRotations.currentMonthIdx }"
+                  >
+                    {{ item }}
+                  </text>
+                </g>
+              </g>
+
+              <!-- Ring 1: Central Core: Taiji Yin-Yang & Year (r=50) -->
+              <circle cx="270" cy="270" r="50" class="compass-center-circle" fill="url(#compassCenterGlow)" />
+
+              <!-- Taiji Rotating Graphic -->
+              <g class="taiji-group" transform="translate(270, 270)">
+                <circle cx="0" cy="0" r="22" fill="#09090b" stroke="#f59e0b" stroke-width="1.5" />
+                <path d="M 0,-22 A 22,22 0 0,1 0,22 A 11,11 0 0,1 0,0 A 11,11 0 0,0 0,-22 Z" fill="#fbbf24" />
+                <path d="M 0,22 A 22,22 0 0,1 0,-22 A 11,11 0 0,1 0,0 A 11,11 0 0,0 0,22 Z" fill="#18181b" />
+                <circle cx="0" cy="-11" r="3.2" fill="#18181b" />
+                <circle cx="0" cy="11" r="3.2" fill="#fbbf24" />
+              </g>
+
+              <!-- Year Text Badge -->
+              <text x="270" y="306" text-anchor="middle" class="compass-year-badge">
+                {{ compassYearText }}
+              </text>
+            </svg>
+          </div>
         </div>
 
         <!-- Right Column: 日期、农历、时区与每日流逝看板 -->
@@ -528,6 +654,7 @@ import {
   CircleDot,
   Hash,
   Type,
+  Compass,
   ChevronDown,
   Check,
   Sparkles,
@@ -538,7 +665,7 @@ import {
 } from 'lucide-vue-next'
 import { getLunar } from '../../utils/lunar'
 
-export type ClockVisualMode = 'analog' | 'digital' | 'flip' | 'nixie' | 'rings' | 'seven-segment' | 'matrix-words'
+export type ClockVisualMode = 'analog' | 'digital' | 'flip' | 'nixie' | 'rings' | 'seven-segment' | 'matrix-words' | 'compass'
 
 interface ModeOption {
   id: ClockVisualMode
@@ -554,7 +681,8 @@ const modeOptions: ModeOption[] = [
   { id: 'nixie', name: '复古辉光管', desc: '真空玻璃管金橙发光灯丝', icon: Flame },
   { id: 'rings', name: '同心轨迹环', desc: '三环时分秒流转科技光带', icon: CircleDot },
   { id: 'seven-segment', name: 'LED数码管', desc: '经典电子表发光段与暗纹', icon: Hash },
-  { id: 'matrix-words', name: '时间字阵', desc: '极简汉字时序高亮矩阵', icon: Type }
+  { id: 'matrix-words', name: '时间字阵', desc: '极简汉字时序高亮矩阵', icon: Type },
+  { id: 'compass', name: '八卦罗盘', desc: '天体同心六层旋转时辰罗盘', icon: Compass }
 ]
 
 interface FlipUnitState {
@@ -871,6 +999,62 @@ const activeChineseChars = computed(() => {
 function isCharActive(_char: string, rIdx: number, cIdx: number): boolean {
   return activeChineseChars.value.has(`${rIdx},${cIdx}`)
 }
+
+// 8. Bagua Chrono Compass (八卦时辰天体罗盘时钟)
+const compassMonths = ['一月', '二月', '三月', '四月', '五月', '六月', '七月', '八月', '九月', '十月', '冬月', '腊月']
+const compassDays = [
+  '初一', '初二', '初三', '初四', '初五', '初六', '初七', '初八', '初九', '初十',
+  '十一', '十二', '十三', '十四', '十五', '十六', '十七', '十八', '十九', '二十',
+  '廿一', '廿二', '廿三', '廿四', '廿五', '廿六', '廿七', '廿八', '廿九', '三十', '卅一'
+]
+const compassShiChen = [
+  { name: '子时', gua: '☵ 坎' },
+  { name: '丑时', gua: '☶ 艮' },
+  { name: '寅时', gua: '☶ 艮' },
+  { name: '卯时', gua: '☳ 震' },
+  { name: '辰时', gua: '☴ 巽' },
+  { name: '巳时', gua: '☴ 巽' },
+  { name: '午时', gua: '☲ 离' },
+  { name: '未时', gua: '☷ 坤' },
+  { name: '申时', gua: '☷ 坤' },
+  { name: '酉时', gua: '☱ 兑' },
+  { name: '戌时', gua: '☰ 乾' },
+  { name: '亥时', gua: '☰ 乾' }
+]
+const compassMinutes = Array.from({ length: 60 }, (_, i) => `${i < 10 ? '0' + i : i}分`)
+const compassSeconds = Array.from({ length: 60 }, (_, i) => `${i < 10 ? '0' + i : i}秒`)
+
+const GAN_NAMES = ['甲', '乙', '丙', '丁', '戊', '己', '庚', '辛', '壬', '癸']
+const ZHI_NAMES = ['子', '丑', '寅', '卯', '辰', '巳', '午', '未', '申', '酉', '戌', '亥']
+
+const compassYearText = computed(() => {
+  const y = now.value.getFullYear()
+  const gan = GAN_NAMES[(y - 4 + 10000) % 10]
+  const zhi = ZHI_NAMES[(y - 4 + 12000) % 12]
+  return `${y} · ${gan}${zhi}`
+})
+
+const compassRotations = computed(() => {
+  const d = now.value
+  const s = d.getSeconds() + (showMilliseconds.value ? d.getMilliseconds() / 1000 : 0)
+  const m = d.getMinutes() + s / 60
+  const shichenIndex = Math.floor(((d.getHours() + 1) % 24) / 2)
+  const day = d.getDate()
+  const month = d.getMonth()
+
+  return {
+    secDeg: -(s * 6),
+    minDeg: -(m * 6),
+    shichenDeg: -(shichenIndex * 30 + (d.getMinutes() / 120) * 30),
+    dayDeg: -((day - 1) * (360 / 31)),
+    monthDeg: -(month * 30),
+    currentMonthIdx: month,
+    currentDayIdx: day - 1,
+    currentShichenIdx: shichenIndex,
+    currentMinIdx: d.getMinutes(),
+    currentSecIdx: d.getSeconds()
+  }
+})
 
 const lunarText = computed(() => {
   try {
@@ -1659,6 +1843,120 @@ onUnmounted(() => {
   box-shadow: 0 0 12px rgba(6, 182, 212, 0.2);
 }
 
+/* 8. Bagua Chrono Compass (八卦时辰天体罗盘) */
+.bagua-compass-stage {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+}
+
+.compass-svg {
+  width: min(340px, 46vh);
+  height: min(340px, 46vh);
+  filter: drop-shadow(0 14px 36px rgba(0, 0, 0, 0.45));
+  overflow: visible;
+}
+
+.compass-ring-line {
+  fill: none;
+  stroke: rgba(251, 191, 36, 0.15);
+  stroke-width: 1;
+}
+
+.compass-ring-line.outer-border {
+  stroke: rgba(251, 191, 36, 0.4);
+  stroke-width: 1.5;
+}
+
+.compass-axis-line {
+  stroke: rgba(251, 191, 36, 0.08);
+  stroke-width: 1;
+  stroke-dasharray: 4 4;
+}
+
+.compass-active-beam {
+  fill: url(#activeBeamGrad);
+  filter: drop-shadow(0 0 10px rgba(251, 191, 36, 0.3));
+}
+
+.compass-pointer-head {
+  fill: #fbbf24;
+  filter: drop-shadow(0 0 6px #f59e0b);
+}
+
+.compass-ring-group {
+  transition: transform 0.25s cubic-bezier(0.2, 0, 0, 1);
+}
+
+.compass-ring-group.sec-ring {
+  transition: transform 0.08s linear;
+}
+
+.compass-text {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+  fill: #52525b;
+  font-size: 8.5px;
+  font-weight: 600;
+  user-select: none;
+  transition: fill 0.2s ease;
+}
+
+.sec-text {
+  font-size: 8px;
+}
+
+.min-text {
+  font-size: 8.5px;
+}
+
+.shichen-text {
+  font-size: 9px;
+  font-weight: 700;
+}
+
+.day-text {
+  font-size: 8.5px;
+}
+
+.month-text {
+  font-size: 9px;
+  font-weight: 700;
+}
+
+.compass-text.active {
+  fill: #fef08a;
+  font-weight: 800;
+  text-shadow: 0 0 8px rgba(251, 191, 36, 0.9);
+}
+
+.compass-center-circle {
+  stroke: rgba(251, 191, 36, 0.3);
+  stroke-width: 1.5;
+}
+
+.taiji-group {
+  animation: taiji-slow-spin 60s linear infinite;
+  transform-origin: 0 0;
+}
+
+@keyframes taiji-slow-spin {
+  0% {
+    transform: translate(270px, 270px) rotate(0deg);
+  }
+  100% {
+    transform: translate(270px, 270px) rotate(360deg);
+  }
+}
+
+.compass-year-badge {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", sans-serif;
+  font-size: 10px;
+  font-weight: 800;
+  fill: #fbbf24;
+  letter-spacing: 1px;
+}
+
 .clock-split-container {
   position: relative;
   width: 100%;
@@ -2186,6 +2484,13 @@ onUnmounted(() => {
   font-size: clamp(16px, 1.9vw, 22px);
 }
 
+/* Compass Fullscreen */
+.is-fullscreen .compass-svg,
+.zen-fullscreen .compass-svg {
+  width: min(580px, 78vh);
+  height: min(580px, 78vh);
+}
+
 /* Responsive Breakpoints */
 @media (max-width: 768px) {
   .clock-split-container {
@@ -2232,6 +2537,10 @@ onUnmounted(() => {
   .seg-digit-box {
     width: 26px;
     height: 52px;
+  }
+  .compass-svg {
+    width: min(300px, 75vw);
+    height: min(300px, 75vw);
   }
 }
 </style>

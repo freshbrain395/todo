@@ -12,8 +12,8 @@ describe('Local Clock Config API Test Suite', () => {
     expect(result).toBe(configData)
   })
 
-  it('支持 7 种高精度时钟视觉模式 (analog, digital, flip, nixie, rings, seven-segment, matrix-words)', () => {
-    const validModes: ClockVisualMode[] = ['analog', 'digital', 'flip', 'nixie', 'rings', 'seven-segment', 'matrix-words']
+  it('支持 8 种高精度时钟视觉模式 (analog, digital, flip, nixie, rings, seven-segment, matrix-words, compass)', () => {
+    const validModes: ClockVisualMode[] = ['analog', 'digital', 'flip', 'nixie', 'rings', 'seven-segment', 'matrix-words', 'compass']
     expect(validModes).toContain('analog')
     expect(validModes).toContain('digital')
     expect(validModes).toContain('flip')
@@ -21,6 +21,7 @@ describe('Local Clock Config API Test Suite', () => {
     expect(validModes).toContain('rings')
     expect(validModes).toContain('seven-segment')
     expect(validModes).toContain('matrix-words')
-    expect(validModes.length).toBe(7)
+    expect(validModes).toContain('compass')
+    expect(validModes.length).toBe(8)
   })
 })
