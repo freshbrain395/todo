@@ -438,9 +438,12 @@ function manualAddTomato(task: PomodoroItem) {
 }
 
 function resetTask(task: PomodoroItem) {
-  task.isRunning = false
-  task.mode = 'focus'
-  task.remainingSeconds = task.focusMinutes * 60
+  const target = pomodoroList.value.find(t => t.id === task.id) || task
+  target.isRunning = false
+  target.mode = 'focus'
+  const mins = Number(target.focusMinutes) || modeMinutes.value.focus || 25
+  target.focusMinutes = mins
+  target.remainingSeconds = mins * 60
   updateGlobalTimer()
 }
 

@@ -644,12 +644,11 @@ function updateGlobalCdInterval() {
 }
 
 function onCountdownFinished(item: CountdownItem) {
-  if (item.notifyType === 'sound_and_popup' || item.notifyType === 'sound_only') {
-    if (item.soundType !== 'silent') {
-      soundPlayer.play(item.soundType as SoundType, props.soundVolume ?? 0.8)
-    }
+  const st = item.soundType || 'chime'
+  if (st !== 'silent' && item.notifyType !== 'popup_only') {
+    soundPlayer.play(st as SoundType, props.soundVolume ?? 0.8)
   }
-  if (item.notifyType === 'sound_and_popup' || item.notifyType === 'popup_only') {
+  if (item.notifyType !== 'sound_only') {
     ringingCountdown.value = item
   }
 }
@@ -659,16 +658,20 @@ function dismissRingingCountdown() {
 }
 
 function toggleCountdownItem(item: CountdownItem) {
-  if (item.remainingSeconds <= 0) {
-    item.remainingSeconds = item.initialSeconds
+  const target = countdownList.value.find(c => c.id === item.id) || item
+  if (target.remainingSeconds <= 0) {
+    target.remainingSeconds = target.initialSeconds
   }
-  item.isRunning = !item.isRunning
+  target.isRunning = !target.isRunning
   updateGlobalCdInterval()
 }
 
 function resetCountdownItem(item: CountdownItem) {
-  item.isRunning = false
-  item.remainingSeconds = item.initialSeconds
+  const target = countdownList.value.find(c => c.id === item.id) || item
+  target.isRunning = false
+  const secs = Number(target.initialSeconds) || 600
+  target.initialSeconds = secs
+  target.remainingSeconds = secs
   updateGlobalCdInterval()
 }
 
