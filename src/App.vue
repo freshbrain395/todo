@@ -3017,6 +3017,11 @@ option {
   box-sizing: border-box;
 }
 
+.main-content:has(.local-clock-container) {
+  overflow: hidden;
+  padding: 8px 16px;
+}
+
 /* User Auth Badge Styles */
 .user-badge {
   display: flex;

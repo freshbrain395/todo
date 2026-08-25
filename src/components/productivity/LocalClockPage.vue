@@ -365,10 +365,11 @@ onUnmounted(() => { stopClockLoop(); window.removeEventListener('keydown', handl
   display: flex;
   flex-direction: column;
   height: 100%;
-  padding: 20px 24px;
-  gap: 20px;
+  max-height: 100%;
+  padding: 8px 16px;
+  gap: 8px;
   box-sizing: border-box;
-  overflow-y: auto;
+  overflow: hidden;
 }
 
 /* Zen Fullscreen Mode */
@@ -417,8 +418,9 @@ onUnmounted(() => { stopClockLoop(); window.removeEventListener('keydown', handl
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
+  gap: 12px;
   flex-wrap: wrap;
+  flex-shrink: 0;
 }
 
 .toolbar-left {
@@ -531,11 +533,13 @@ onUnmounted(() => { stopClockLoop(); window.removeEventListener('keydown', handl
 /* Main Clock Showcase Stage (Borderless Seamless Design) */
 .clock-stage-wrapper {
   flex: 1;
+  min-height: 0;
   display: flex;
   align-items: center;
   justify-content: center;
   width: 100%;
-  padding: 10px 0 20px;
+  padding: 0;
+  overflow: hidden;
 }
 
 .zen-fullscreen .clock-stage-wrapper {
@@ -551,7 +555,7 @@ onUnmounted(() => { stopClockLoop(); window.removeEventListener('keydown', handl
   background: transparent;
   border: none;
   border-radius: 0;
-  padding: 10px 0;
+  padding: 4px 0;
   box-shadow: none;
   display: flex;
   flex-direction: column;
@@ -593,7 +597,7 @@ onUnmounted(() => { stopClockLoop(); window.removeEventListener('keydown', handl
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 28px;
+  gap: 12px;
 }
 
 .analog-clock-wrapper {
@@ -603,9 +607,9 @@ onUnmounted(() => { stopClockLoop(); window.removeEventListener('keydown', handl
 }
 
 .analog-clock-svg {
-  width: 280px;
-  height: 280px;
-  filter: drop-shadow(0 14px 32px rgba(0, 0, 0, 0.12));
+  width: min(210px, 30vh);
+  height: min(210px, 30vh);
+  filter: drop-shadow(0 10px 24px rgba(0, 0, 0, 0.12));
 }
 
 .clock-outer-bezel {
@@ -689,9 +693,9 @@ onUnmounted(() => { stopClockLoop(); window.removeEventListener('keydown', handl
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 16px;
+  gap: 8px;
   width: 100%;
-  max-width: 520px;
+  max-width: 480px;
 }
 
 /* Digital Stage */
@@ -702,7 +706,7 @@ onUnmounted(() => { stopClockLoop(); window.removeEventListener('keydown', handl
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 22px;
+  gap: 12px;
   max-width: 640px;
 }
 
@@ -710,11 +714,11 @@ onUnmounted(() => { stopClockLoop(); window.removeEventListener('keydown', handl
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 5px 14px;
+  padding: 4px 12px;
   background: var(--bg-surface, #f8fafc);
   border: 1px solid var(--border-color, #e2e8f0);
   border-radius: 20px;
-  font-size: 12px;
+  font-size: 11.5px;
   font-weight: 600;
   color: var(--text-muted, #64748b);
 }
@@ -742,7 +746,7 @@ onUnmounted(() => { stopClockLoop(); window.removeEventListener('keydown', handl
 .hero-digital-time {
   display: flex;
   align-items: baseline;
-  gap: 12px;
+  gap: 8px;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   font-variant-numeric: tabular-nums;
   font-feature-settings: "tnum";
@@ -752,7 +756,7 @@ onUnmounted(() => { stopClockLoop(); window.removeEventListener('keydown', handl
 .digits-group {
   display: flex;
   align-items: baseline;
-  font-size: clamp(48px, 6vw, 76px);
+  font-size: clamp(34px, 5.2vw, 56px);
   font-weight: 800;
   color: var(--text-main, #0f172a);
   letter-spacing: -2px;
