@@ -197,9 +197,10 @@
 
             <div class="card-body">
               <div class="card-title-row">
-                <span class="alarm-time-huge">{{ item.time }}</span>
-                <span v-if="item.label" class="alarm-tag-label">
-                  <Tag :size="12" /> {{ item.label }}
+                <span class="card-title">{{ item.label || '闹钟提醒' }}</span>
+                <span class="status-tag" :class="{ running: item.enabled, finished: !item.enabled }">
+                  <span class="dot"></span>
+                  {{ item.enabled ? '已启用' : '已关闭' }}
                 </span>
                 <span class="alarm-tag-repeat">
                   <Repeat :size="12" /> {{ formatRepeatText(item) }}
@@ -207,15 +208,16 @@
                 <span class="sound-tag">{{ soundTypeShortLabel(item.soundType) }}</span>
               </div>
 
-              <div class="alarm-sub-desc">
+              <div class="card-time-display">
+                <span class="digits-time">{{ item.time }}</span>
                 <span v-if="item.repeatType === 'holiday_compensate'" class="smart-tip">
-                  <Sparkles :size="12" /> 法定假期自动跳过 · 调休补班日自动响铃
+                  · <Sparkles :size="12" /> 法定假期自动跳过 · 调休补班日自动响铃
                 </span>
                 <span v-else-if="item.repeatType === 'compensate_only'" class="smart-tip">
-                  <Sparkles :size="12" /> 仅在周末补班日响铃
+                  · <Sparkles :size="12" /> 仅在周末补班日响铃
                 </span>
-                <span v-else class="normal-tip">
-                  {{ item.enabled ? '已激活响铃提醒' : '已关闭' }}
+                <span v-else class="finish-msg-tip">
+                  · {{ item.enabled ? '已激活响铃提醒' : '已关闭' }}
                 </span>
               </div>
             </div>
@@ -482,7 +484,7 @@
 import { ref, computed, onUnmounted, onMounted, watch } from 'vue'
 import {
   Hourglass, Bell, Play, Pause, RotateCcw,
-  Trash2, Plus, Tag, Repeat, Check, Coffee, Sliders, Sparkles, Volume2, Search, X
+  Trash2, Plus, Repeat, Check, Coffee, Sliders, Sparkles, Volume2, Search, X
 } from 'lucide-vue-next'
 import { soundPlayer, type SoundType } from '../../utils/audio'
 import WheelTimePicker from '../widgets/WheelTimePicker.vue'
