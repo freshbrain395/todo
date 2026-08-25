@@ -1137,6 +1137,9 @@ async function updateTodoCategory(todo: Todo, newCategory: string) {
 
 function formatRemindDisplay(remindStr?: string | null) {
   if (!remindStr) return ''
+  if (remindStr.startsWith('每') || remindStr.includes('重复')) {
+    return remindStr.replace(' 重复提醒', '')
+  }
   const clean = remindStr.replace('T', ' ')
   if (clean.length >= 16) {
     return clean.slice(5, 16)
