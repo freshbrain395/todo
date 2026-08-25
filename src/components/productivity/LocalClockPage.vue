@@ -528,29 +528,31 @@ onUnmounted(() => { stopClockLoop(); window.removeEventListener('keydown', handl
   box-shadow: 0 4px 12px rgba(99, 102, 241, 0.35);
 }
 
-/* Main Clock Showcase Stage */
+/* Main Clock Showcase Stage (Borderless Seamless Design) */
 .clock-stage-wrapper {
   flex: 1;
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: 480px;
+  width: 100%;
+  padding: 10px 0 20px;
 }
 
 .zen-fullscreen .clock-stage-wrapper {
   width: 100%;
   height: 100%;
+  padding: 0;
 }
 
 .clock-showcase-card {
   position: relative;
   width: 100%;
-  max-width: 860px;
-  background: var(--bg-card, #ffffff);
-  border: 1px solid var(--border-color, #e2e8f0);
-  border-radius: 28px;
-  padding: 40px 36px;
-  box-shadow: 0 20px 48px -12px rgba(0, 0, 0, 0.06), 0 0 1px 1px rgba(255, 255, 255, 0.6) inset;
+  max-width: 900px;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  padding: 10px 0;
+  box-shadow: none;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -573,7 +575,7 @@ onUnmounted(() => { stopClockLoop(); window.removeEventListener('keydown', handl
   width: 480px;
   height: 480px;
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(99, 102, 241, 0.12) 0%, rgba(236, 72, 153, 0.05) 50%, transparent 70%);
+  background: radial-gradient(circle, rgba(99, 102, 241, 0.09) 0%, rgba(236, 72, 153, 0.03) 50%, transparent 70%);
   pointer-events: none;
   animation: pulse-glow 6s infinite ease-in-out;
 }
