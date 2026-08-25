@@ -705,6 +705,9 @@
       @use-local-mode="onUseLocalMode"
       @close="showAuthModal = false"
     />
+
+    <!-- Global Confirm Modal Dialog -->
+    <ConfirmModal />
   </div>
 </template>
 
@@ -726,6 +729,7 @@ import PomodoroTimer from './components/productivity/PomodoroTimer.vue'
 import AlarmCountdown from './components/productivity/AlarmCountdown.vue'
 import SettingsPage from './components/common/SettingsPage.vue'
 import LoginPage from './components/common/LoginPage.vue'
+import ConfirmModal from './components/common/ConfirmModal.vue'
 import WheelDateTimePicker from './components/widgets/WheelDateTimePicker.vue'
 import { VueDatePicker } from '@vuepic/vue-datepicker'
 import '@vuepic/vue-datepicker/dist/main.css'
