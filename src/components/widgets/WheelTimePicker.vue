@@ -3,37 +3,39 @@
     <!-- Quick Time Preset Chips -->
     <div class="quick-presets">
       <span class="preset-label"><Clock :size="12" /> 常用时刻:</span>
-      <button type="button" class="preset-btn" @click="setTimePreset('07', '00')">07:00</button>
-      <button type="button" class="preset-btn" @click="setTimePreset('08', '30')">08:30</button>
-      <button type="button" class="preset-btn" @click="setTimePreset('12', '00')">12:00</button>
-      <button type="button" class="preset-btn" @click="setTimePreset('18', '00')">18:00</button>
-      <button type="button" class="preset-btn" @click="setTimePreset('22', '30')">22:30</button>
+      <button type="button" class="preset-btn" @click="setTimePreset(7, 0)">07:00</button>
+      <button type="button" class="preset-btn" @click="setTimePreset(8, 30)">08:30</button>
+      <button type="button" class="preset-btn" @click="setTimePreset(12, 0)">12:00</button>
+      <button type="button" class="preset-btn" @click="setTimePreset(18, 0)">18:00</button>
+      <button type="button" class="preset-btn" @click="setTimePreset(22, 30)">22:30</button>
     </div>
 
-    <!-- Manual Time Input -->
-    <div class="manual-time-input-wrap">
-      <label class="field-label">输入响铃时间 (时:分)</label>
-      <div class="input-with-icon">
-        <Clock :size="16" class="input-icon" />
-        <input
-          type="time"
-          v-model="internalTime"
-          class="manual-input"
-        />
-      </div>
+    <!-- VueDatePicker Time Picker -->
+    <div class="time-picker-wrapper">
+      <label class="field-label">输入或选择响铃时刻</label>
+      <VueDatePicker
+        v-model="timeObj"
+        time-picker
+        :is-24="true"
+        auto-apply
+        placeholder="选择响铃时间 (时:分)"
+        class="custom-time-picker"
+      />
     </div>
 
     <!-- Display Badge -->
     <div class="time-display-badge">
       <span class="badge-label">设定响铃时间：</span>
-      <span class="badge-value">{{ internalTime || '08:00' }}</span>
+      <span class="badge-value">{{ formattedDisplay }}</span>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, watch, onMounted } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import { Clock } from 'lucide-vue-next'
+import { VueDatePicker } from '@vuepic/vue-datepicker'
+import '@vuepic/vue-datepicker/dist/main.css'
 
 const props = defineProps<{
   modelValue?: string
@@ -43,31 +45,38 @@ const emit = defineEmits<{
   (e: 'update:modelValue', value: string): void
 }>()
 
-const internalTime = ref('08:00')
+const timeObj = ref<{ hours: number; minutes: number; seconds?: number }>({
+  hours: 8,
+  minutes: 0
+})
+
+const formattedDisplay = computed(() => {
+  const h = String(timeObj.value.hours || 0).padStart(2, '0')
+  const m = String(timeObj.value.minutes || 0).padStart(2, '0')
+  return `${h}:${m}`
+})
+
+watch(formattedDisplay, (newVal) => {
+  emit('update:modelValue', newVal)
+})
 
 function parseModelValue(val?: string) {
   if (!val) {
-    internalTime.value = '08:00'
+    timeObj.value = { hours: 8, minutes: 0 }
     return
   }
   const parts = val.split(':')
   if (parts.length >= 2) {
-    const h = String(parseInt(parts[0], 10) || 0).padStart(2, '0')
-    const m = String(parseInt(parts[1], 10) || 0).padStart(2, '0')
-    internalTime.value = `${h}:${m}`
-  } else {
-    internalTime.value = val
+    const h = parseInt(parts[0], 10) || 0
+    const m = parseInt(parts[1], 10) || 0
+    timeObj.value = { hours: h, minutes: m }
   }
 }
-
-watch(internalTime, (newVal) => {
-  emit('update:modelValue', newVal)
-})
 
 watch(
   () => props.modelValue,
   (newVal) => {
-    if (newVal && newVal !== internalTime.value) {
+    if (newVal && newVal !== formattedDisplay.value) {
       parseModelValue(newVal)
     }
   },
@@ -78,8 +87,8 @@ onMounted(() => {
   parseModelValue(props.modelValue)
 })
 
-function setTimePreset(hStr: string, mStr: string) {
-  internalTime.value = `${hStr}:${mStr}`
+function setTimePreset(hours: number, minutes: number) {
+  timeObj.value = { hours, minutes }
 }
 </script>
 
@@ -127,7 +136,7 @@ function setTimePreset(hStr: string, mStr: string) {
   transform: translateY(-1px);
 }
 
-.manual-time-input-wrap {
+.time-picker-wrapper {
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -139,38 +148,10 @@ function setTimePreset(hStr: string, mStr: string) {
   color: var(--text-muted, #64748b);
 }
 
-.input-with-icon {
-  position: relative;
-  display: flex;
-  align-items: center;
-}
-
-.input-icon {
-  position: absolute;
-  left: 12px;
-  color: var(--primary, #3b82f6);
-  pointer-events: none;
-}
-
-.manual-input {
-  width: 100%;
-  padding: 10px 14px 10px 38px;
-  font-size: 15px;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-  font-weight: 700;
-  border: 1px solid var(--border-color, #e2e8f0);
-  border-radius: 10px;
-  background-color: var(--bg-app, #f8fafc);
-  color: var(--text-main, #0f172a);
-  outline: none;
-  transition: all 0.2s ease;
-  box-sizing: border-box;
-}
-
-.manual-input:focus {
-  border-color: var(--primary, #3b82f6);
-  background-color: var(--bg-surface, #ffffff);
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.12);
+.custom-time-picker {
+  --dp-font-family: inherit;
+  --dp-border-radius: 10px;
+  --dp-primary-color: var(--primary, #3b82f6);
 }
 
 .time-display-badge {

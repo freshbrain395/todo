@@ -420,25 +420,19 @@
                           </button>
                         </div>
 
-                        <!-- Direct Input: Date (年月日) & Time (时分秒) -->
-                        <div class="popover-input-group">
-                          <div class="input-field-row">
-                            <label class="input-lbl">年月日</label>
-                            <input
-                              type="date"
-                              v-model="hoverReminderDate"
-                              class="popover-input date-field"
-                            />
-                          </div>
-                          <div class="input-field-row">
-                            <label class="input-lbl">时分秒</label>
-                            <input
-                              type="time"
-                              step="1"
-                              v-model="hoverReminderTime"
-                              class="popover-input time-field"
-                            />
-                          </div>
+                        <!-- Third-party Modern VueDatePicker: Date, Time & Seconds with direct typing -->
+                        <div class="popover-datepicker-wrap">
+                          <VueDatePicker
+                            v-model="hoverReminderDateTime"
+                            model-type="yyyy-MM-dd HH:mm:ss"
+                            format="yyyy-MM-dd HH:mm:ss"
+                            :enable-seconds="true"
+                            :dark="isDarkTheme"
+                            auto-apply
+                            placeholder="选择或输入 年月日 时分秒"
+                            :text-input="true"
+                            class="custom-datepicker"
+                          />
                         </div>
 
                         <!-- Quick Presets -->
@@ -728,6 +722,8 @@ import AlarmCountdown from './components/productivity/AlarmCountdown.vue'
 import SettingsPage from './components/common/SettingsPage.vue'
 import LoginPage from './components/common/LoginPage.vue'
 import WheelDateTimePicker from './components/widgets/WheelDateTimePicker.vue'
+import { VueDatePicker } from '@vuepic/vue-datepicker'
+import '@vuepic/vue-datepicker/dist/main.css'
 
 // User Auth & Local Mode State
 const currentUser = ref<User | null>(
@@ -1198,36 +1194,37 @@ async function updateTodoReminder(todo: Todo, val: string) {
 }
 
 // Hover Direct Input Reminder State & Handlers
-const hoverReminderDate = ref('')
-const hoverReminderTime = ref('')
+const hoverReminderDateTime = ref<string>('')
+const isDarkTheme = computed(() => theme.value === 'dark' || theme.value === 'nord')
 
 function openReminderHover(todo: Todo) {
   openMenuHover('remind-' + todo.id)
   if (todo.remind_at) {
     const clean = todo.remind_at.replace('T', ' ')
-    const parts = clean.split(' ')
-    if (parts.length >= 2) {
-      hoverReminderDate.value = parts[0]
-      hoverReminderTime.value = parts[1].length === 5 ? parts[1] + ':00' : parts[1]
+    if (clean.length === 16) {
+      hoverReminderDateTime.value = clean + ':00'
     } else {
-      initHoverDefaultDateTime()
+      hoverReminderDateTime.value = clean
     }
   } else {
     initHoverDefaultDateTime()
   }
 }
 
+function formatToStandardString(date: Date): string {
+  const y = date.getFullYear()
+  const m = String(date.getMonth() + 1).padStart(2, '0')
+  const dateNum = String(date.getDate()).padStart(2, '0')
+  const h = String(date.getHours()).padStart(2, '0')
+  const min = String(date.getMinutes()).padStart(2, '0')
+  const sec = String(date.getSeconds()).padStart(2, '0')
+  return `${y}-${m}-${dateNum} ${h}:${min}:${sec}`
+}
+
 function initHoverDefaultDateTime() {
   const d = new Date()
   d.setMinutes(d.getMinutes() + 30)
-  const y = d.getFullYear()
-  const m = String(d.getMonth() + 1).padStart(2, '0')
-  const date = String(d.getDate()).padStart(2, '0')
-  const h = String(d.getHours()).padStart(2, '0')
-  const min = String(d.getMinutes()).padStart(2, '0')
-  const sec = String(d.getSeconds()).padStart(2, '0')
-  hoverReminderDate.value = `${y}-${m}-${date}`
-  hoverReminderTime.value = `${h}:${min}:${sec}`
+  hoverReminderDateTime.value = formatToStandardString(d)
 }
 
 function applyHoverPreset(amount: number, unit: 'min' | 'hour') {
@@ -1237,14 +1234,7 @@ function applyHoverPreset(amount: number, unit: 'min' | 'hour') {
   } else {
     d.setHours(d.getHours() + amount)
   }
-  const y = d.getFullYear()
-  const m = String(d.getMonth() + 1).padStart(2, '0')
-  const date = String(d.getDate()).padStart(2, '0')
-  const h = String(d.getHours()).padStart(2, '0')
-  const min = String(d.getMinutes()).padStart(2, '0')
-  const sec = String(d.getSeconds()).padStart(2, '0')
-  hoverReminderDate.value = `${y}-${m}-${date}`
-  hoverReminderTime.value = `${h}:${min}:${sec}`
+  hoverReminderDateTime.value = formatToStandardString(d)
 }
 
 function applyHoverTonight() {
@@ -1253,32 +1243,24 @@ function applyHoverTonight() {
   if (d.getTime() < Date.now()) {
     d.setDate(d.getDate() + 1)
   }
-  const y = d.getFullYear()
-  const m = String(d.getMonth() + 1).padStart(2, '0')
-  const date = String(d.getDate()).padStart(2, '0')
-  hoverReminderDate.value = `${y}-${m}-${date}`
-  hoverReminderTime.value = '20:00:00'
+  hoverReminderDateTime.value = formatToStandardString(d)
 }
 
 function applyHoverTomorrow() {
   const d = new Date()
   d.setDate(d.getDate() + 1)
-  const y = d.getFullYear()
-  const m = String(d.getMonth() + 1).padStart(2, '0')
-  const date = String(d.getDate()).padStart(2, '0')
-  hoverReminderDate.value = `${y}-${m}-${date}`
-  hoverReminderTime.value = '09:00:00'
+  d.setHours(9, 0, 0, 0)
+  hoverReminderDateTime.value = formatToStandardString(d)
 }
 
 async function saveHoverReminder(todo: Todo) {
-  if (!hoverReminderDate.value) {
-    statusMessage.value = '⚠️ 请选择日期'
+  if (!hoverReminderDateTime.value) {
+    statusMessage.value = '⚠️ 请选择或输入提醒时间'
     return
   }
-  const time = hoverReminderTime.value ? (hoverReminderTime.value.length === 5 ? hoverReminderTime.value + ':00' : hoverReminderTime.value) : '09:00:00'
-  const fullRemindStr = `${hoverReminderDate.value} ${time}`
+  const clean = String(hoverReminderDateTime.value).replace('T', ' ')
   activeMenuId.value = null
-  await updateTodoReminder(todo, fullRemindStr)
+  await updateTodoReminder(todo, clean)
 }
 
 async function clearCompletedTodos() {
@@ -2422,45 +2404,16 @@ onMounted(() => {
   background: rgba(239, 68, 68, 0.08);
 }
 
-.popover-input-group {
-  display: flex;
-  flex-direction: column;
-  gap: 7px;
+.popover-datepicker-wrap {
+  width: 100%;
 }
 
-.input-field-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-}
-
-.input-field-row .input-lbl {
-  font-size: 11.5px;
-  font-weight: 600;
-  color: var(--text-muted, #64748b);
-  white-space: nowrap;
-  width: 44px;
-}
-
-.popover-input {
-  flex: 1;
-  padding: 5px 8px;
-  border: 1px solid var(--border-color, #e2e8f0);
-  border-radius: 8px;
-  font-size: 12px;
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-weight: 600;
-  background-color: var(--bg-app, #f8fafc);
-  color: var(--text-main, #0f172a);
-  outline: none;
-  transition: all 0.15s ease;
-}
-
-.popover-input:focus {
-  border-color: var(--primary, #3b82f6);
-  background-color: var(--bg-surface, #ffffff);
-  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
+.custom-datepicker {
+  --dp-font-family: inherit;
+  --dp-border-radius: 8px;
+  --dp-primary-color: var(--primary, #3b82f6);
+  --dp-font-size: 12px;
+  --dp-input-padding: 6px 10px;
 }
 
 .popover-presets {
