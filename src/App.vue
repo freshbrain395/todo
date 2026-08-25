@@ -408,56 +408,69 @@
                         @click.stop
                       >
                         <div class="popover-title-row">
-                          <span class="popover-title"><Clock :size="13" class="text-primary" /> 设置提醒时间</span>
-                          <button
-                            v-if="todo.remind_at"
-                            type="button"
-                            class="popover-btn-clear"
-                            @click="updateTodoReminder(todo, '')"
-                            title="清除提醒"
-                          >
-                            清除
-                          </button>
+                          <div class="popover-title-left">
+                            <Clock :size="13" class="text-primary" />
+                            <span class="popover-title">定时提醒</span>
+                          </div>
+                          <div class="popover-switch-container">
+                            <span class="switch-status-label">{{ hoverReminderEnabled ? '开启' : '关闭' }}</span>
+                            <label class="switch-toggle-sm" :title="hoverReminderEnabled ? '点击关闭提醒' : '点击开启提醒'">
+                              <input
+                                type="checkbox"
+                                v-model="hoverReminderEnabled"
+                                @change="onHoverReminderToggle(todo)"
+                              />
+                              <span class="switch-slider-sm"></span>
+                            </label>
+                          </div>
                         </div>
 
-                        <!-- Third-party Modern VueDatePicker: Date, Time & Seconds with direct typing -->
-                        <div class="popover-datepicker-wrap">
-                          <VueDatePicker
-                            v-model="hoverReminderDateTime"
-                            model-type="yyyy-MM-dd HH:mm:ss"
-                            format="yyyy-MM-dd HH:mm:ss"
-                            :enable-seconds="true"
-                            :locale="zhCN"
-                            :dark="isDarkTheme"
-                            select-text="确定"
-                            cancel-text="取消"
-                            now-button-label="当前时刻"
-                            :show-now-button="true"
-                            auto-apply
-                            placeholder="选择或输入 年月日 时分秒"
-                            :text-input="true"
-                            class="custom-datepicker"
-                          />
-                        </div>
+                        <!-- Date & Time controls active when switch is ON -->
+                        <template v-if="hoverReminderEnabled">
+                          <!-- Third-party Modern VueDatePicker: Date, Time & Seconds with direct typing -->
+                          <div class="popover-datepicker-wrap">
+                            <VueDatePicker
+                              v-model="hoverReminderDateTime"
+                              model-type="yyyy-MM-dd HH:mm:ss"
+                              format="yyyy-MM-dd HH:mm:ss"
+                              :enable-seconds="true"
+                              :locale="zhCN"
+                              :dark="isDarkTheme"
+                              select-text="确定"
+                              cancel-text="取消"
+                              now-button-label="当前时刻"
+                              :show-now-button="true"
+                              auto-apply
+                              placeholder="选择或输入 年月日 时分秒"
+                              :text-input="true"
+                              class="custom-datepicker"
+                            />
+                          </div>
 
-                        <!-- Quick Presets -->
-                        <div class="popover-presets">
-                          <button type="button" class="preset-tag" @click="applyHoverPreset(10, 'min')">+10分</button>
-                          <button type="button" class="preset-tag" @click="applyHoverPreset(30, 'min')">+30分</button>
-                          <button type="button" class="preset-tag" @click="applyHoverPreset(1, 'hour')">+1小时</button>
-                          <button type="button" class="preset-tag" @click="applyHoverTonight()">今晚20:00</button>
-                          <button type="button" class="preset-tag" @click="applyHoverTomorrow()">明天09:00</button>
-                        </div>
+                          <!-- Quick Presets -->
+                          <div class="popover-presets">
+                            <button type="button" class="preset-tag" @click="applyHoverPreset(10, 'min')">+10分</button>
+                            <button type="button" class="preset-tag" @click="applyHoverPreset(30, 'min')">+30分</button>
+                            <button type="button" class="preset-tag" @click="applyHoverPreset(1, 'hour')">+1小时</button>
+                            <button type="button" class="preset-tag" @click="applyHoverTonight()">今晚20:00</button>
+                            <button type="button" class="preset-tag" @click="applyHoverTomorrow()">明天09:00</button>
+                          </div>
 
-                        <!-- Action Confirm -->
-                        <div class="popover-footer">
-                          <button
-                            type="button"
-                            class="btn-save-reminder"
-                            @click="saveHoverReminder(todo)"
-                          >
-                            <Check :size="12" /> 保存提醒
-                          </button>
+                          <!-- Action Confirm -->
+                          <div class="popover-footer">
+                            <button
+                              type="button"
+                              class="btn-save-reminder"
+                              @click="saveHoverReminder(todo)"
+                            >
+                              <Check :size="12" /> 保存提醒
+                            </button>
+                          </div>
+                        </template>
+
+                        <!-- Off Hint when switch is OFF -->
+                        <div v-else class="popover-off-hint" @click="enableReminderQuick()">
+                          <span>提醒已关闭，点击开关以开启提醒</span>
                         </div>
                       </div>
                     </div>
@@ -1204,11 +1217,13 @@ async function updateTodoReminder(todo: Todo, val: string) {
 }
 
 // Hover Direct Input Reminder State & Handlers
+const hoverReminderEnabled = ref<boolean>(false)
 const hoverReminderDateTime = ref<string>('')
 const isDarkTheme = computed(() => theme.value === 'dark' || theme.value === 'nord')
 
 function openReminderHover(todo: Todo) {
   openMenuHover('remind-' + todo.id)
+  hoverReminderEnabled.value = !!todo.remind_at
   if (todo.remind_at) {
     const clean = todo.remind_at.replace('T', ' ')
     if (clean.length === 16) {
@@ -1217,6 +1232,23 @@ function openReminderHover(todo: Todo) {
       hoverReminderDateTime.value = clean
     }
   } else {
+    initHoverDefaultDateTime()
+  }
+}
+
+async function onHoverReminderToggle(todo: Todo) {
+  if (!hoverReminderEnabled.value) {
+    await updateTodoReminder(todo, '')
+  } else {
+    if (!hoverReminderDateTime.value) {
+      initHoverDefaultDateTime()
+    }
+  }
+}
+
+function enableReminderQuick() {
+  hoverReminderEnabled.value = true
+  if (!hoverReminderDateTime.value) {
     initHoverDefaultDateTime()
   }
 }
@@ -1264,6 +1296,11 @@ function applyHoverTomorrow() {
 }
 
 async function saveHoverReminder(todo: Todo) {
+  if (!hoverReminderEnabled.value) {
+    activeMenuId.value = null
+    await updateTodoReminder(todo, '')
+    return
+  }
   if (!hoverReminderDateTime.value) {
     statusMessage.value = '⚠️ 请选择或输入提醒时间'
     return
@@ -2398,20 +2435,86 @@ onMounted(() => {
   color: var(--text-main, #0f172a);
 }
 
-.popover-btn-clear {
-  background: none;
-  border: none;
-  color: #ef4444;
-  font-size: 11px;
-  font-weight: 600;
-  cursor: pointer;
-  padding: 1px 4px;
-  border-radius: 4px;
-  transition: background-color 0.15s;
+.popover-title-left {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
 }
 
-.popover-btn-clear:hover {
-  background: rgba(239, 68, 68, 0.08);
+.popover-switch-container {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.switch-status-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted, #64748b);
+}
+
+.switch-toggle-sm {
+  position: relative;
+  display: inline-block;
+  width: 32px;
+  height: 18px;
+  cursor: pointer;
+}
+
+.switch-toggle-sm input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.switch-slider-sm {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: var(--border-color, #cbd5e1);
+  transition: 0.2s ease;
+  border-radius: 18px;
+}
+
+.switch-slider-sm:before {
+  position: absolute;
+  content: "";
+  height: 14px;
+  width: 14px;
+  left: 2px;
+  bottom: 2px;
+  background-color: #ffffff;
+  transition: 0.2s ease;
+  border-radius: 50%;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+.switch-toggle-sm input:checked + .switch-slider-sm {
+  background-color: var(--primary, #3b82f6);
+}
+
+.switch-toggle-sm input:checked + .switch-slider-sm:before {
+  transform: translateX(14px);
+}
+
+.popover-off-hint {
+  padding: 14px 8px;
+  background-color: var(--bg-app, #f8fafc);
+  border: 1px dashed var(--border-color, #e2e8f0);
+  border-radius: 8px;
+  text-align: center;
+  font-size: 11.5px;
+  color: var(--text-muted, #64748b);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.popover-off-hint:hover {
+  background-color: rgba(59, 130, 246, 0.05);
+  border-color: var(--primary, #3b82f6);
+  color: var(--primary, #3b82f6);
 }
 
 .popover-datepicker-wrap {
