@@ -476,7 +476,7 @@
           </div>
 
           <!-- 8. Bagua Chrono Compass (八卦时辰天体罗盘时钟) -->
-          <div v-else-if="displayMode === 'compass'" class="bagua-compass-stage animate-fade-in">
+          <div v-else-if="displayMode === 'compass'" class="bagua-compass-stage animate-fade-in" :class="{ 'is-smooth-sweep': showMilliseconds }">
             <svg class="compass-svg" viewBox="0 0 540 540">
               <defs>
                 <radialGradient id="compassCenterGlow" cx="50%" cy="50%" r="50%">
@@ -594,9 +594,12 @@
                 <circle cx="0" cy="9.5" r="2.8" fill="#fbbf24" />
               </g>
 
-              <!-- Year Text Badge -->
-              <text x="270" y="304" text-anchor="middle" class="compass-year-badge">
+              <!-- Year & Milliseconds Text Badge -->
+              <text x="270" :y="showMilliseconds ? 299 : 304" text-anchor="middle" class="compass-year-badge">
                 {{ compassYearText }}
+              </text>
+              <text v-if="showMilliseconds" x="270" y="311" text-anchor="middle" class="compass-ms-badge">
+                .{{ formattedLocalTime.milliseconds }}
               </text>
             </svg>
           </div>
@@ -763,16 +766,20 @@ function handleKeyDown(e: KeyboardEvent) {
   }
 }
 
+function isHighFrequencyMode(): boolean {
+  return showMilliseconds.value || displayMode.value === 'analog' || displayMode.value === 'rings' || (displayMode.value === 'compass' && showMilliseconds.value)
+}
+
 function updateTime() {
   now.value = new Date()
-  if (showMilliseconds.value || displayMode.value === 'analog' || displayMode.value === 'rings') {
+  if (isHighFrequencyMode()) {
     animationFrameId = requestAnimationFrame(updateTime)
   }
 }
 
 function startClockLoop() {
   stopClockLoop()
-  if (showMilliseconds.value || displayMode.value === 'analog' || displayMode.value === 'rings') {
+  if (isHighFrequencyMode()) {
     animationFrameId = requestAnimationFrame(updateTime)
   } else {
     intervalTimerId = setInterval(() => { now.value = new Date() }, 1000)
@@ -1883,7 +1890,11 @@ onUnmounted(() => {
 }
 
 .compass-ring-group.sec-ring {
-  transition: transform 0.08s linear;
+  transition: transform 0.35s cubic-bezier(0.34, 1.3, 0.64, 1);
+}
+
+.is-smooth-sweep .compass-ring-group.sec-ring {
+  transition: none !important;
 }
 
 .compass-text {
@@ -1948,6 +1959,15 @@ onUnmounted(() => {
   font-weight: 800;
   fill: #fbbf24;
   letter-spacing: 1px;
+}
+
+.compass-ms-badge {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 8.5px;
+  font-weight: 800;
+  fill: #22d3ee;
+  letter-spacing: 0.5px;
+  text-shadow: 0 0 6px rgba(34, 211, 238, 0.6);
 }
 
 .clock-split-container {
