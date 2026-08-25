@@ -387,9 +387,22 @@
                         @click="openReminderHover(todo)"
                         title="鼠标悬浮直接输入 年月日、时分秒 提醒时间"
                       >
+                        <!-- Todo List Direct Switch Toggle -->
+                        <label
+                          class="switch-toggle-xs"
+                          :title="todo.remind_at ? '点击关闭定时提醒' : '点击开启定时提醒'"
+                          @click.stop
+                        >
+                          <input
+                            type="checkbox"
+                            :checked="!!todo.remind_at"
+                            @change="toggleListTodoReminder(todo)"
+                          />
+                          <span class="switch-slider-xs"></span>
+                        </label>
                         <Clock :size="12" />
                         <span v-if="todo.remind_at" class="reminder-text">{{ formatRemindDisplay(todo.remind_at) }}</span>
-                        <span v-else class="reminder-text placeholder">设置提醒</span>
+                        <span v-else class="reminder-text placeholder">未开启提醒</span>
                         <button
                           v-if="todo.remind_at"
                           type="button"
@@ -1220,6 +1233,21 @@ async function updateTodoReminder(todo: Todo, val: string) {
 const hoverReminderEnabled = ref<boolean>(false)
 const hoverReminderDateTime = ref<string>('')
 const isDarkTheme = computed(() => theme.value === 'dark' || theme.value === 'nord')
+
+async function toggleListTodoReminder(todo: Todo) {
+  if (todo.remind_at) {
+    (todo as any)._cached_remind_at = todo.remind_at
+    await updateTodoReminder(todo, '')
+  } else {
+    let nextRemind = (todo as any)._cached_remind_at
+    if (!nextRemind || new Date(nextRemind.replace(' ', 'T')).getTime() <= Date.now()) {
+      const d = new Date()
+      d.setHours(d.getHours() + 1, 0, 0, 0)
+      nextRemind = formatToStandardString(d)
+    }
+    await updateTodoReminder(todo, nextRemind)
+  }
+}
 
 function openReminderHover(todo: Todo) {
   openMenuHover('remind-' + todo.id)
@@ -2451,6 +2479,55 @@ onMounted(() => {
   font-size: 11px;
   font-weight: 600;
   color: var(--text-muted, #64748b);
+}
+
+.switch-toggle-xs {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  width: 22px;
+  height: 13px;
+  cursor: pointer;
+  margin-right: 1px;
+  flex-shrink: 0;
+}
+
+.switch-toggle-xs input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.switch-slider-xs {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: var(--border-color, #cbd5e1);
+  transition: 0.2s ease;
+  border-radius: 13px;
+}
+
+.switch-slider-xs:before {
+  position: absolute;
+  content: "";
+  height: 9px;
+  width: 9px;
+  left: 2px;
+  bottom: 2px;
+  background-color: #ffffff;
+  transition: 0.2s ease;
+  border-radius: 50%;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+.switch-toggle-xs input:checked + .switch-slider-xs {
+  background-color: var(--primary, #3b82f6);
+}
+
+.switch-toggle-xs input:checked + .switch-slider-xs:before {
+  transform: translateX(9px);
 }
 
 .switch-toggle-sm {
