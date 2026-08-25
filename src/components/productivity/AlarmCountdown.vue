@@ -71,7 +71,10 @@
                   <span class="dot"></span>
                   {{ item.isRunning ? '计时中' : item.remainingSeconds === 0 ? '已完成' : '就绪' }}
                 </span>
-                <span class="sound-tag">{{ soundTypeShortLabel(item.soundType) }}</span>
+                <span class="sound-tag clickable-sound-tag" @click.stop="previewSound(item.soundType)" title="点击试听提示音">
+                  <Volume2 :size="11" />
+                  {{ soundTypeShortLabel(item.soundType) }}
+                </span>
               </div>
 
               <div class="card-time-display">
@@ -205,7 +208,10 @@
                 <span class="alarm-tag-repeat">
                   <Repeat :size="12" /> {{ formatRepeatText(item) }}
                 </span>
-                <span class="sound-tag">{{ soundTypeShortLabel(item.soundType) }}</span>
+                <span class="sound-tag clickable-sound-tag" @click.stop="previewSound(item.soundType)" title="点击试听提示音">
+                  <Volume2 :size="11" />
+                  {{ soundTypeShortLabel(item.soundType) }}
+                </span>
               </div>
 
               <div class="card-time-display">
@@ -489,6 +495,7 @@ import {
 import { soundPlayer, type SoundType } from '../../utils/audio'
 import WheelTimePicker from '../widgets/WheelTimePicker.vue'
 import { showConfirm } from '../../utils/confirmState'
+import { getUserConfig } from '../../utils/configManager'
 
 const props = defineProps<{
   soundType?: SoundType
@@ -505,8 +512,10 @@ watch(() => props.mode, (newMode) => {
 }, { immediate: true })
 
 function previewSound(soundType: SoundType | 'silent') {
-  if (soundType !== 'silent') {
-    soundPlayer.play(soundType, props.soundVolume ?? 0.8)
+  if (soundType && soundType !== 'silent') {
+    const configVol = getUserConfig()?.soundVolume
+    const vol = typeof props.soundVolume === 'number' ? props.soundVolume : (typeof configVol === 'number' ? configVol : 0.8)
+    soundPlayer.play(soundType, vol)
   }
 }
 
@@ -1253,6 +1262,18 @@ onUnmounted(() => {
   background: var(--bg-surface, #f8fafc);
   border: 1px solid var(--border-color, #e2e8f0);
   color: var(--text-muted, #64748b);
+}
+
+.clickable-sound-tag {
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.clickable-sound-tag:hover {
+  background: rgba(59, 130, 246, 0.12);
+  border-color: var(--primary, #3b82f6);
+  color: var(--primary, #3b82f6);
+  transform: translateY(-1px);
 }
 
 .alarm-tag-repeat {

@@ -92,7 +92,7 @@ export function setCurrentUserId(userId: string): void {
 }
 
 // 获取指定用户的 JSON 配置
-export function getUserConfig(userId: string): UserAppConfig {
+export function getUserConfig(userId: string = getCurrentUserId()): UserAppConfig {
   const map = getAllUserAccountsMap();
   if (map[userId]) {
     return map[userId].config;
