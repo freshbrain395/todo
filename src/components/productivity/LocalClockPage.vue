@@ -205,78 +205,90 @@
             </div>
           </div>
 
-          <!-- 3. Flip Clock View (复古机械翻页时钟) -->
+          <!-- 3. Flip Clock View (经典 Fliqlo 拟真机械翻页时钟) -->
           <div v-else-if="displayMode === 'flip'" class="flip-clock-wrapper animate-fade-in">
-            <div class="flip-clock-board">
+            <div class="flip-clock-stage">
               <!-- Hours Flip Card -->
               <div class="flip-card-unit" :class="{ 'is-flipping': hoursFlip.flipping }">
-                <div class="flip-half flip-upper static">
-                  <div class="flip-num">{{ hoursFlip.current }}</div>
+                <!-- Static Background Upper (Shows target/current value) -->
+                <div class="flip-half flip-upper flip-back-card">
+                  <span class="flip-num">{{ hoursFlip.current }}</span>
                 </div>
-                <div class="flip-half flip-lower static">
-                  <div class="flip-num">{{ hoursFlip.previous }}</div>
+                <!-- Static Background Lower (Shows previous value until covered) -->
+                <div class="flip-half flip-lower flip-back-card">
+                  <span class="flip-num">{{ hoursFlip.previous }}</span>
                 </div>
-                <div class="flip-half flip-upper flap-front">
-                  <div class="flip-num">{{ hoursFlip.previous }}</div>
-                </div>
-                <div class="flip-half flip-lower flap-back">
-                  <div class="flip-num">{{ hoursFlip.current }}</div>
-                </div>
-                <div class="flip-divider"></div>
-                <div class="flip-pin flip-pin-left"></div>
-                <div class="flip-pin flip-pin-right"></div>
-                <div v-if="use12Hour" class="flip-ampm-badge">{{ formattedLocalTime.ampm }}</div>
-              </div>
 
-              <!-- Colon -->
-              <div class="flip-colon">
-                <span class="flip-dot"></span>
-                <span class="flip-dot"></span>
+                <!-- Active 3D Animated Flaps (Rendered only when flipping) -->
+                <template v-if="hoursFlip.flipping">
+                  <div class="flip-half flip-upper flap-falling">
+                    <span class="flip-num">{{ hoursFlip.previous }}</span>
+                  </div>
+                  <div class="flip-half flip-lower flap-unfolding">
+                    <span class="flip-num">{{ hoursFlip.current }}</span>
+                  </div>
+                </template>
+
+                <!-- Divider & Hinge Details -->
+                <div class="flip-divider-line"></div>
+                <div class="flip-hinge-pin flip-pin-left"></div>
+                <div class="flip-hinge-pin flip-pin-right"></div>
+                <span v-if="use12Hour" class="flip-ampm-tag">{{ formattedLocalTime.ampm }}</span>
               </div>
 
               <!-- Minutes Flip Card -->
               <div class="flip-card-unit" :class="{ 'is-flipping': minutesFlip.flipping }">
-                <div class="flip-half flip-upper static">
-                  <div class="flip-num">{{ minutesFlip.current }}</div>
+                <!-- Static Background Upper -->
+                <div class="flip-half flip-upper flip-back-card">
+                  <span class="flip-num">{{ minutesFlip.current }}</span>
                 </div>
-                <div class="flip-half flip-lower static">
-                  <div class="flip-num">{{ minutesFlip.previous }}</div>
+                <!-- Static Background Lower -->
+                <div class="flip-half flip-lower flip-back-card">
+                  <span class="flip-num">{{ minutesFlip.previous }}</span>
                 </div>
-                <div class="flip-half flip-upper flap-front">
-                  <div class="flip-num">{{ minutesFlip.previous }}</div>
-                </div>
-                <div class="flip-half flip-lower flap-back">
-                  <div class="flip-num">{{ minutesFlip.current }}</div>
-                </div>
-                <div class="flip-divider"></div>
-                <div class="flip-pin flip-pin-left"></div>
-                <div class="flip-pin flip-pin-right"></div>
+
+                <!-- Active 3D Animated Flaps -->
+                <template v-if="minutesFlip.flipping">
+                  <div class="flip-half flip-upper flap-falling">
+                    <span class="flip-num">{{ minutesFlip.previous }}</span>
+                  </div>
+                  <div class="flip-half flip-lower flap-unfolding">
+                    <span class="flip-num">{{ minutesFlip.current }}</span>
+                  </div>
+                </template>
+
+                <!-- Divider & Hinge Details -->
+                <div class="flip-divider-line"></div>
+                <div class="flip-hinge-pin flip-pin-left"></div>
+                <div class="flip-hinge-pin flip-pin-right"></div>
               </div>
 
-              <!-- Seconds Flip Card (Optional) -->
+              <!-- Seconds Flip Card (Optional companion unit) -->
               <template v-if="showSeconds">
-                <!-- Colon -->
-                <div class="flip-colon">
-                  <span class="flip-dot"></span>
-                  <span class="flip-dot"></span>
-                </div>
+                <div class="flip-card-unit flip-card-seconds" :class="{ 'is-flipping': secondsFlip.flipping }">
+                  <!-- Static Background Upper -->
+                  <div class="flip-half flip-upper flip-back-card">
+                    <span class="flip-num">{{ secondsFlip.current }}</span>
+                  </div>
+                  <!-- Static Background Lower -->
+                  <div class="flip-half flip-lower flip-back-card">
+                    <span class="flip-num">{{ secondsFlip.previous }}</span>
+                  </div>
 
-                <div class="flip-card-unit flip-seconds-card" :class="{ 'is-flipping': secondsFlip.flipping }">
-                  <div class="flip-half flip-upper static">
-                    <div class="flip-num">{{ secondsFlip.current }}</div>
-                  </div>
-                  <div class="flip-half flip-lower static">
-                    <div class="flip-num">{{ secondsFlip.previous }}</div>
-                  </div>
-                  <div class="flip-half flip-upper flap-front">
-                    <div class="flip-num">{{ secondsFlip.previous }}</div>
-                  </div>
-                  <div class="flip-half flip-lower flap-back">
-                    <div class="flip-num">{{ secondsFlip.current }}</div>
-                  </div>
-                  <div class="flip-divider"></div>
-                  <div class="flip-pin flip-pin-left"></div>
-                  <div class="flip-pin flip-pin-right"></div>
+                  <!-- Active 3D Animated Flaps -->
+                  <template v-if="secondsFlip.flipping">
+                    <div class="flip-half flip-upper flap-falling">
+                      <span class="flip-num">{{ secondsFlip.previous }}</span>
+                    </div>
+                    <div class="flip-half flip-lower flap-unfolding">
+                      <span class="flip-num">{{ secondsFlip.current }}</span>
+                    </div>
+                  </template>
+
+                  <!-- Divider & Hinge Details -->
+                  <div class="flip-divider-line"></div>
+                  <div class="flip-hinge-pin flip-pin-left"></div>
+                  <div class="flip-hinge-pin flip-pin-right"></div>
                 </div>
               </template>
             </div>
@@ -1151,7 +1163,7 @@ onUnmounted(() => {
 }
 
 /* ============================================================
-   Retro Mechanical 3D Flip Clock Styles (翻页时钟)
+   Retro Mechanical 3D Flip Clock Styles (经典 Fliqlo 拟真翻页)
    ============================================================ */
 .flip-clock-wrapper {
   display: flex;
@@ -1160,27 +1172,34 @@ onUnmounted(() => {
   width: 100%;
 }
 
-.flip-clock-board {
+.flip-clock-stage {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: clamp(6px, 1.2vw, 14px);
-  padding: 10px 14px;
-  border-radius: 18px;
-  background: rgba(15, 23, 42, 0.04);
-  border: 1px solid var(--border-color, rgba(226, 232, 240, 0.8));
-  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.05);
+  gap: clamp(10px, 1.8vw, 20px);
+  padding: 4px;
 }
 
 .flip-card-unit {
   position: relative;
-  width: clamp(60px, 8.5vw, 92px);
-  height: clamp(80px, 11vw, 120px);
-  perspective: 500px;
-  border-radius: 10px;
-  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.28), 0 2px 6px rgba(0, 0, 0, 0.15);
+  width: clamp(96px, 13vw, 145px);
+  height: clamp(110px, 15vw, 165px);
+  perspective: 600px;
+  border-radius: 12px;
+  box-shadow:
+    0 14px 28px rgba(0, 0, 0, 0.35),
+    0 4px 10px rgba(0, 0, 0, 0.22);
   user-select: none;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  background: #18181c;
+}
+
+/* Second companion card unit (scaled down proportionally) */
+.flip-card-unit.flip-card-seconds {
+  width: clamp(64px, 8.5vw, 96px);
+  height: clamp(74px, 10vw, 110px);
+  border-radius: 8px;
+  margin-left: 2px;
 }
 
 .flip-half {
@@ -1190,7 +1209,7 @@ onUnmounted(() => {
   height: 50%;
   overflow: hidden;
   box-sizing: border-box;
-  background: #1e1e24;
+  background: #1c1c22;
   color: #f8fafc;
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
@@ -1198,10 +1217,15 @@ onUnmounted(() => {
 
 .flip-upper {
   top: 0;
-  border-top-left-radius: 10px;
-  border-top-right-radius: 10px;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.6);
-  transform-origin: bottom center;
+  border-top-left-radius: 12px;
+  border-top-right-radius: 12px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.7);
+  background: linear-gradient(180deg, #222228 0%, #1a1a20 100%);
+}
+
+.flip-card-seconds .flip-upper {
+  border-top-left-radius: 8px;
+  border-top-right-radius: 8px;
 }
 
 .flip-upper .flip-num {
@@ -1213,20 +1237,30 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: clamp(42px, 6vw, 68px);
+  font-size: clamp(62px, 8.5vw, 96px);
   font-weight: 800;
   letter-spacing: -2px;
   color: #ffffff;
-  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
+  line-height: 1;
+}
+
+.flip-card-seconds .flip-upper .flip-num {
+  font-size: clamp(40px, 5.5vw, 62px);
+  letter-spacing: -1px;
 }
 
 .flip-lower {
   bottom: 0;
-  border-bottom-left-radius: 10px;
-  border-bottom-right-radius: 10px;
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
-  transform-origin: top center;
-  background: #18181d;
+  border-bottom-left-radius: 12px;
+  border-bottom-right-radius: 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  background: linear-gradient(180deg, #16161a 0%, #121215 100%);
+}
+
+.flip-card-seconds .flip-lower {
+  border-bottom-left-radius: 8px;
+  border-bottom-right-radius: 8px;
 }
 
 .flip-lower .flip-num {
@@ -1238,25 +1272,34 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: clamp(42px, 6vw, 68px);
+  font-size: clamp(62px, 8.5vw, 96px);
   font-weight: 800;
   letter-spacing: -2px;
   color: #f1f5f9;
-  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
+  line-height: 1;
 }
 
-/* 3D Flip Keyframe Animations */
-.is-flipping .flap-front {
-  animation: flip-down-upper 0.48s ease-in forwards;
-  z-index: 2;
+.flip-card-seconds .flip-lower .flip-num {
+  font-size: clamp(40px, 5.5vw, 62px);
+  letter-spacing: -1px;
 }
 
-.is-flipping .flap-back {
-  animation: flip-down-lower 0.48s ease-out 0.24s forwards;
-  z-index: 3;
+/* 3D Dynamic Flap Animations */
+.flap-falling {
+  transform-origin: bottom center;
+  animation: flip-fall 0.25s cubic-bezier(0.37, 0, 0.63, 1) forwards;
+  z-index: 5;
 }
 
-@keyframes flip-down-upper {
+.flap-unfolding {
+  transform-origin: top center;
+  transform: rotateX(90deg);
+  animation: flip-unfold 0.25s cubic-bezier(0.37, 0, 0.63, 1) 0.24s forwards;
+  z-index: 6;
+}
+
+@keyframes flip-fall {
   0% {
     transform: rotateX(0deg);
   }
@@ -1265,7 +1308,7 @@ onUnmounted(() => {
   }
 }
 
-@keyframes flip-down-lower {
+@keyframes flip-unfold {
   0% {
     transform: rotateX(90deg);
   }
@@ -1274,56 +1317,40 @@ onUnmounted(() => {
   }
 }
 
-.flip-divider {
+.flip-divider-line {
   position: absolute;
   top: calc(50% - 1px);
   left: 0;
   width: 100%;
   height: 2px;
-  background: rgba(0, 0, 0, 0.75);
+  background: #09090b;
   z-index: 10;
-  box-shadow: 0 1px 2px rgba(255, 255, 255, 0.06);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.08);
 }
 
-.flip-pin {
+.flip-hinge-pin {
   position: absolute;
-  top: calc(50% - 4px);
+  top: calc(50% - 5px);
   width: 4px;
-  height: 8px;
-  background: #64748b;
+  height: 10px;
+  background: #3f3f46;
   border-radius: 2px;
   z-index: 12;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
 }
 .flip-pin-left { left: -2px; }
 .flip-pin-right { right: -2px; }
 
-.flip-ampm-badge {
+.flip-ampm-tag {
   position: absolute;
-  bottom: 6px;
-  right: 6px;
-  font-size: 10px;
+  top: 8px;
+  left: 10px;
+  font-size: 11px;
   font-weight: 800;
-  color: var(--primary, #3b82f6);
+  color: #a1a1aa;
   z-index: 15;
   letter-spacing: 0.5px;
-}
-
-/* Flip Colon Separator */
-.flip-colon {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-  padding: 0 2px;
-}
-
-.flip-dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: var(--primary, #6366f1);
-  box-shadow: 0 0 8px rgba(99, 102, 241, 0.6);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
 }
 
 /* 4. Retro Nixie Vacuum Tubes (复古辉光管) */
@@ -1973,49 +2000,69 @@ onUnmounted(() => {
 }
 
 /* Flip Clock in Fullscreen & Zen Mode */
-.is-fullscreen .flip-clock-board,
-.zen-fullscreen .flip-clock-board {
-  padding: 18px 26px;
-  gap: clamp(10px, 2vw, 24px);
-  border-radius: 26px;
+.is-fullscreen .flip-clock-stage,
+.zen-fullscreen .flip-clock-stage {
+  gap: clamp(16px, 2.5vw, 32px);
 }
 
 .is-fullscreen .flip-card-unit,
 .zen-fullscreen .flip-card-unit {
-  width: clamp(86px, 12vw, 138px);
-  height: clamp(116px, 16vw, 185px);
-  border-radius: 16px;
-  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.4), 0 4px 10px rgba(0, 0, 0, 0.25);
+  width: clamp(140px, 18vw, 220px);
+  height: clamp(160px, 20vw, 240px);
+  border-radius: 18px;
+  box-shadow: 0 20px 48px rgba(0, 0, 0, 0.5), 0 6px 16px rgba(0, 0, 0, 0.3);
+}
+
+.is-fullscreen .flip-card-unit.flip-card-seconds,
+.zen-fullscreen .flip-card-unit.flip-card-seconds {
+  width: clamp(90px, 11vw, 140px);
+  height: clamp(105px, 13vw, 160px);
+  border-radius: 12px;
 }
 
 .is-fullscreen .flip-upper,
 .zen-fullscreen .flip-upper {
-  border-top-left-radius: 16px;
-  border-top-right-radius: 16px;
+  border-top-left-radius: 18px;
+  border-top-right-radius: 18px;
 }
 
 .is-fullscreen .flip-lower,
 .zen-fullscreen .flip-lower {
-  border-bottom-left-radius: 16px;
-  border-bottom-right-radius: 16px;
+  border-bottom-left-radius: 18px;
+  border-bottom-right-radius: 18px;
+}
+
+.is-fullscreen .flip-card-seconds .flip-upper,
+.zen-fullscreen .flip-card-seconds .flip-upper {
+  border-top-left-radius: 12px;
+  border-top-right-radius: 12px;
+}
+
+.is-fullscreen .flip-card-seconds .flip-lower,
+.zen-fullscreen .flip-card-seconds .flip-lower {
+  border-bottom-left-radius: 12px;
+  border-bottom-right-radius: 12px;
 }
 
 .is-fullscreen .flip-upper .flip-num,
 .zen-fullscreen .flip-upper .flip-num,
 .is-fullscreen .flip-lower .flip-num,
 .zen-fullscreen .flip-lower .flip-num {
-  font-size: clamp(60px, 8.6vw, 106px);
+  font-size: clamp(90px, 12vw, 150px);
 }
 
-.is-fullscreen .flip-colon,
-.zen-fullscreen .flip-colon {
-  gap: 16px;
+.is-fullscreen .flip-card-seconds .flip-upper .flip-num,
+.zen-fullscreen .flip-card-seconds .flip-upper .flip-num,
+.is-fullscreen .flip-card-seconds .flip-lower .flip-num,
+.zen-fullscreen .flip-card-seconds .flip-lower .flip-num {
+  font-size: clamp(56px, 7.5vw, 92px);
 }
 
-.is-fullscreen .flip-dot,
-.zen-fullscreen .flip-dot {
-  width: 9px;
-  height: 9px;
+.is-fullscreen .flip-ampm-tag,
+.zen-fullscreen .flip-ampm-tag {
+  font-size: 14px;
+  top: 12px;
+  left: 14px;
 }
 
 /* Nixie Fullscreen */
@@ -2093,12 +2140,20 @@ onUnmounted(() => {
     font-size: 38px;
   }
   .flip-card-unit {
-    width: 54px;
-    height: 72px;
+    width: 72px;
+    height: 84px;
+  }
+  .flip-card-unit.flip-card-seconds {
+    width: 50px;
+    height: 60px;
   }
   .flip-upper .flip-num,
   .flip-lower .flip-num {
-    font-size: 38px;
+    font-size: 46px;
+  }
+  .flip-card-seconds .flip-upper .flip-num,
+  .flip-card-seconds .flip-lower .flip-num {
+    font-size: 30px;
   }
   .nixie-tube {
     width: 36px;
