@@ -427,7 +427,12 @@
                             model-type="yyyy-MM-dd HH:mm:ss"
                             format="yyyy-MM-dd HH:mm:ss"
                             :enable-seconds="true"
+                            :locale="zhCN"
                             :dark="isDarkTheme"
+                            select-text="确定"
+                            cancel-text="取消"
+                            now-button-label="当前时刻"
+                            :show-now-button="true"
                             auto-apply
                             placeholder="选择或输入 年月日 时分秒"
                             :text-input="true"
@@ -724,6 +729,7 @@ import LoginPage from './components/common/LoginPage.vue'
 import WheelDateTimePicker from './components/widgets/WheelDateTimePicker.vue'
 import { VueDatePicker } from '@vuepic/vue-datepicker'
 import '@vuepic/vue-datepicker/dist/main.css'
+import { zhCN } from 'date-fns/locale'
 
 // User Auth & Local Mode State
 const currentUser = ref<User | null>(

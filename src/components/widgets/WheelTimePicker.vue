@@ -17,6 +17,11 @@
         v-model="timeObj"
         time-picker
         :is-24="true"
+        :locale="zhCN"
+        select-text="确定"
+        cancel-text="取消"
+        now-button-label="当前时刻"
+        :show-now-button="true"
         auto-apply
         placeholder="选择响铃时间 (时:分)"
         class="custom-time-picker"
@@ -36,6 +41,7 @@ import { ref, computed, watch, onMounted } from 'vue'
 import { Clock } from 'lucide-vue-next'
 import { VueDatePicker } from '@vuepic/vue-datepicker'
 import '@vuepic/vue-datepicker/dist/main.css'
+import { zhCN } from 'date-fns/locale'
 
 const props = defineProps<{
   modelValue?: string
