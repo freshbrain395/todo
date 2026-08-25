@@ -375,13 +375,17 @@
                       </div>
                     </div>
 
-                    <!-- 3. Reminder Switch & Modal Trigger -->
-                    <div class="meta-item-config">
+                    <!-- 3. Reminder Popover on Hover: Direct Input (Year-Month-Day, Hour-Minute-Second) -->
+                    <div
+                      class="meta-item-config reminder-config-container"
+                      @mouseenter="openReminderHover(todo)"
+                      @mouseleave="closeMenuHover()"
+                    >
                       <div
                         class="interactive-pill reminder-pill"
                         :class="{ active: !!todo.remind_at }"
-                        @click="openReminderModal(todo)"
-                        title="点击配置提醒时间（支持12/24小时制与快捷设置）"
+                        @click="openReminderHover(todo)"
+                        title="鼠标悬浮直接输入 年月日、时分秒 提醒时间"
                       >
                         <Clock :size="12" />
                         <span v-if="todo.remind_at" class="reminder-text">{{ formatRemindDisplay(todo.remind_at) }}</span>
@@ -395,6 +399,67 @@
                         >
                           <X :size="11" />
                         </button>
+                      </div>
+
+                      <!-- Hover Direct Input Popover Card -->
+                      <div
+                        v-if="activeMenuId === 'remind-' + todo.id"
+                        class="custom-dropdown-menu reminder-popover-card animate-fade-in"
+                        @click.stop
+                      >
+                        <div class="popover-title-row">
+                          <span class="popover-title"><Clock :size="13" class="text-primary" /> 设置提醒时间</span>
+                          <button
+                            v-if="todo.remind_at"
+                            type="button"
+                            class="popover-btn-clear"
+                            @click="updateTodoReminder(todo, '')"
+                            title="清除提醒"
+                          >
+                            清除
+                          </button>
+                        </div>
+
+                        <!-- Direct Input: Date (年月日) & Time (时分秒) -->
+                        <div class="popover-input-group">
+                          <div class="input-field-row">
+                            <label class="input-lbl">年月日</label>
+                            <input
+                              type="date"
+                              v-model="hoverReminderDate"
+                              class="popover-input date-field"
+                            />
+                          </div>
+                          <div class="input-field-row">
+                            <label class="input-lbl">时分秒</label>
+                            <input
+                              type="time"
+                              step="1"
+                              v-model="hoverReminderTime"
+                              class="popover-input time-field"
+                            />
+                          </div>
+                        </div>
+
+                        <!-- Quick Presets -->
+                        <div class="popover-presets">
+                          <button type="button" class="preset-tag" @click="applyHoverPreset(10, 'min')">+10分</button>
+                          <button type="button" class="preset-tag" @click="applyHoverPreset(30, 'min')">+30分</button>
+                          <button type="button" class="preset-tag" @click="applyHoverPreset(1, 'hour')">+1小时</button>
+                          <button type="button" class="preset-tag" @click="applyHoverTonight()">今晚20:00</button>
+                          <button type="button" class="preset-tag" @click="applyHoverTomorrow()">明天09:00</button>
+                        </div>
+
+                        <!-- Action Confirm -->
+                        <div class="popover-footer">
+                          <button
+                            type="button"
+                            class="btn-save-reminder"
+                            @click="saveHoverReminder(todo)"
+                          >
+                            <Check :size="12" /> 保存提醒
+                          </button>
+                        </div>
                       </div>
                     </div>
 
@@ -587,46 +652,6 @@
       </div>
     </div>
 
-    <!-- Dedicated Task Reminder Picker Modal -->
-    <div v-if="showReminderModal" class="modal-backdrop" @click.self="showReminderModal = false">
-      <div class="modal-card modal-reminder-card animate-fade-in">
-        <div class="modal-header-row">
-          <h2 class="modal-title">
-            <Clock :size="18" class="text-primary" />
-            <span>设置待办提醒时间</span>
-          </h2>
-          <button class="modal-close-btn" @click="showReminderModal = false">
-            <X :size="16" />
-          </button>
-        </div>
-
-        <div class="modal-target-todo-info" v-if="reminderTargetTodo">
-          <span class="target-label">任务:</span>
-          <span class="target-title">{{ reminderTargetTodo.title }}</span>
-        </div>
-
-        <!-- 3D Wheel Picker with 12h/24h System Support -->
-        <WheelDateTimePicker v-model="reminderPickerValue" />
-
-        <div class="modal-actions-space-between">
-          <button
-            v-if="reminderTargetTodo?.remind_at"
-            type="button"
-            class="btn btn-danger-outline"
-            @click="clearModalReminder"
-          >
-            <BellOff :size="14" /> 关闭提醒
-          </button>
-          <div v-else></div>
-
-          <div class="modal-actions-right">
-            <button type="button" class="btn" @click="showReminderModal = false">取消</button>
-            <button type="button" class="btn btn-primary" @click="saveModalReminder">确认设置</button>
-          </div>
-        </div>
-      </div>
-    </div>
-
     <!-- Model Config Modal -->
     <div v-if="showModelModal" class="modal-backdrop" @click.self="showModelModal = false">
       <div class="modal-card animate-fade-in">
@@ -689,7 +714,7 @@
 import { ref, computed, nextTick, onMounted, onUnmounted, watch } from 'vue'
 import {
   CheckSquare, Calendar, Clock, Flame, Settings, Menu, X, Hourglass, Bell,
-  Plus, Edit3, Trash2, Folder, Search, ListTodo, Inbox, LayoutGrid, Check, Square, ChevronDown, BellOff
+  Plus, Edit3, Trash2, Folder, Search, ListTodo, Inbox, LayoutGrid, Check, Square, ChevronDown
 } from 'lucide-vue-next'
 import type { Todo, LlmConfig, FilterType, ThemeType, NavPosition, User } from './types'
 import { showConfirm } from './utils/confirmState'
@@ -1172,28 +1197,88 @@ async function updateTodoReminder(todo: Todo, val: string) {
   }
 }
 
-// Dedicated Reminder Modal State & Methods
-const showReminderModal = ref(false)
-const reminderTargetTodo = ref<Todo | null>(null)
-const reminderPickerValue = ref('')
+// Hover Direct Input Reminder State & Handlers
+const hoverReminderDate = ref('')
+const hoverReminderTime = ref('')
 
-function openReminderModal(todo: Todo) {
-  reminderTargetTodo.value = todo
-  reminderPickerValue.value = todo.remind_at ? todo.remind_at.slice(0, 16).replace(' ', 'T') : ''
-  showReminderModal.value = true
+function openReminderHover(todo: Todo) {
+  openMenuHover('remind-' + todo.id)
+  if (todo.remind_at) {
+    const clean = todo.remind_at.replace('T', ' ')
+    const parts = clean.split(' ')
+    if (parts.length >= 2) {
+      hoverReminderDate.value = parts[0]
+      hoverReminderTime.value = parts[1].length === 5 ? parts[1] + ':00' : parts[1]
+    } else {
+      initHoverDefaultDateTime()
+    }
+  } else {
+    initHoverDefaultDateTime()
+  }
 }
 
-async function saveModalReminder() {
-  if (!reminderTargetTodo.value) return
-  const val = reminderPickerValue.value
-  await updateTodoReminder(reminderTargetTodo.value, val)
-  showReminderModal.value = false
+function initHoverDefaultDateTime() {
+  const d = new Date()
+  d.setMinutes(d.getMinutes() + 30)
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const date = String(d.getDate()).padStart(2, '0')
+  const h = String(d.getHours()).padStart(2, '0')
+  const min = String(d.getMinutes()).padStart(2, '0')
+  const sec = String(d.getSeconds()).padStart(2, '0')
+  hoverReminderDate.value = `${y}-${m}-${date}`
+  hoverReminderTime.value = `${h}:${min}:${sec}`
 }
 
-async function clearModalReminder() {
-  if (!reminderTargetTodo.value) return
-  await updateTodoReminder(reminderTargetTodo.value, '')
-  showReminderModal.value = false
+function applyHoverPreset(amount: number, unit: 'min' | 'hour') {
+  const d = new Date()
+  if (unit === 'min') {
+    d.setMinutes(d.getMinutes() + amount)
+  } else {
+    d.setHours(d.getHours() + amount)
+  }
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const date = String(d.getDate()).padStart(2, '0')
+  const h = String(d.getHours()).padStart(2, '0')
+  const min = String(d.getMinutes()).padStart(2, '0')
+  const sec = String(d.getSeconds()).padStart(2, '0')
+  hoverReminderDate.value = `${y}-${m}-${date}`
+  hoverReminderTime.value = `${h}:${min}:${sec}`
+}
+
+function applyHoverTonight() {
+  const d = new Date()
+  d.setHours(20, 0, 0, 0)
+  if (d.getTime() < Date.now()) {
+    d.setDate(d.getDate() + 1)
+  }
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const date = String(d.getDate()).padStart(2, '0')
+  hoverReminderDate.value = `${y}-${m}-${date}`
+  hoverReminderTime.value = '20:00:00'
+}
+
+function applyHoverTomorrow() {
+  const d = new Date()
+  d.setDate(d.getDate() + 1)
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const date = String(d.getDate()).padStart(2, '0')
+  hoverReminderDate.value = `${y}-${m}-${date}`
+  hoverReminderTime.value = '09:00:00'
+}
+
+async function saveHoverReminder(todo: Todo) {
+  if (!hoverReminderDate.value) {
+    statusMessage.value = '⚠️ 请选择日期'
+    return
+  }
+  const time = hoverReminderTime.value ? (hoverReminderTime.value.length === 5 ? hoverReminderTime.value + ':00' : hoverReminderTime.value) : '09:00:00'
+  const fullRemindStr = `${hoverReminderDate.value} ${time}`
+  activeMenuId.value = null
+  await updateTodoReminder(todo, fullRemindStr)
 }
 
 async function clearCompletedTodos() {
@@ -2293,6 +2378,139 @@ onMounted(() => {
 
 .btn-clear-reminder:hover {
   color: #ef4444;
+}
+
+/* Hover Reminder Popover Direct Input Card Styles */
+.reminder-popover-card {
+  min-width: 270px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.popover-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border-color, #f1f5f9);
+}
+
+.popover-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-main, #0f172a);
+}
+
+.popover-btn-clear {
+  background: none;
+  border: none;
+  color: #ef4444;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 1px 4px;
+  border-radius: 4px;
+  transition: background-color 0.15s;
+}
+
+.popover-btn-clear:hover {
+  background: rgba(239, 68, 68, 0.08);
+}
+
+.popover-input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.input-field-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.input-field-row .input-lbl {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--text-muted, #64748b);
+  white-space: nowrap;
+  width: 44px;
+}
+
+.popover-input {
+  flex: 1;
+  padding: 5px 8px;
+  border: 1px solid var(--border-color, #e2e8f0);
+  border-radius: 8px;
+  font-size: 12px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-weight: 600;
+  background-color: var(--bg-app, #f8fafc);
+  color: var(--text-main, #0f172a);
+  outline: none;
+  transition: all 0.15s ease;
+}
+
+.popover-input:focus {
+  border-color: var(--primary, #3b82f6);
+  background-color: var(--bg-surface, #ffffff);
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
+}
+
+.popover-presets {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.preset-tag {
+  background-color: var(--bg-app, #f8fafc);
+  border: 1px solid var(--border-color, #e2e8f0);
+  border-radius: 12px;
+  padding: 2px 7px;
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--primary, #3b82f6);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.preset-tag:hover {
+  background-color: var(--primary, #3b82f6);
+  color: #ffffff;
+  border-color: var(--primary, #3b82f6);
+}
+
+.popover-footer {
+  margin-top: 2px;
+}
+
+.btn-save-reminder {
+  width: 100%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 6px 12px;
+  background-color: var(--primary, #3b82f6);
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.btn-save-reminder:hover {
+  background-color: #2563eb;
 }
 
 /* Modal Reminder Card & Wheel Picker Styles */
