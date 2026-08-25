@@ -745,69 +745,124 @@ function isSegmentOn(digitStr: string, segment: string): boolean {
   return (SEGMENT_MAP[digitStr] || []).includes(segment)
 }
 
-// 7. Chinese Word Grid Matrix
+// 7. Chinese Word Grid Matrix (10 x 6 规范汉字时钟点阵)
 const chineseWordRows = [
-  ['现', '在', '是', '早', '上', '中', '午', '傍', '晚', '夜', '深'],
-  ['零', '一', '二', '三', '四', '五', '六', '七', '八', '九', '十'],
-  ['十', '一', '十', '二', '点', '整', '半', '一', '刻', '三', '刻'],
-  ['零', '十', '二', '三', '四', '五', '十', '一', '二', '三', '分'],
-  ['四', '五', '六', '七', '八', '九', '十', '秒', '钟', '吉', '祥']
+  ['现', '在', '是', '早', '上', '中', '午', '下', '午', '晚'],
+  ['上', '夜', '深', '凌', '晨', '一', '二', '三', '四', '五'],
+  ['六', '七', '八', '九', '十', '一', '十', '二', '点', '整'],
+  ['半', '一', '刻', '三', '刻', '零', '一', '二', '三', '四'],
+  ['五', '十', '一', '二', '三', '四', '五', '六', '七', '八'],
+  ['九', '分', '十', '二', '三', '四', '五', '十', '秒', '钟']
 ]
 
 const activeChineseChars = computed(() => {
   const d = now.value
   const h = d.getHours()
   const m = d.getMinutes()
+  const s = d.getSeconds()
   const activeSet = new Set<string>()
 
-  // Always active header
+  // 1. 引导前缀 (始终点亮: "现在是")
   activeSet.add('0,0') // 现
   activeSet.add('0,1') // 在
   activeSet.add('0,2') // 是
 
-  // Period of day
-  if (h >= 5 && h < 11) { activeSet.add('0,3'); activeSet.add('0,4') } // 早上
-  else if (h >= 11 && h < 13) { activeSet.add('0,5'); activeSet.add('0,6') } // 中午
-  else if (h >= 13 && h < 18) { activeSet.add('0,4'); activeSet.add('0,6') } // 下午
-  else if (h >= 18 && h < 22) { activeSet.add('0,7'); activeSet.add('0,8') } // 傍晚
-  else { activeSet.add('0,9'); activeSet.add('0,10') } // 夜深
-
-  // Hours: 1~12
-  const hr12 = h % 12 || 12
-  if (hr12 <= 10) {
-    activeSet.add(`1,${hr12}`)
-  } else if (hr12 === 11) {
-    activeSet.add('2,0'); activeSet.add('2,1') // 十一
-  } else if (hr12 === 12) {
-    activeSet.add('2,2'); activeSet.add('2,3') // 十二
+  // 2. 时段语义映射 (早上/上午/中午/下午/晚上/夜深/凌晨)
+  if (h >= 5 && h < 9) {
+    activeSet.add('0,3'); activeSet.add('0,4') // 早上
+  } else if (h >= 9 && h < 11.5) {
+    activeSet.add('0,4'); activeSet.add('0,6') // 上午
+  } else if (h >= 11.5 && h < 13) {
+    activeSet.add('0,5'); activeSet.add('0,6') // 中午
+  } else if (h >= 13 && h < 18) {
+    activeSet.add('0,7'); activeSet.add('0,8') // 下午
+  } else if (h >= 18 && h < 22) {
+    activeSet.add('0,9'); activeSet.add('1,0') // 晚上
+  } else if (h >= 22 || h < 1) {
+    activeSet.add('1,1'); activeSet.add('1,2') // 夜深
+  } else {
+    activeSet.add('1,3'); activeSet.add('1,4') // 凌晨
   }
-  activeSet.add('2,4') // 点
 
-  // Minute
+  // 3. 小时数映射 (1~12点)
+  const hr12 = h % 12 || 12
+  if (hr12 === 1) activeSet.add('1,5') // 一
+  else if (hr12 === 2) activeSet.add('1,6') // 二
+  else if (hr12 === 3) activeSet.add('1,7') // 三
+  else if (hr12 === 4) activeSet.add('1,8') // 四
+  else if (hr12 === 5) activeSet.add('1,9') // 五
+  else if (hr12 === 6) activeSet.add('2,0') // 六
+  else if (hr12 === 7) activeSet.add('2,1') // 七
+  else if (hr12 === 8) activeSet.add('2,2') // 八
+  else if (hr12 === 9) activeSet.add('2,3') // 九
+  else if (hr12 === 10) activeSet.add('2,4') // 十
+  else if (hr12 === 11) { activeSet.add('2,4'); activeSet.add('2,5') } // 十一
+  else if (hr12 === 12) { activeSet.add('2,6'); activeSet.add('2,7') } // 十二
+  activeSet.add('2,8') // 点
+
+  // 辅助函数: 点亮数字 1~9 (排布在 Row 4 & Row 5)
+  function addUnitChar(digit: number) {
+    if (digit >= 1 && digit <= 8) {
+      activeSet.add(`4,${1 + digit}`)
+    } else if (digit === 9) {
+      activeSet.add('5,0')
+    }
+  }
+
+  // 4. 分钟数映射 (整/一刻/半/三刻/各分钟)
   if (m === 0) {
-    activeSet.add('2,5') // 整
+    activeSet.add('2,9') // 整
+  } else if (m === 15) {
+    activeSet.add('3,1'); activeSet.add('3,2') // 一刻
   } else if (m === 30) {
-    activeSet.add('2,6') // 半
+    activeSet.add('3,0') // 半
+  } else if (m === 45) {
+    activeSet.add('3,3'); activeSet.add('3,4') // 三刻
   } else {
     const mTens = Math.floor(m / 10)
     const mUnits = m % 10
+
     if (mTens === 0) {
-      activeSet.add('3,0') // 零
-      if (mUnits > 0) activeSet.add(`1,${mUnits}`)
+      activeSet.add('3,5') // 零
+      addUnitChar(mUnits)
     } else if (mTens === 1) {
-      activeSet.add('3,1') // 十
-      if (mUnits > 0) activeSet.add(`3,${6 + mUnits}`)
+      activeSet.add('4,1') // 十
+      if (mUnits > 0) addUnitChar(mUnits)
     } else {
-      activeSet.add(`3,${mTens}`) // 二/三/四/五
-      activeSet.add('3,6') // 十
-      if (mUnits > 0) activeSet.add(`3,${6 + mUnits}`)
+      if (mTens === 2) activeSet.add('3,7') // 二
+      else if (mTens === 3) activeSet.add('3,8') // 三
+      else if (mTens === 4) activeSet.add('3,9') // 四
+      else if (mTens === 5) activeSet.add('4,0') // 五
+      activeSet.add('4,1') // 十
+      if (mUnits > 0) addUnitChar(mUnits)
     }
-    activeSet.add('3,10') // 分
+    activeSet.add('5,1') // 分
   }
 
-  // Seconds indicator
+  // 5. 实时秒数联动 (开启秒显示时联动高亮)
   if (showSeconds.value) {
-    activeSet.add('4,7') // 秒
+    if (s === 0) {
+      activeSet.add('5,8'); activeSet.add('5,9') // 秒钟
+    } else {
+      const sTens = Math.floor(s / 10)
+      const sUnits = s % 10
+
+      if (sTens === 0) {
+        activeSet.add('3,5') // 零
+        addUnitChar(sUnits)
+      } else if (sTens === 1) {
+        activeSet.add('5,2') // 十
+        if (sUnits > 0) addUnitChar(sUnits)
+      } else {
+        if (sTens === 2) activeSet.add('5,3') // 二
+        else if (sTens === 3) activeSet.add('5,4') // 三
+        else if (sTens === 4) activeSet.add('5,5') // 四
+        else if (sTens === 5) activeSet.add('5,6') // 五
+        activeSet.add('5,7') // 十
+        if (sUnits > 0) addUnitChar(sUnits)
+      }
+      activeSet.add('5,8') // 秒
+    }
   }
 
   return activeSet
@@ -1566,39 +1621,42 @@ onUnmounted(() => {
 .words-grid-card {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  padding: 14px 18px;
+  gap: clamp(4px, 0.8vw, 8px);
+  padding: clamp(10px, 1.4vw, 16px) clamp(12px, 1.8vw, 20px);
   background: #09090b;
   border-radius: 18px;
   border: 1px solid #27272a;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.05);
 }
 
 .words-row {
   display: flex;
-  gap: 8px;
+  gap: clamp(4px, 0.8vw, 8px);
   justify-content: space-between;
 }
 
 .word-cell {
-  width: clamp(24px, 3.2vw, 36px);
-  height: clamp(24px, 3.2vw, 36px);
+  width: clamp(22px, 2.8vw, 34px);
+  height: clamp(22px, 2.8vw, 34px);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: clamp(13px, 1.6vw, 18px);
+  font-size: clamp(12.5px, 1.5vw, 17px);
   font-weight: 700;
-  color: #3f3f46;
+  color: #27272a;
   border-radius: 6px;
-  transition: all 0.3s ease;
+  transition: all 0.25s ease;
   user-select: none;
 }
 
 .word-cell.active {
-  color: #06b6d4;
-  text-shadow: 0 0 10px #06b6d4, 0 0 20px rgba(6, 182, 212, 0.6);
-  background: rgba(6, 182, 212, 0.12);
-  transform: scale(1.08);
+  color: #22d3ee;
+  text-shadow:
+    0 0 8px #06b6d4,
+    0 0 16px rgba(6, 182, 212, 0.7);
+  background: rgba(6, 182, 212, 0.15);
+  transform: scale(1.05);
+  box-shadow: 0 0 12px rgba(6, 182, 212, 0.2);
 }
 
 .clock-split-container {
