@@ -97,15 +97,16 @@
       </button>
     </div>
 
-    <!-- Main Clock Stage Area -->
+    <!-- Main Clock Stage Area (左右两栏布局) -->
     <div class="clock-stage-wrapper">
-      <div class="clock-showcase-card" :class="displayMode">
+      <div class="clock-split-container">
         <!-- Ambient Breathing Glow -->
         <div class="clock-ambient-glow"></div>
 
-        <!-- 1. Analog Clock View -->
-        <div v-if="displayMode === 'analog'" class="analog-stage animate-fade-in">
-          <div class="analog-clock-wrapper">
+        <!-- Left Column: 时钟核心展示区 -->
+        <div class="clock-col-left">
+          <!-- 1. Analog Clock View -->
+          <div v-if="displayMode === 'analog'" class="analog-clock-wrapper animate-fade-in">
             <svg class="analog-clock-svg" viewBox="0 0 280 280">
               <defs>
                 <linearGradient id="bezelGrad" x1="0%" y1="0%" x2="100%" y2="100%">
@@ -154,23 +155,18 @@
 
               <!-- Hour Hand (时针) -->
               <g :transform="`rotate(${analogAngles.hour}, 140, 140)`">
-                <!-- Counter-balance back part -->
                 <line x1="140" y1="152" x2="140" y2="76" class="hand hour-hand" />
-                <!-- Accent tip -->
                 <circle cx="140" cy="76" r="3.5" class="hour-tip" />
               </g>
 
               <!-- Minute Hand (分针) -->
               <g :transform="`rotate(${analogAngles.minute}, 140, 140)`">
-                <!-- Counter-balance back part -->
                 <line x1="140" y1="156" x2="140" y2="48" class="hand minute-hand" />
-                <!-- Accent tip -->
                 <circle cx="140" cy="48" r="2.5" class="minute-tip" />
               </g>
 
               <!-- Second Hand (秒针) -->
               <g v-if="showSeconds" :transform="`rotate(${analogAngles.second}, 140, 140)`">
-                <!-- Tail with counterbalance disc -->
                 <line x1="140" y1="165" x2="140" y2="32" class="hand second-hand" />
                 <circle cx="140" cy="165" r="4.5" class="second-tail" />
               </g>
@@ -182,70 +178,45 @@
             </svg>
           </div>
 
-          <!-- Bottom Status under Analog Clock -->
-          <div class="analog-info-footer">
-            <div class="time-header-pill">
-              <span class="pulse-indicator"></span>
-              <span class="tz-label">{{ localTzName }}</span>
-              <span class="tz-offset">{{ localOffsetStr }}</span>
-            </div>
-
-            <div class="calendar-detail-row">
-              <div class="detail-pill date-pill">
-                <Calendar :size="15" class="icon-accent" />
-                <span>{{ formattedLocalTime.fullDateStr }}</span>
-                <span class="weekday-tag">{{ formattedLocalTime.weekday }}</span>
+          <!-- 2. Digital Clock View -->
+          <div v-else-if="displayMode === 'digital'" class="digital-clock-wrapper animate-fade-in">
+            <div class="hero-digital-time">
+              <div class="digits-group">
+                <span class="digit-hours">{{ formattedLocalTime.hours }}</span>
+                <span class="digit-colon">:</span>
+                <span class="digit-minutes">{{ formattedLocalTime.minutes }}</span>
+                <span v-if="showSeconds" class="digit-colon">:</span>
+                <span v-if="showSeconds" class="digit-seconds">{{ formattedLocalTime.seconds }}</span>
+                <span v-if="showMilliseconds" class="digit-milliseconds">.{{ formattedLocalTime.milliseconds }}</span>
               </div>
-              <div class="detail-pill lunar-pill">
-                <Sparkles :size="14" class="icon-lunar" />
-                <span>{{ lunarText }}</span>
-              </div>
-            </div>
-
-            <div class="day-progress-section">
-              <div class="progress-info-row">
-                <span class="greeting-text">{{ greetingText }}</span>
-                <span class="progress-percent">今日进度 {{ dayProgressPercent }}%</span>
-              </div>
-              <div class="day-progress-track">
-                <div class="day-progress-bar" :style="{ width: `${dayProgressPercent}%` }"></div>
-              </div>
+              <span v-if="use12Hour" class="digit-ampm">{{ formattedLocalTime.ampm }}</span>
             </div>
           </div>
         </div>
 
-        <!-- 2. Digital Clock View -->
-        <div v-else-if="displayMode === 'digital'" class="digital-stage animate-fade-in">
+        <!-- Right Column: 日期、农历、时区与每日流逝看板 -->
+        <div class="clock-col-right animate-fade-in">
+          <!-- Timezone Status -->
           <div class="time-header-pill">
             <span class="pulse-indicator"></span>
             <span class="tz-label">{{ localTzName }}</span>
             <span class="tz-offset">{{ localOffsetStr }}</span>
           </div>
 
-          <div class="hero-digital-time">
-            <div class="digits-group">
-              <span class="digit-hours">{{ formattedLocalTime.hours }}</span>
-              <span class="digit-colon">:</span>
-              <span class="digit-minutes">{{ formattedLocalTime.minutes }}</span>
-              <span v-if="showSeconds" class="digit-colon">:</span>
-              <span v-if="showSeconds" class="digit-seconds">{{ formattedLocalTime.seconds }}</span>
-              <span v-if="showMilliseconds" class="digit-milliseconds">.{{ formattedLocalTime.milliseconds }}</span>
-            </div>
-            <span v-if="use12Hour" class="digit-ampm">{{ formattedLocalTime.ampm }}</span>
-          </div>
-
-          <div class="calendar-detail-row">
+          <!-- Calendar & Lunar Information Cards -->
+          <div class="calendar-detail-card">
             <div class="detail-pill date-pill">
-              <Calendar :size="15" class="icon-accent" />
+              <Calendar :size="16" class="icon-accent" />
               <span>{{ formattedLocalTime.fullDateStr }}</span>
               <span class="weekday-tag">{{ formattedLocalTime.weekday }}</span>
             </div>
             <div class="detail-pill lunar-pill">
-              <Sparkles :size="14" class="icon-lunar" />
+              <Sparkles :size="15" class="icon-lunar" />
               <span>{{ lunarText }}</span>
             </div>
           </div>
 
+          <!-- Day Progress Section -->
           <div class="day-progress-section">
             <div class="progress-info-row">
               <span class="greeting-text">{{ greetingText }}</span>
@@ -621,27 +592,63 @@ onUnmounted(() => {
   padding: 0;
 }
 
-.clock-showcase-card {
-  position: relative;
-  width: 100%;
-  max-width: 900px;
-  background: transparent;
-  border: none;
-  border-radius: 0;
-  padding: 4px 0;
-  box-shadow: none;
+/* Main Clock Showcase Stage (左右两栏高精度看板设计) */
+.clock-stage-wrapper {
+  flex: 1;
+  min-height: 0;
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
-  box-sizing: border-box;
+  width: 100%;
+  padding: 0;
+  overflow: hidden;
 }
 
-.zen-fullscreen .clock-showcase-card {
-  max-width: 1000px;
-  border: none;
-  background: transparent;
-  box-shadow: none;
+.zen-fullscreen .clock-stage-wrapper {
+  width: 100%;
+  height: 100%;
+  padding: 0;
+}
+
+.clock-split-container {
+  position: relative;
+  width: 100%;
+  max-width: 960px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 36px;
+  box-sizing: border-box;
+  padding: 8px 12px;
+}
+
+.clock-col-left {
+  flex: 1.1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  z-index: 1;
+}
+
+.clock-col-right {
+  flex: 0.9;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 14px;
+  max-width: 420px;
+  width: 100%;
+  position: relative;
+  z-index: 1;
+}
+
+.calendar-detail-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
 }
 
 .clock-ambient-glow {
@@ -649,8 +656,8 @@ onUnmounted(() => {
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  width: 480px;
-  height: 480px;
+  width: 520px;
+  height: 520px;
   border-radius: 50%;
   background: radial-gradient(circle, rgba(99, 102, 241, 0.09) 0%, rgba(236, 72, 153, 0.03) 50%, transparent 70%);
   pointer-events: none;
@@ -663,20 +670,17 @@ onUnmounted(() => {
 }
 
 /* Analog Stage & SVG Hands */
-.analog-stage {
-  position: relative;
-  z-index: 1;
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 12px;
-}
-
 .analog-clock-wrapper {
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+.digital-clock-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
 }
 
 .analog-clock-svg {
@@ -944,20 +948,16 @@ onUnmounted(() => {
    ============================================================ */
 .local-clock-container.is-fullscreen,
 .local-clock-container.zen-fullscreen {
-  padding: 16px 24px;
+  padding: 20px 32px;
 }
 
-.is-fullscreen .clock-showcase-card,
-.zen-fullscreen .clock-showcase-card {
-  max-width: 1200px;
+.is-fullscreen .clock-split-container,
+.zen-fullscreen .clock-split-container {
+  max-width: 1280px;
+  gap: 56px;
 }
 
 /* Analog Clock in Fullscreen: Expand SVG dial from 210px to min(420px, 52vh) */
-.is-fullscreen .analog-stage,
-.zen-fullscreen .analog-stage {
-  gap: 20px;
-}
-
 .is-fullscreen .analog-clock-svg,
 .zen-fullscreen .analog-clock-svg {
   width: min(420px, 52vh);
@@ -965,21 +965,21 @@ onUnmounted(() => {
   filter: drop-shadow(0 20px 48px rgba(0, 0, 0, 0.22));
 }
 
-.is-fullscreen .analog-info-footer,
-.zen-fullscreen .analog-info-footer {
-  max-width: 620px;
-  gap: 12px;
+.is-fullscreen .clock-col-right,
+.zen-fullscreen .clock-col-right {
+  max-width: 520px;
+  gap: 20px;
 }
 
-.is-fullscreen .analog-info-footer .time-header-pill,
-.zen-fullscreen .analog-info-footer .time-header-pill {
-  padding: 6px 18px;
-  font-size: 13.5px;
+.is-fullscreen .time-header-pill,
+.zen-fullscreen .time-header-pill {
+  padding: 7px 20px;
+  font-size: 14px;
 }
 
 .is-fullscreen .detail-pill,
 .zen-fullscreen .detail-pill {
-  padding: 10px 20px;
+  padding: 12px 22px;
   font-size: 15px;
   border-radius: 14px;
 }
@@ -1000,51 +1000,37 @@ onUnmounted(() => {
 }
 
 /* Digital Clock in Fullscreen: Giant crystal-clear typography */
-.is-fullscreen .digital-stage,
-.zen-fullscreen .digital-stage {
-  max-width: 1080px;
-  gap: 24px;
-}
-
-.is-fullscreen .digital-stage .time-header-pill,
-.zen-fullscreen .digital-stage .time-header-pill {
-  padding: 8px 22px;
-  font-size: 15px;
-  border-radius: 24px;
-}
-
 .is-fullscreen .digits-group,
 .zen-fullscreen .digits-group {
-  font-size: clamp(64px, 12vw, 136px);
+  font-size: clamp(52px, 8vw, 108px);
   letter-spacing: -3px;
   text-shadow: 0 10px 40px rgba(99, 102, 241, 0.3);
 }
 
 .is-fullscreen .digit-ampm,
 .zen-fullscreen .digit-ampm {
-  font-size: clamp(24px, 3vw, 42px);
-}
-
-.is-fullscreen .day-progress-section,
-.zen-fullscreen .day-progress-section {
-  max-width: 640px;
-  width: 100%;
+  font-size: clamp(20px, 2.5vw, 36px);
 }
 
 /* Responsive Breakpoints */
 @media (max-width: 768px) {
-  .clock-main-stage {
+  .clock-split-container {
     flex-direction: column;
-    gap: 32px;
+    gap: 20px;
   }
-  .digital-clock-wrapper {
+  .clock-col-left {
+    width: 100%;
+  }
+  .clock-col-right {
+    align-items: center;
+    max-width: 100%;
+    width: 100%;
+  }
+  .calendar-detail-card {
     align-items: center;
   }
-  .clock-showcase-card {
-    padding: 32px 20px;
-  }
   .digits-group {
-    font-size: 42px;
+    font-size: 38px;
   }
 }
 </style>
