@@ -9,6 +9,7 @@
     "dev:frontend": "vite",
     "cli": "uv run todo-cli",
     "build": "vue-tsc && vite build",
+    "build:exe": "pnpm run build && uv run python -m PyInstaller --noconfirm --clean --onefile --name todo-agent --distpath release --workpath build/pyinstaller --add-data \"dist;dist\" --collect-all uvicorn --collect-all fastapi --collect-all backend --collect-all webview --collect-all pythonnet --collect-all clr_loader backend/main.py",
     "preview": "vite preview",
     "test": "vitest run",
     "test:backend": "uv run --extra dev pytest backend/tests",

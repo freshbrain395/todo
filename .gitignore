@@ -23,6 +23,7 @@ src-tauri/gen/
 # Build & Eggs
 build/
 dist/
+release/
 *.egg-info/
 
 # Local data & configs

@@ -219,9 +219,6 @@
               <button class="btn btn-listen" @click="isSwitchModalOpen = true">
                 <Users :size="14" /> 切换 / 新增用户账号
               </button>
-              <button class="btn btn-logout-danger" @click="emit('logout')">
-                <LogOut :size="14" /> 退出登录
-              </button>
             </div>
           </div>
         </div>
@@ -295,7 +292,7 @@ import { ref, computed, onMounted, watch } from 'vue'
 import {
   Settings, Volume2, Trash2, RotateCcw, User, Users,
   FileJson, Download, Upload, ShieldCheck, Palette, Brain,
-  Sparkles, Wrench, BookOpen, LogOut, Crown
+  Sparkles, Wrench, BookOpen, Crown
 } from 'lucide-vue-next'
 import { soundPlayer, type SoundType } from '../../utils/audio'
 import { showConfirm } from '../../utils/confirmState'
@@ -342,7 +339,6 @@ const emit = defineEmits<{
   (e: 'update:navPosition', pos: NavPosition): void
   (e: 'update:config', config: LlmConfig): void
   (e: 'userChanged'): void
-  (e: 'logout'): void
 }>()
 
 const isSwitchModalOpen = ref(false)
@@ -1124,24 +1120,5 @@ async function resetAllSettings() {
   display: flex;
   justify-content: flex-end;
   margin-top: 10px;
-}
-.btn-logout-danger {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 12px;
-  border-radius: 6px;
-  border: 1px solid rgba(239, 68, 68, 0.3);
-  background-color: rgba(239, 68, 68, 0.08);
-  color: #ef4444;
-  font-size: 12px;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.btn-logout-danger:hover {
-  background-color: #ef4444;
-  color: #ffffff;
-  border-color: #ef4444;
 }
 </style>

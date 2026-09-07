@@ -23,19 +23,8 @@
           </div>
         </div>
 
-        <!-- Hero Right Actions (User Pill + Todo Counter) -->
+        <!-- Hero Right Actions (Todo Counter) -->
         <div class="hero-actions-group">
-          <div
-            class="hero-user-pill"
-            @click="emit('openLogin')"
-            :title="currentUser ? `当前账号: ${currentUser.username} (点击切换)` : '点击登录/注册账号'"
-          >
-            <div class="user-avatar-dot" :class="{ 'is-logged-in': !!currentUser }">
-              <User :size="14" />
-            </div>
-            <span class="user-name-text">{{ currentUser ? currentUser.username : '游客模式' }}</span>
-          </div>
-
           <!-- Quick Todo Counter Badge -->
           <div class="hero-summary-card" @click="emit('openApp', 'todos')" title="查看待办列表">
             <div class="summary-icon-box">
@@ -208,20 +197,18 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import {
   CheckSquare, Calendar, Clock, Flame, Settings,
-  Hourglass, Bell, Plus, LayoutGrid, ChevronRight, Sparkles, User
+  Hourglass, Bell, Plus, LayoutGrid, ChevronRight, Sparkles
 } from 'lucide-vue-next'
-import type { Todo, User as UserType } from '../../types'
+import type { Todo } from '../../types'
 import { getLunar } from '../../utils/lunar'
 
 const props = defineProps<{
   todos?: Todo[]
-  currentUser?: UserType | null
 }>()
 
 const emit = defineEmits<{
   (e: 'openApp', tab: 'todos' | 'calendar' | 'local-clock' | 'countdown' | 'alarm' | 'pomodoro' | 'settings'): void
   (e: 'openAddTodo'): void
-  (e: 'openLogin'): void
 }>()
 
 const todos = computed(() => props.todos || [])
@@ -386,51 +373,6 @@ const lunarString = computed(() => {
   display: flex;
   align-items: center;
   gap: 12px;
-}
-
-.hero-user-pill {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 14px;
-  background: var(--bg-app, #f8fafc);
-  border: 1px solid var(--border-color, #e2e8f0);
-  border-radius: 14px;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  user-select: none;
-}
-
-.hero-user-pill:hover {
-  background: rgba(59, 130, 246, 0.08);
-  border-color: var(--primary, #3b82f6);
-  transform: translateY(-2px);
-}
-
-.user-avatar-dot {
-  width: 26px;
-  height: 26px;
-  border-radius: 50%;
-  background: rgba(100, 116, 139, 0.15);
-  color: var(--text-muted, #64748b);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.user-avatar-dot.is-logged-in {
-  background: rgba(16, 185, 129, 0.15);
-  color: #059669;
-}
-
-.user-name-text {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--text-main, #1e293b);
-  max-width: 100px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .hero-summary-card {

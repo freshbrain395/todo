@@ -156,10 +156,8 @@
       <template v-if="currentTab === 'desktop'">
         <DesktopView
           :todos="todos"
-          :current-user="currentUser"
           @open-app="tab => currentTab = tab"
           @open-add-todo="openAddModal"
-          @open-login="showAuthModal = true"
         />
       </template>
 
@@ -536,7 +534,6 @@
           v-model:theme="theme"
           v-model:config="llmConfig"
           @update:navPosition="val => navPosition = val"
-          @logout="handleLogout"
           @userChanged="loadTodos"
         />
       </template>
@@ -724,14 +721,6 @@
       </div>
     </div>
 
-    <!-- Login / Registration / Local Mode Modal -->
-    <LoginPage
-      v-if="showAuthModal"
-      @login-success="onLoginSuccess"
-      @use-local-mode="onUseLocalMode"
-      @close="showAuthModal = false"
-    />
-
     <!-- Global Confirm Modal Dialog -->
     <ConfirmModal />
   </div>
@@ -744,7 +733,7 @@ import {
   CheckSquare, Calendar, Clock, Flame, Settings, Menu, X, Hourglass, Bell,
   Plus, Edit3, Trash2, Folder, Search, ListTodo, Inbox, LayoutGrid, Check, Square, ChevronDown
 } from 'lucide-vue-next'
-import type { Todo, LlmConfig, FilterType, ThemeType, NavPosition, User } from './types'
+import type { Todo, LlmConfig, FilterType, ThemeType, NavPosition } from './types'
 import { showConfirm } from './utils/confirmState'
 import { getLlmConfig, saveLlmConfig as persistLlmConfig, getTheme, saveTheme, getNavPosition, saveNavPosition } from './utils/aiStorage'
 import { getUserConfig, getCurrentUserId } from './utils/configManager'
@@ -754,20 +743,11 @@ import CalendarView from './components/productivity/CalendarView.vue'
 import PomodoroTimer from './components/productivity/PomodoroTimer.vue'
 import AlarmCountdown from './components/productivity/AlarmCountdown.vue'
 import SettingsPage from './components/common/SettingsPage.vue'
-import LoginPage from './components/common/LoginPage.vue'
 import ConfirmModal from './components/common/ConfirmModal.vue'
 import WheelDateTimePicker from './components/widgets/WheelDateTimePicker.vue'
 import { VueDatePicker } from '@vuepic/vue-datepicker'
 import '@vuepic/vue-datepicker/dist/main.css'
 import { zhCN } from 'date-fns/locale'
-
-// User Auth & Local Mode State
-const currentUser = ref<User | null>(
-  localStorage.getItem('todo_current_user')
-    ? JSON.parse(localStorage.getItem('todo_current_user')!)
-    : null
-)
-const showAuthModal = ref(false)
 
 // User Dropdown Menu State & Event Listeners
 const showUserMenu = ref(false)
@@ -869,33 +849,6 @@ onMounted(() => {
 onUnmounted(() => {
   window.removeEventListener('click', closeUserMenu)
 })
-
-function onLoginSuccess(user: User) {
-  currentUser.value = user
-  localStorage.setItem('todo_current_user', JSON.stringify(user))
-  localStorage.removeItem('todo_guest_mode')
-  showAuthModal.value = false
-  statusMessage.value = `🔑 已登录为 [${user.username}] (ID: ${user.id})`
-  loadTodos()
-}
-
-function onUseLocalMode() {
-  currentUser.value = null
-  localStorage.removeItem('todo_current_user')
-  localStorage.setItem('todo_guest_mode', 'true')
-  showAuthModal.value = false
-  statusMessage.value = `🏠 已切换为【游客模式】（离线本地可用）`
-  loadTodos()
-}
-
-function handleLogout() {
-  currentUser.value = null
-  localStorage.removeItem('todo_current_user')
-  localStorage.removeItem('todo_guest_mode')
-  showAuthModal.value = true
-  statusMessage.value = `↩️ 已退出登录`
-  loadTodos()
-}
 
 // Theme State
 const storedTheme = getTheme() as ThemeType | null
@@ -1131,7 +1084,7 @@ async function saveInlineEdit(todo: Todo) {
   const oldTitle = todo.title
   todo.title = newTitle
   try {
-    const uid = currentUser.value ? currentUser.value.id : 0
+    const uid = 0
     await tauriInvoke('update_todo', {
       id: todo.id,
       title: newTitle,
@@ -1158,7 +1111,7 @@ async function updateTodoPriority(todo: Todo, newPriority: string) {
   if (todo.priority === prio) return
   todo.priority = prio
   try {
-    const uid = currentUser.value ? currentUser.value.id : 0
+    const uid = 0
     await tauriInvoke('update_todo', {
       id: todo.id,
       title: todo.title,
@@ -1177,7 +1130,7 @@ async function updateTodoCategory(todo: Todo, newCategory: string) {
   if (todo.category === newCategory) return
   todo.category = newCategory
   try {
-    const uid = currentUser.value ? currentUser.value.id : 0
+    const uid = 0
     await tauriInvoke('update_todo', {
       id: todo.id,
       title: todo.title,
@@ -1214,7 +1167,7 @@ async function updateTodoReminder(todo: Todo, val: string) {
   const remindFormatted = val ? (val.includes('T') ? val.replace('T', ' ') + (val.length === 16 ? ':00' : '') : val) : null
   todo.remind_at = remindFormatted
   try {
-    const uid = currentUser.value ? currentUser.value.id : 0
+    const uid = 0
     await tauriInvoke('update_todo', {
       id: todo.id,
       title: todo.title,
@@ -1357,14 +1310,14 @@ async function clearCompletedTodos() {
 async function loadTodos() {
   loading.value = true
   try {
-    const uid = currentUser.value ? currentUser.value.id : 0
+    const uid = 0
     const result = await tauriInvoke<Todo[]>('get_todos', {
       filter: currentFilter.value,
       search: searchKeyword.value,
       user_id: uid
     })
     todos.value = result || []
-    statusMessage.value = `${currentUser.value ? `👤 [${currentUser.value.username}]` : '🏠 [本地模式]'} 共加载 ${todos.value.length} 项待办任务`
+    statusMessage.value = `🏠 [本地模式] 共加载 ${todos.value.length} 项待办任务`
   } catch (err: any) {
     statusMessage.value = `❌ 加载失败: ${err?.message || err}`
   } finally {
@@ -1381,7 +1334,7 @@ function setFilter(filter: FilterType) {
 async function toggleStatus(todo: Todo) {
   const newStatus = !todo.completed
   try {
-    const uid = currentUser.value ? currentUser.value.id : 0
+    const uid = 0
     await tauriInvoke('update_todo_status', { id: todo.id, completed: newStatus, user_id: uid })
     todo.completed = newStatus
     statusMessage.value = newStatus ? `✅ 标记任务 [${todo.title}] 已完成` : `↩️ 恢复任务 [${todo.title}] 为未完成`
@@ -1423,7 +1376,7 @@ async function saveTodoForm() {
   }
 
   const remindStr = todoForm.value.enableReminder && todoForm.value.remindAt ? todoForm.value.remindAt.replace('T', ' ') + ':00' : null
-  const uid = currentUser.value ? currentUser.value.id : 0
+  const uid = 0
 
   try {
     if (editingTodo.value) {
@@ -1464,7 +1417,7 @@ async function deleteTodo(id: number, skipConfirm = false) {
     if (!confirmed) return
   }
   try {
-    const uid = currentUser.value ? currentUser.value.id : 0
+    const uid = 0
     await tauriInvoke('delete_todo', { id, user_id: uid })
     statusMessage.value = `🗑️ 任务已成功删除`
     loadTodos()
@@ -1491,12 +1444,6 @@ function saveLlmConfig() {
 onMounted(() => {
   document.documentElement.setAttribute('data-theme', theme.value)
   loadTodos()
-  
-  // 启动软件后，若未登录且未记住游客模式，自动弹出 3D 登录/注册卡片
-  const isGuest = localStorage.getItem('todo_guest_mode') === 'true'
-  if (!currentUser.value && !isGuest) {
-    showAuthModal.value = true
-  }
 })
 </script>
 

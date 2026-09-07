@@ -1,6 +1,16 @@
-from fastapi import FastAPI
+import sys
+from pathlib import Path
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 from backend.api.routes import router
+
+
+def get_dist_dir() -> Path:
+    if getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS"):
+        return Path(sys._MEIPASS) / "dist"
+    return Path(__file__).resolve().parent.parent.parent / "dist"
 
 
 def create_app() -> FastAPI:
@@ -21,8 +31,19 @@ def create_app() -> FastAPI:
 
     app.include_router(router)
 
+    dist_dir = get_dist_dir()
+    assets_dir = dist_dir / "assets"
+    if assets_dir.exists():
+        app.mount("/assets", StaticFiles(directory=str(assets_dir)), name="assets")
+
     @app.get("/")
-    def root():
+    def root(request: Request):
+        accept = request.headers.get("accept", "")
+        index_file = dist_dir / "index.html"
+        # 浏览器常规请求 HTML 时优先返回前端界面
+        if "text/html" in accept and index_file.exists():
+            return FileResponse(str(index_file))
+        # 兼容 API 状态探活及单元测试
         return {
             "status": "ok",
             "message": "Todo Agent Python Backend is running",

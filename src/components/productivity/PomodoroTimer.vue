@@ -139,7 +139,7 @@
               <button
                 class="icon-btn-action reset"
                 @click="resetTask(task)"
-                title="重置当前计时"
+                title="重置当前计时与进度"
               >
                 <RotateCcw :size="14" />
               </button>
@@ -441,6 +441,7 @@ function resetTask(task: PomodoroItem) {
   const target = pomodoroList.value.find(t => t.id === task.id) || task
   target.isRunning = false
   target.mode = 'focus'
+  target.completedTomatoes = 0
   const mins = Number(target.focusMinutes) || modeMinutes.value.focus || 25
   target.focusMinutes = mins
   target.remainingSeconds = mins * 60
