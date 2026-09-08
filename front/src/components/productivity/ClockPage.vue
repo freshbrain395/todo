@@ -18,13 +18,13 @@
           @click="subTab = 'countdown'"
         >
           <Hourglass :size="16" />
-          <span>快捷倒计时与闹钟</span>
+          <span>快捷倒计时</span>
         </button>
       </div>
 
       <div class="nav-right">
         <span class="sub-nav-hint">
-          {{ subTab === 'pomodoro' ? '🔥 提升工作效率与专注力' : '⏳ 倒计时提醒与系统定闹钟' }}
+          {{ subTab === 'pomodoro' ? '🔥 提升工作效率与专注力' : '⏳ 倒计时专注与便捷提醒' }}
         </span>
       </div>
     </div>
@@ -32,7 +32,7 @@
     <!-- Main Workspace Container -->
     <div class="workspace-body">
       <PomodoroTimer v-if="subTab === 'pomodoro'" />
-      <AlarmCountdown v-else-if="subTab === 'countdown'" />
+      <CountdownPage v-else-if="subTab === 'countdown'" />
     </div>
   </div>
 </template>
@@ -41,7 +41,7 @@
 import { ref } from 'vue'
 import { Flame, Hourglass } from 'lucide-vue-next'
 import PomodoroTimer from './PomodoroTimer.vue'
-import AlarmCountdown from './AlarmCountdown.vue'
+import CountdownPage from './CountdownPage.vue'
 
 const subTab = ref<'pomodoro' | 'countdown'>('pomodoro')
 </script>

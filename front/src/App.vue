@@ -529,12 +529,12 @@
 
       <!-- Tab 5: Countdown Timer View -->
       <template v-else-if="currentTab === 'countdown'">
-        <AlarmCountdown mode="countdown" />
+        <CountdownPage />
       </template>
 
       <!-- Tab 6: Alarm View -->
       <template v-else-if="currentTab === 'alarm'">
-        <AlarmCountdown mode="alarm" />
+        <AlarmPage />
       </template>
 
       <!-- Tab 7: Pomodoro Timer View -->
@@ -756,7 +756,8 @@ import SearchEngineView from './components/common/SearchEngineView.vue'
 import LocalClockPage from './components/productivity/LocalClockPage.vue'
 import CalendarView from './components/productivity/CalendarView.vue'
 import PomodoroTimer from './components/productivity/PomodoroTimer.vue'
-import AlarmCountdown from './components/productivity/AlarmCountdown.vue'
+import CountdownPage from './components/productivity/CountdownPage.vue'
+import AlarmPage from './components/productivity/AlarmPage.vue'
 import SettingsPage from './components/common/SettingsPage.vue'
 import ConfirmModal from './components/common/ConfirmModal.vue'
 import WheelDateTimePicker from './components/widgets/WheelDateTimePicker.vue'

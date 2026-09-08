@@ -79,3 +79,38 @@ export interface SkillItem {
   systemPrompt: string;
   enabled: boolean;
 }
+
+// Countdown & Alarm Types
+export interface Countdown {
+  id: string;
+  title: string;
+  initialSeconds: number;
+  remainingSeconds: number;
+  isRunning: boolean;
+  soundType: string;
+  notifyType: 'sound_and_popup' | 'sound_only' | 'popup_only';
+  finishMessage?: string;
+}
+
+export type AlarmRepeat =
+  | 'holiday_compensate'
+  | 'compensate_only'
+  | 'workday'
+  | 'weekend'
+  | 'everyday'
+  | 'once'
+  | 'custom';
+
+export interface Alarm {
+  id: string;
+  time: string;
+  title: string;
+  enabled: boolean;
+  repeat: AlarmRepeat;
+  customDays: number[];
+  skipHolidays: boolean;
+  ringOnCompensate: boolean;
+  soundType: string;
+  snoozeMinutes?: number;
+}
+
