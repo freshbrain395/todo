@@ -8,55 +8,65 @@
 
 ---
 
-### 🚀 启动方式汇总
+### 🌟 统一使用体验架构
 
-本项目支持多种启动方式，您可以根据使用场景选择：
-
-#### 方式一：原生桌面 GUI 窗口（非浏览器模式，推荐）
-
-无需打开系统外部浏览器，直接以独立的桌面客户端窗口运行（基于 `pywebview`）：
-
-- **通过 Python 脚本直接启动**：
-  ```bash
-  uv run python run.py
-  # 或显式指定 gui 参数
-  uv run python run.py gui
-  ```
-- **通过一键批处理脚本（Windows）**：
-  ```cmd
-  run.bat
-  ```
-  *(若尚未生成可执行文件，该脚本会自动执行打包并拉起客户端)*
-- **直接运行打包好的可执行文件**：
-  ```cmd
-  .\release\todo-agent.exe
-  ```
+```text
+Todo Agent
+│
+├── 🖥️ 桌面图标
+│      └── 双击 → 原生 GUI 桌面客户端
+│
+└── 💻 命令行 (已自动加入 PATH)
+       ├── todo
+       │    └── CLI 聊天模式 (Chat + Todo 智能助理)
+       │
+       ├── todo gui
+       │    └── 启动原生桌面窗口
+       │
+       ├── todo web
+       │    └── 启动 Web 服务并自动打开浏览器
+       │
+       └── todo server
+            └── 仅在后台启动 API 服务
+```
 
 ---
 
-#### 方式二：交互式智能终端 CLI（非浏览器模式）
+### 📦 Windows 一键安装与部署
 
-完全脱离图形界面在终端中交互，支持自然语言意图识别与 Slash 快捷命令（基于 `prompt-toolkit` + `rich`）：
+在打包生成 `release/todo.exe` 后，可一键完成安装并加入系统环境变量：
 
-- **使用 `uv` 启动**：
-  ```bash
-  uv run todo-cli
-  # 或
-  uv run python run.py cli
-  ```
-- **使用 `pnpm` 启动**：
-  ```bash
-  pnpm run cli
-  ```
-- **常用 CLI 指令**：
-  - 进入交互终端后可直接输入自然语言（如：`提醒我明天下午3点开周会`）。
-  - 快捷指令：`/help`、`/list`、`/add <内容>`、`/done <ID>`、`/delete <ID>`、`/prompt`、`/model`、`/provider` 等。
+- **一键安装**：双击运行 `scripts/install.bat`（或在 PowerShell 中执行 `scripts/install.ps1`）
+  - 自动部署至 `%LOCALAPPDATA%\Programs\Todo Agent\`
+  - 自动创建桌面快捷方式（双击直达 GUI）
+  - 自动创建开始菜单入口
+  - 自动将目录注册进系统用户 `PATH`，新开终端直接敲 `todo` 即可使用
+- **数据存储隔离**：
+  - 数据库与配置文件统一持久化至 `%APPDATA%\Todo Agent\`（升级与重装不丢失待办与 API Key）
+- **一键卸载**：运行 `powershell scripts/uninstall.ps1` 即可干净清理快捷方式与 PATH，保留用户数据。
 
 ---
 
-#### 方式三：Web 浏览器开发与联调模式
+### 🚀 启动与使用方式汇总
 
-适合进行前端界面开发调试或直接在浏览器中使用：
+#### 方式一：命令行统一入口（推荐）
+在终端中直接使用 `todo` 命令：
+- `todo`：直接进入 **Chat + Todo 智能对话** 模式（自然语言交流，无需先输入 `/chat`）
+- `todo gui`：启动原生桌面 GUI 窗口
+- `todo web`：启动 Web 服务并在浏览器中打开
+- `todo server`：仅在后台启动 FastAPI 服务
+
+#### 方式二：桌面原生 GUI 客户端
+- 双击桌面上的 **Todo Agent** 快捷方式
+- 或运行源码：`uv run python run.py gui`
+- 或执行批处理：`run.bat`
+
+#### 方式三：开发者联调模式
+```bash
+pnpm dev              # 一键同时启动后端与前端 Vite 开发服务
+pnpm run dev:frontend # 仅启动前端 Vite 开发服务器
+pnpm run dev:backend  # 仅启动 FastAPI 后端
+```
 
 - **一键启动前后端（开发推荐）**：
   ```bash

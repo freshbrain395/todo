@@ -35,22 +35,37 @@ class AiActionResult:
     should_refresh: bool
 
 
-DEFAULT_AGENT_PROMPT = """你是一个待办事项智能助手。根据用户的自然语言输入，解析其意图并返回固定格式的 JSON 对象：
-JSON 格式标准：
+DEFAULT_AGENT_PROMPT = """你是一个智能、高效且亲切的 Todo Agent 个人助手。
+你不仅可以与用户自由畅聊、解答疑问，还可以根据自然语言管理用户的待办事项。
+
+【行为规范】
+1. 当用户输入属于日常问候、聊天、倾诉、询问建议或与待办操作无关时：
+   - 将 action 设为 "chat"
+   - 在 raw_response 中给出自然、亲切、富有同理心的回复（例如："你好！有什么我可以帮你的？"）
+2. 当用户意图涉及待办操作（新建、标记完成、修改、删除、查询）：
+   - add: 新建待办。data 包含 title, priority ("high"|"medium"|"low", 默认 "medium"), category (默认 "工作"), remind_at (可选, 格式 YYYY-MM-DD HH:MM:SS)
+   - complete: 标记完成。data 包含 id (任务ID整数)
+   - update: 修改已有任务（如调整优先级、修改标题或提醒时间）。data 包含 id (整数)，以及被修改字段
+   - delete: 删除任务。data 包含 id (整数)
+   - query: 查询任务。在 raw_response 中直接根据上下文向用户总结汇报任务
+   - 在 raw_response 中给出简明有力的反馈（例如："✓ 已创建待办 #23", "✓ 已将 #23 设置为高优先级"）
+3. 严格输出标准 JSON 格式，不输出额外的 markdown 标记外的闲聊字符。
+
+JSON 输出格式标准：
 {
-  "action": "add" | "complete" | "delete" | "query" | "chat",
+  "action": "chat" | "add" | "complete" | "update" | "delete" | "query",
   "data": {
-    "title": "任务标题（如果 action 是 add）",
+    "id": 123,
+    "title": "任务标题",
     "priority": "high" | "medium" | "low",
     "category": "工作" | "生活" | "学习" | "个人",
-    "remind_at": "YYYY-MM-DD HH:MM:SS" (可选),
-    "id": 123 (如果 action 是 complete 或 delete)
+    "remind_at": "YYYY-MM-DD HH:MM:SS"
   },
   "raw_response": "给用户的亲切回复文本"
 }"""
 
 DEFAULT_SYSTEM_PROMPT = DEFAULT_AGENT_PROMPT
-DEFAULT_CHAT_PROMPT = """你是一个智能、友善、乐于助人的 AI 助理。请直接用自然、流畅、清晰的语言回答用户的任何问题、进行自由交流与对话。"""
+DEFAULT_CHAT_PROMPT = DEFAULT_AGENT_PROMPT
 
 
 import os
@@ -242,15 +257,21 @@ async def parse_intent_and_execute(
 ) -> AiActionResult:
     await ensure_ollama_running(config.base_url, config.provider)
 
-    # 判断是否为纯聊天模式（没有指定特定 Agent/Skill 的待办系统提示词）
-    is_agent_mode = bool(system_prompt and "待办" in system_prompt or system_prompt and "action" in system_prompt)
-
-    if is_agent_mode:
-        sys_prompt = f"{DEFAULT_AGENT_PROMPT}\n\n{system_prompt.strip()}"
-    elif system_prompt and system_prompt.strip():
-        sys_prompt = system_prompt.strip()
+    import datetime
+    now_str = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    current_todos = todo_repo.get_todos(db, "pending", "", user_id)
+    todos_context_lines = [f"【当前系统时间】: {now_str}"]
+    if current_todos:
+        todos_context_lines.append("【用户当前未完成待办清单】:")
+        for t in current_todos[:15]:
+            rem = f", 提醒: {t['remind_at']}" if t.get("remind_at") else ""
+            todos_context_lines.append(f"- #{t['id']} [{t['category']}] {t['title']} (优先级: {t['priority']}{rem})")
     else:
-        sys_prompt = DEFAULT_CHAT_PROMPT
+        todos_context_lines.append("【用户当前暂无未完成待办】")
+    context_str = "\n".join(todos_context_lines)
+
+    base_prompt = system_prompt.strip() if (system_prompt and system_prompt.strip()) else DEFAULT_AGENT_PROMPT
+    sys_prompt = f"{base_prompt}\n\n{context_str}"
 
     is_openai_compat = config.provider.lower() in ["siliconflow", "openai", "deepseek", "qwen"] or "11434" not in config.base_url
 
@@ -280,7 +301,7 @@ async def parse_intent_and_execute(
         body: Dict[str, Any] = {
             "model": config.model,
             "messages": messages,
-            "temperature": 0.7 if not is_agent_mode else 0.2,
+            "temperature": 0.4,
         }
         if config.enable_thinking:
             body["enable_thinking"] = True
@@ -336,16 +357,7 @@ async def parse_intent_and_execute(
 
     content_text = clean_llm_response(content_text)
 
-    # 如果是纯聊天模式，直接返回大模型的自然语言回复
-    if not is_agent_mode:
-        return AiActionResult(
-            action="chat",
-            data={},
-            message=content_text if content_text else "收到您的消息。",
-            should_refresh=False,
-        )
-
-    # Agent 模式下尝试解析 JSON 动作
+    # 尝试解析 JSON 动作
     clean_json = (
         content_text.strip()
         .removeprefix("```json")
@@ -358,11 +370,18 @@ async def parse_intent_and_execute(
     try:
         parsed_result = json.loads(clean_json)
     except Exception:
-        # 如果不是严格 JSON，直接以对话形式返回
+        json_match = re.search(r"\{[\s\S]*\}", clean_json)
+        if json_match:
+            try:
+                parsed_result = json.loads(json_match.group(0))
+            except Exception:
+                pass
+
+    if not isinstance(parsed_result, dict):
         return AiActionResult(
             action="chat",
             data={},
-            message=content_text,
+            message=content_text if content_text else "你好！有什么我可以帮你的？",
             should_refresh=False,
         )
 
@@ -378,11 +397,15 @@ async def parse_intent_and_execute(
         remind_at = data.get("remind_at")
 
         todo_id = todo_repo.add_todo(db, title, priority, category, remind_at, user_id)
-        reply = parsed_result.get("raw_response") or "已为您智能创建待办事项！"
+        reply = parsed_result.get("raw_response")
+        if not reply or "{" in reply:
+            reply = f"✓ 已创建待办 #{todo_id}"
+        elif f"#{todo_id}" not in reply:
+            reply = f"✓ 已创建待办 #{todo_id}"
         return AiActionResult(
             action="add",
             data={"id": todo_id, "title": title, "priority": priority, "category": category},
-            message=f"{reply} \n\n✨ 任务详情：[{title}] (分类: {category}, 优先级: {priority})",
+            message=reply,
             should_refresh=True,
         )
 
@@ -390,18 +413,56 @@ async def parse_intent_and_execute(
         t_id = data.get("id") or 0
         if t_id and int(t_id) > 0:
             todo_repo.update_todo_status(db, int(t_id), True, user_id)
+            reply = parsed_result.get("raw_response") or f"✓ 已将 #{t_id} 标记为已完成"
             return AiActionResult(
                 action="complete",
                 data={"id": int(t_id)},
-                message=f"已成功标记任务 ID [{t_id}] 为已完成！",
+                message=reply,
                 should_refresh=True,
             )
         else:
-            reply = parsed_result.get("raw_response") or "收到指令，请提供具体的任务 ID 或明确说明要完成哪一项。"
+            reply = parsed_result.get("raw_response") or "请说明要完成哪一项待办（如：完成 #23）。"
             return AiActionResult(
                 action="complete",
                 data={},
-                message=f"{reply}",
+                message=reply,
+                should_refresh=False,
+            )
+
+    elif action == "update":
+        t_id = data.get("id") or 0
+        if t_id and int(t_id) > 0:
+            existing = None
+            for item in todo_repo.get_todos(db, "all", "", user_id):
+                if item["id"] == int(t_id):
+                    existing = item
+                    break
+            if existing:
+                title = data.get("title") or existing["title"]
+                priority = data.get("priority") or existing["priority"]
+                category = data.get("category") or existing["category"]
+                remind_at = data.get("remind_at") if "remind_at" in data else existing.get("remind_at")
+                todo_repo.update_todo(db, int(t_id), title, priority, category, remind_at, user_id)
+                reply = parsed_result.get("raw_response") or f"✓ 已将 #{t_id} 更新完成"
+                return AiActionResult(
+                    action="update",
+                    data={"id": int(t_id), "title": title, "priority": priority, "category": category},
+                    message=reply,
+                    should_refresh=True,
+                )
+            else:
+                return AiActionResult(
+                    action="update",
+                    data={},
+                    message=f"未找到待办 #{t_id}。",
+                    should_refresh=False,
+                )
+        else:
+            reply = parsed_result.get("raw_response") or "请说明要修改哪个待办任务（例如：把 #23 改成高优先级）。"
+            return AiActionResult(
+                action="update",
+                data={},
+                message=reply,
                 should_refresh=False,
             )
 
@@ -409,36 +470,45 @@ async def parse_intent_and_execute(
         t_id = data.get("id") or 0
         if t_id and int(t_id) > 0:
             todo_repo.delete_todo(db, int(t_id), user_id)
+            reply = parsed_result.get("raw_response") or f"✓ 已删除待办 #{t_id}"
             return AiActionResult(
                 action="delete",
                 data={"id": int(t_id)},
-                message=f"已成功删除任务 ID [{t_id}]！",
+                message=reply,
                 should_refresh=True,
             )
         else:
-            reply = parsed_result.get("raw_response") or "收到指令，请提供具体的任务 ID 或明确说明要删除哪一项。"
+            reply = parsed_result.get("raw_response") or "请说明要删除哪一项任务（例如：删除 #23）。"
             return AiActionResult(
                 action="delete",
                 data={},
-                message=f"{reply}",
+                message=reply,
                 should_refresh=False,
             )
 
     elif action == "query":
+        reply = parsed_result.get("raw_response")
+        if reply and "{" not in reply:
+            return AiActionResult(
+                action="query",
+                data={},
+                message=reply,
+                should_refresh=False,
+            )
         todos = todo_repo.get_todos(db, "pending", "", user_id)
         if not todos:
             return AiActionResult(
                 action="query",
                 data={"todos": []},
-                message="您当前没有任何未完成的任务，太棒了！🎉",
+                message="你当前没有任何未完成的任务，太棒了！🎉",
                 should_refresh=False,
             )
-        lines = [f"📋 您当前共有 {len(todos)} 条未完成的待办事项："]
+        lines = [f"你当前有 {len(todos)} 个待办："]
         for idx, t in enumerate(todos[:10], 1):
-            pri_tag = "[高]" if t["priority"] == "high" else ("[中]" if t["priority"] == "medium" else "[低]")
-            lines.append(f"{idx}. #{t['id']} [{t['category']}] {t['title']} {pri_tag}")
+            pri_tag = "高" if t["priority"] == "high" else ("中" if t["priority"] == "medium" else "低")
+            lines.append(f"  {idx}. #{t['id']} [{t['category']}] {t['title']} ({pri_tag}优先级)")
         if len(todos) > 10:
-            lines.append(f"... 还有 {len(todos) - 10} 项未列出")
+            lines.append(f"  ... 还有 {len(todos) - 10} 项未列出")
         return AiActionResult(
             action="query",
             data={"todos": todos},
@@ -448,10 +518,10 @@ async def parse_intent_and_execute(
 
     else:
         # 普通聊天
-        reply = parsed_result.get("raw_response") or content_text or "好的，我已记录您的信息。"
+        reply = parsed_result.get("raw_response") or content_text or "你好！有什么我可以帮你的？"
         return AiActionResult(
             action="chat",
             data=data,
-            message=f"{reply}",
+            message=reply,
             should_refresh=False,
         )

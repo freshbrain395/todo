@@ -5,17 +5,26 @@ from dataclasses import dataclass, asdict
 from typing import Any, Dict
 import platformdirs
 
-APP_NAME = "todo_agent"
-APP_AUTHOR = "todo_agent"
+APP_NAME = "Todo Agent"
+APP_AUTHOR = "Todo Agent"
 
 
 def get_app_dir() -> Path:
-    data_dir = Path(platformdirs.user_data_dir(APP_NAME, APP_AUTHOR))
+    """获取应用数据根目录: %APPDATA%\\Todo Agent"""
+    data_dir = Path(platformdirs.user_data_dir(APP_NAME, appauthor=False, roaming=True))
     data_dir.mkdir(parents=True, exist_ok=True)
     return data_dir
 
 
+def get_logs_dir() -> Path:
+    """获取日志存储目录: %APPDATA%\\Todo Agent\\logs"""
+    logs_dir = get_app_dir() / "logs"
+    logs_dir.mkdir(parents=True, exist_ok=True)
+    return logs_dir
+
+
 def get_db_path() -> Path:
+    """数据库统一保存在用户数据目录下: %APPDATA%\\Todo Agent\\todos.db"""
     return get_app_dir() / "todos.db"
 
 
@@ -28,14 +37,23 @@ def get_backend_dir() -> Path:
 
 
 def get_config_path() -> Path:
-    """获取全局统一 JSON 配置文件路径 (优先 backend/config.json，兼容根目录)"""
-    backend_cfg = get_backend_dir() / "config.json"
-    if backend_cfg.exists():
-        return backend_cfg
-    root_cfg = get_project_root() / "config.json"
-    if root_cfg.exists():
-        return root_cfg
-    return backend_cfg
+    """获取全局统一 JSON 配置文件路径 (存储在 %APPDATA%\\Todo Agent\\config.json)"""
+    app_cfg = get_app_dir() / "config.json"
+    if not app_cfg.exists():
+        # 如果用户目录中尚无配置文件，尝试从项目目录或模板初始化
+        for candidate in [
+            get_backend_dir() / "config.json",
+            get_backend_dir() / "config.example.json",
+            get_project_root() / "config.json",
+        ]:
+            if candidate.exists():
+                try:
+                    import shutil
+                    shutil.copy2(candidate, app_cfg)
+                    return app_cfg
+                except Exception:
+                    pass
+    return app_cfg
 
 
 # 兼容别名

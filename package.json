@@ -4,16 +4,18 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "dev": "concurrently -k -n backend,frontend -c magenta,cyan \"uv run todo-server\" \"pnpm --dir front dev\"",
-    "dev:backend": "uv run todo-server",
+    "dev": "concurrently -k -n backend,frontend -c magenta,cyan \"uv run todo server\" \"pnpm --dir front dev\"",
+    "dev:backend": "uv run todo server",
     "dev:frontend": "pnpm --dir front dev",
-    "cli": "uv run todo-cli",
+    "cli": "uv run todo",
+    "gui": "uv run python run.py gui",
+    "web": "uv run python run.py web",
     "build": "pnpm --dir front build",
-    "build:exe": "pnpm --dir front build && uv run python -m PyInstaller --noconfirm --clean --noupx --onefile --name todo-agent --distpath release --workpath build/pyinstaller --add-data \"front/dist;dist\" --collect-all uvicorn --collect-all fastapi --collect-all backend --collect-all webview --collect-all pythonnet --collect-all clr_loader backend/main.py",
+    "build:exe": "pnpm --dir front build && uv run python -m PyInstaller --noconfirm --clean --noupx --onefile --name todo --distpath release --workpath build/pyinstaller --add-data \"front/dist;dist\" --collect-all uvicorn --collect-all fastapi --collect-all backend --collect-all webview --collect-all pythonnet --collect-all clr_loader backend/main.py",
     "preview": "pnpm --dir front preview",
     "test": "pnpm --dir front test",
-    "test:backend": "uv run --extra dev pytest backend/tests",
-    "test:all": "pnpm --dir front test && uv run --extra dev pytest backend/tests"
+    "test:backend": "uv run python -m pytest backend/tests",
+    "test:all": "pnpm --dir front test && uv run python -m pytest backend/tests"
   },
   "devDependencies": {
     "concurrently": "^10.0.4"

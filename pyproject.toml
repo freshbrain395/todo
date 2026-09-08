@@ -17,9 +17,9 @@ dependencies = [
 ]
 
 [project.scripts]
+todo = "backend.main:main"
 todo-server = "backend.main:run_server"
 todo-cli = "backend.cli:run_cli"
-todo = "backend.cli:run_cli"
 
 [project.optional-dependencies]
 dev = [

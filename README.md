@@ -8,55 +8,64 @@ A modern LLM-powered TODO agent application designed with natural language task 
 
 ---
 
-### 🚀 Getting Started
+### 🌟 Unified Experience Architecture
 
-Choose from multiple launch modes depending on your workflow:
-
-#### Mode 1: Native Desktop GUI Window (Recommended)
-
-Runs directly as an independent desktop window using `pywebview` without opening an external browser:
-
-- **Launch via Python script directly**:
-  ```bash
-  uv run python run.py
-  # or explicitly pass the gui argument
-  uv run python run.py gui
-  ```
-- **Launch via Windows batch script**:
-  ```cmd
-  run.bat
-  ```
-  *(If the binary has not been built yet, this script will automatically package and launch it)*
-- **Run the packaged standalone executable**:
-  ```cmd
-  .\release\todo-agent.exe
-  ```
+```text
+Todo Agent
+│
+├── 🖥️ Desktop Shortcut
+│      └── Double click → Native GUI Window
+│
+└── 💻 Command Line (Automatically registered in PATH)
+       ├── todo
+       │    └── CLI Chat Mode (Chat + Todo AI Agent)
+       │
+       ├── todo gui
+       │    └── Launch Native Desktop Window
+       │
+       ├── todo web
+       │    └── Launch Web Server & auto-open default browser
+       │
+       └── todo server
+            └── Run backend API service in background
+```
 
 ---
 
-#### Mode 2: Interactive Terminal CLI
+### 📦 Windows One-Click Installer & Deployment
 
-Run completely inside your terminal without GUI overhead. Supports natural language intent understanding and slash commands powered by `prompt-toolkit` and `rich`:
+After building the standalone binary `release/todo.exe`, you can install and configure it in one click:
 
-- **Launch via `uv`**:
-  ```bash
-  uv run todo-cli
-  # or
-  uv run python run.py cli
-  ```
-- **Launch via `pnpm`**:
-  ```bash
-  pnpm run cli
-  ```
-- **Common CLI Commands**:
-  - Input plain natural language directly (e.g., `Remind me to attend the team meeting tomorrow at 3 PM`).
-  - Slash commands: `/help`, `/list`, `/add <text>`, `/done <ID>`, `/delete <ID>`, `/prompt`, `/model`, `/provider`, etc.
+- **One-Click Install**: Run `scripts/install.bat` (or execute `scripts/install.ps1` in PowerShell):
+  - Deploys executable to `%LOCALAPPDATA%\Programs\Todo Agent\`
+  - Creates Desktop shortcut pointing directly to GUI
+  - Creates Start Menu shortcut
+  - Adds the directory to user `PATH` (run `todo` directly from any prompt)
+- **Safe Data Storage**:
+  - SQLite database and configurations are isolated in `%APPDATA%\Todo Agent\` (survives upgrades and reinstallation)
+- **Clean Uninstall**: Run `powershell scripts/uninstall.ps1` to clean up shortcuts and PATH while preserving user data.
 
 ---
 
-#### Mode 3: Web Browser Development & Debugging
+### 🚀 Usage & Launch Modes
 
-Ideal for frontend development, debugging, or using inside a browser:
+#### Mode 1: Unified Command Line (`todo`)
+- `todo`: Enter **Chat + Todo Agent** directly (natural language, no need for `/chat`)
+- `todo gui`: Launch native desktop client
+- `todo web`: Launch web service and open default browser
+- `todo server`: Start backend FastAPI server only
+
+#### Mode 2: Desktop GUI
+- Double click the **Todo Agent** desktop shortcut
+- Or run: `uv run python run.py gui`
+- Or run batch script: `run.bat`
+
+#### Mode 3: Developer Live Reload
+```bash
+pnpm dev              # Concurrently run FastAPI server & Vite frontend
+pnpm run dev:frontend # Frontend only
+pnpm run dev:backend  # Backend only
+```
 
 - **Launch both Frontend and Backend concurrently (Recommended)**:
   ```bash

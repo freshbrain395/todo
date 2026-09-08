@@ -93,8 +93,8 @@ class SlashCommandCompleter(Completer):
 
 
 def print_banner(display_cfg):
-    banner_text = f"[bold cyan]🎯 Todo Agent CLI[/bold cyan] [dim](Python Edition)[/dim]\n"
-    banner_text += f"[dim]输入 [green]/help[/green] 查看命令，或直接输入自然语言与 {display_cfg.ai_name} 交互[/dim]"
+    banner_text = "[bold cyan]Todo Agent CLI[/bold cyan]\n"
+    banner_text += "[dim]默认处于 Chat + Todo 智能模式，直接输入自然语言与 AI 对话或管理待办\n输入 [green]/help[/green] 查看命令，输入 [green]/exit[/green] 退出[/dim]"
     console.print(Panel(banner_text, border_style="cyan", padding=(0, 2)))
 
 
@@ -664,9 +664,7 @@ async def handle_command(
             history.append({"role": "user", "content": line})
             history.append({"role": "assistant", "content": result.message})
 
-            console.print(f"\n{result.message}\n")
-            if result.should_refresh and result.action in ["add", "complete", "delete"]:
-                list_todos(db)
+            console.print(f"[bold green]AI[/bold green] › {result.message}\n")
         except Exception as e:
             console.print(f"[red]执行出错: {e}[/red]")
         finally:
@@ -684,7 +682,7 @@ async def main_loop():
 
     current_mode: Dict[str, Any] = {
         "role": "chat",
-        "display_name": "聊天模式",
+        "display_name": "Chat + Todo",
         "status_text": "就绪",
         "system_prompt": "",
     }
@@ -699,7 +697,7 @@ async def main_loop():
 
     while True:
         try:
-            prompt_str = f"<b><ansicyan>{display_cfg.user_prefix}</ansicyan></b> &gt; "
+            prompt_str = "<b><ansicyan>You</ansicyan></b> › "
             user_input = await session.prompt_async(HTML(prompt_str))
             should_continue = await handle_command(
                 user_input, db, llm_cfg, history, current_mode, session

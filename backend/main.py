@@ -80,30 +80,34 @@ def run_server(host: str = "127.0.0.1", port: int = 8000, open_web: bool = False
 
 
 def main():
-    if len(sys.argv) > 1 and sys.argv[1] == "cli":
-        sys.argv.pop(1)
-        run_cli()
-    elif len(sys.argv) > 1 and sys.argv[1] in ["--help", "-h"]:
-        print("Todo Agent")
-        print("用法:")
-        print("  todo-agent.exe [gui|server|cli|--web]")
-        print("  todo-agent.exe              启动原生桌面 GUI 窗口（默认）")
-        print("  todo-agent.exe gui          启动原生桌面 GUI 窗口")
-        print("  todo-agent.exe --web        启动本地服务并使用外部浏览器打开")
-        print("  todo-agent.exe server       仅启动后端服务（无窗口、不弹出浏览器）")
-        print("  todo-agent.exe cli          启动交互式智能终端 CLI")
-    elif len(sys.argv) > 1 and sys.argv[1] == "server":
-        sys.argv.pop(1)
-        run_server(open_web=False)
-    elif len(sys.argv) > 1 and sys.argv[1] == "--web":
-        sys.argv.pop(1)
-        run_server(open_web=True)
-    elif len(sys.argv) > 1 and sys.argv[1] == "gui":
-        sys.argv.pop(1)
-        run_gui()
+    if len(sys.argv) > 1:
+        cmd = sys.argv[1].lower()
+        if cmd == "gui":
+            sys.argv.pop(1)
+            run_gui()
+        elif cmd in ["web", "--web"]:
+            sys.argv.pop(1)
+            run_server(open_web=True)
+        elif cmd == "server":
+            sys.argv.pop(1)
+            run_server(open_web=False)
+        elif cmd == "cli":
+            sys.argv.pop(1)
+            run_cli()
+        elif cmd in ["--help", "-h"]:
+            print("Todo Agent")
+            print("用法:")
+            print("  todo                 启动 CLI 聊天模式 (默认)")
+            print("  todo gui             启动原生桌面 GUI 客户端")
+            print("  todo web             启动 Web 服务并自动打开浏览器")
+            print("  todo server          仅启动后端服务 (不弹出浏览器)")
+            print("  todo cli             启动交互式智能终端 CLI")
+        else:
+            # 兼容带有参数直接作为 CLI 启动
+            run_cli()
     else:
-        # 默认模式：直接启动桌面原生 GUI 客户端（无浏览器降级）
-        run_gui()
+        # 默认无参数：启动 CLI 聊天模式
+        run_cli()
 
 
 if __name__ == "__main__":
