@@ -1,35 +1,21 @@
 {
-  "name": "todo-agent-vue",
+  "name": "todo-agent-root",
   "private": true,
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "dev": "concurrently -k -n backend,frontend -c magenta,cyan \"uv run todo-server\" \"vite\"",
+    "dev": "concurrently -k -n backend,frontend -c magenta,cyan \"uv run todo-server\" \"pnpm --dir front dev\"",
     "dev:backend": "uv run todo-server",
-    "dev:frontend": "vite",
+    "dev:frontend": "pnpm --dir front dev",
     "cli": "uv run todo-cli",
-    "build": "vue-tsc && vite build",
-    "build:exe": "pnpm run build && uv run python -m PyInstaller --noconfirm --clean --onefile --name todo-agent --distpath release --workpath build/pyinstaller --add-data \"dist;dist\" --collect-all uvicorn --collect-all fastapi --collect-all backend --collect-all webview --collect-all pythonnet --collect-all clr_loader backend/main.py",
-    "preview": "vite preview",
-    "test": "vitest run",
+    "build": "pnpm --dir front build",
+    "build:exe": "pnpm --dir front build && uv run python -m PyInstaller --noconfirm --clean --noupx --onefile --name todo-agent --distpath release --workpath build/pyinstaller --add-data \"front/dist;dist\" --collect-all uvicorn --collect-all fastapi --collect-all backend --collect-all webview --collect-all pythonnet --collect-all clr_loader backend/main.py",
+    "preview": "pnpm --dir front preview",
+    "test": "pnpm --dir front test",
     "test:backend": "uv run --extra dev pytest backend/tests",
-    "test:all": "vitest run && uv run --extra dev pytest backend/tests"
-  },
-  "dependencies": {
-    "@tauri-apps/api": "^2.11.1",
-    "@vuepic/vue-datepicker": "^14.0.0",
-    "date-fns": "^4.4.0",
-    "lucide-vue-next": "^0.454.0",
-    "vue": "^3.5.12"
+    "test:all": "pnpm --dir front test && uv run --extra dev pytest backend/tests"
   },
   "devDependencies": {
-    "@vitejs/plugin-vue": "^5.1.4",
-    "@vue/test-utils": "^2.4.11",
-    "concurrently": "^10.0.4",
-    "happy-dom": "^20.11.1",
-    "typescript": "^5.6.3",
-    "vite": "^5.4.10",
-    "vitest": "^1.6.0",
-    "vue-tsc": "^2.1.8"
+    "concurrently": "^10.0.4"
   }
 }

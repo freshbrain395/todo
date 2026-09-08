@@ -23,9 +23,19 @@ def get_project_root() -> Path:
     return Path(__file__).resolve().parent.parent
 
 
+def get_backend_dir() -> Path:
+    return Path(__file__).resolve().parent
+
+
 def get_config_path() -> Path:
-    """获取全局统一 JSON 配置文件路径"""
-    return get_project_root() / "config.json"
+    """获取全局统一 JSON 配置文件路径 (优先 backend/config.json，兼容根目录)"""
+    backend_cfg = get_backend_dir() / "config.json"
+    if backend_cfg.exists():
+        return backend_cfg
+    root_cfg = get_project_root() / "config.json"
+    if root_cfg.exists():
+        return root_cfg
+    return backend_cfg
 
 
 # 兼容别名

@@ -1,4 +1,3 @@
-from backend.service.user import UserService
 from backend.service.todo import TodoService
 from backend.service.config import ConfigService
 from backend.service.ai_config import AiConfigService
@@ -15,7 +14,6 @@ from backend.service.ai import (
 )
 
 __all__ = [
-    "UserService",
     "TodoService",
     "ConfigService",
     "AiConfigService",

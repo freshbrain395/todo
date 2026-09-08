@@ -27,7 +27,7 @@ export interface LlmConfig {
 
 export type FilterType = 'all' | 'pending' | 'completed';
 export type ThemeType = 'light' | 'dark' | 'nord';
-export type NavPosition = 'top' | 'left' | 'desktop';
+export type NavPosition = 'top' | 'left' | 'desktop' | 'search';
 
 export interface AiActionResult {
   action: string;

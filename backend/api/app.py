@@ -10,7 +10,11 @@ from backend.api.routes import router
 def get_dist_dir() -> Path:
     if getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS"):
         return Path(sys._MEIPASS) / "dist"
-    return Path(__file__).resolve().parent.parent.parent / "dist"
+    root_dir = Path(__file__).resolve().parent.parent.parent
+    front_dist = root_dir / "front" / "dist"
+    if front_dist.exists():
+        return front_dist
+    return root_dir / "dist"
 
 
 def create_app() -> FastAPI:

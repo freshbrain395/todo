@@ -1,11 +1,11 @@
 <template>
   <div
     class="app-layout"
-    :class="[navPosition === 'left' ? 'layout-nav-left' : navPosition === 'desktop' ? 'layout-nav-desktop' : 'layout-nav-top']"
+    :class="[navPosition === 'left' ? 'layout-nav-left' : navPosition === 'desktop' ? 'layout-nav-desktop' : navPosition === 'search' ? 'layout-nav-search' : 'layout-nav-top']"
     :data-theme="theme"
   >
-    <!-- 1. Header Bar with Navigation Tabs (Hidden in Desktop OS Mode) -->
-    <header v-if="navPosition !== 'desktop'" class="header">
+    <!-- 1. Header Bar with Navigation Tabs (Hidden in Desktop OS Mode and Search Engine Mode) -->
+    <header v-if="navPosition !== 'desktop' && navPosition !== 'search'" class="header">
       <div class="header-left">
         <!-- Mobile Navigation Toggle Button (< 640px) -->
         <button
@@ -152,8 +152,22 @@
 
     <!-- 2. Main Content Area -->
     <main class="main-content">
-      <!-- Tab 0: Desktop View -->
-      <template v-if="currentTab === 'desktop'">
+      <!-- Tab 0: Search Engine Style View -->
+      <template v-if="currentTab === 'search'">
+        <SearchEngineView
+          :todos="todos"
+          :llmConfig="llmConfig"
+          @open-app="tab => currentTab = (tab as TabType)"
+          @open-add-todo="openAddModal"
+          @add-todo="title => quickAddTodoFromSearch(title)"
+          @toggle-status="toggleStatus"
+          @delete-todo="id => deleteTodo(id)"
+          @execute-ai="input => handleSearchAiCommand(input)"
+        />
+      </template>
+
+      <!-- Tab 0.5: Desktop View -->
+      <template v-else-if="currentTab === 'desktop'">
         <DesktopView
           :todos="todos"
           @open-app="tab => currentTab = tab"
@@ -738,6 +752,7 @@ import { showConfirm } from './utils/confirmState'
 import { getLlmConfig, saveLlmConfig as persistLlmConfig, getTheme, saveTheme, getNavPosition, saveNavPosition } from './utils/aiStorage'
 import { getUserConfig, getCurrentUserId } from './utils/configManager'
 import DesktopView from './components/common/DesktopView.vue'
+import SearchEngineView from './components/common/SearchEngineView.vue'
 import LocalClockPage from './components/productivity/LocalClockPage.vue'
 import CalendarView from './components/productivity/CalendarView.vue'
 import PomodoroTimer from './components/productivity/PomodoroTimer.vue'
@@ -749,18 +764,8 @@ import { VueDatePicker } from '@vuepic/vue-datepicker'
 import '@vuepic/vue-datepicker/dist/main.css'
 import { zhCN } from 'date-fns/locale'
 
-// User Dropdown Menu State & Event Listeners
-const showUserMenu = ref(false)
-
 // Mobile Navigation Dropdown Menu State (< 640px)
 const showMobileNavMenu = ref(false)
-
-function toggleUserMenu(e: Event) {
-  e.stopPropagation()
-  showUserMenu.value = !showUserMenu.value
-  showMobileNavMenu.value = false
-}
-void toggleUserMenu
 
 // Popover Menus State
 const activeMenuId = ref<string | null>(null)
@@ -808,7 +813,6 @@ function selectCategory(todo: Todo, cat: string) {
 }
 
 function closeUserMenu() {
-  showUserMenu.value = false
   showMobileNavMenu.value = false
   activeMenuId.value = null
 }
@@ -816,7 +820,6 @@ function closeUserMenu() {
 function toggleMobileNavMenu(e: Event) {
   e.stopPropagation()
   showMobileNavMenu.value = !showMobileNavMenu.value
-  showUserMenu.value = false
 }
 
 // Navigation Position State (top | left | desktop)
@@ -825,8 +828,8 @@ const storedNavPos = getNavPosition() as NavPosition | null
 const navPosition = ref<NavPosition>(storedNavPos || userInitialConfig.navPosition || 'top')
 
 // Navigation Tab State
-type TabType = 'desktop' | 'todos' | 'calendar' | 'local-clock' | 'countdown' | 'alarm' | 'pomodoro' | 'settings'
-const currentTab = ref<TabType>(navPosition.value === 'desktop' ? 'desktop' : 'todos')
+type TabType = 'desktop' | 'search' | 'todos' | 'calendar' | 'local-clock' | 'countdown' | 'alarm' | 'pomodoro' | 'settings'
+const currentTab = ref<TabType>(navPosition.value === 'desktop' ? 'desktop' : navPosition.value === 'search' ? 'search' : 'todos')
 
 function selectMobileTab(tab: TabType) {
   currentTab.value = tab
@@ -837,18 +840,48 @@ watch(navPosition, (newVal) => {
   saveNavPosition(newVal)
   if (newVal === 'desktop') {
     currentTab.value = 'desktop'
-  } else if (currentTab.value === 'desktop') {
+  } else if (newVal === 'search') {
+    currentTab.value = 'search'
+  } else if (currentTab.value === 'desktop' || currentTab.value === 'search') {
     currentTab.value = 'todos'
   }
 })
 
-onMounted(() => {
-  window.addEventListener('click', closeUserMenu)
-})
+async function quickAddTodoFromSearch(title: string) {
+  try {
+    const uid = 0
+    await tauriInvoke('add_todo', {
+      title,
+      priority: 'medium',
+      category: '工作',
+      remind_at: null,
+      user_id: uid
+    })
+    statusMessage.value = `✨ 成功创建待办事项 [${title}]`
+    loadTodos()
+  } catch (e: any) {
+    statusMessage.value = `❌ 创建失败: ${e?.message || e}`
+  }
+}
 
-onUnmounted(() => {
-  window.removeEventListener('click', closeUserMenu)
-})
+async function handleSearchAiCommand(input: string) {
+  statusMessage.value = `🤖 正在使用 AI 解析并执行: "${input}"...`
+  try {
+    const res = await tauriInvoke<any>('execute_ai_command', {
+      input,
+      config: llmConfig.value,
+      user_id: 0
+    })
+    if (res) {
+      statusMessage.value = `🤖 AI 执行完成: ${res.message || '已处理'}`
+      if (res.should_refresh) {
+        loadTodos()
+      }
+    }
+  } catch (e: any) {
+    statusMessage.value = `❌ AI 执行失败: ${e?.message || e}`
+  }
+}
 
 // Theme State
 const storedTheme = getTheme() as ThemeType | null
@@ -1443,7 +1476,12 @@ function saveLlmConfig() {
 
 onMounted(() => {
   document.documentElement.setAttribute('data-theme', theme.value)
+  window.addEventListener('click', closeUserMenu)
   loadTodos()
+})
+
+onUnmounted(() => {
+  window.removeEventListener('click', closeUserMenu)
 })
 </script>
 
@@ -2889,71 +2927,6 @@ option {
   margin-top: 20px;
 }
 
-/* User Dropdown Menu */
-.user-dropdown {
-  position: relative;
-  display: inline-block;
-}
-
-.user-avatar-btn {
-  background-color: var(--bg-app);
-  border: 1px solid var(--border-color);
-  color: var(--text-main);
-  border-radius: 16px;
-  padding: 5px 12px;
-  font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.user-avatar-btn:hover {
-  border-color: var(--primary);
-  color: var(--primary);
-}
-
-.dropdown-menu {
-  position: absolute;
-  top: calc(100% + 6px);
-  right: 0;
-  background-color: var(--bg-surface);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-lg);
-  min-width: 130px;
-  display: none;
-  flex-direction: column;
-  padding: 4px;
-  z-index: 1000;
-}
-
-.user-dropdown:hover .dropdown-menu {
-  display: flex;
-}
-
-.dropdown-item {
-  padding: 8px 12px;
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--text-main);
-  border-radius: 4px;
-  cursor: pointer;
-  transition: background-color 0.2s ease;
-}
-
-.dropdown-item:hover {
-  background-color: var(--bg-card-hover);
-  color: var(--primary);
-}
-
-.dropdown-item.danger {
-  color: #E53E3E;
-}
-
-.dropdown-item.danger:hover {
-  background-color: rgba(229, 62, 62, 0.1);
-}
-
 .main-content {
   flex: 1;
   min-height: 0;
@@ -2969,155 +2942,6 @@ option {
   padding: 8px 16px;
 }
 
-/* User Auth Badge Styles */
-.user-badge {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 4px 10px;
-  border-radius: 20px;
-  font-size: 12px;
-  font-weight: 600;
-}
-
-.user-dropdown-container {
-  position: relative;
-}
-
-.user-badge-btn {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  background-color: rgba(59, 130, 246, 0.1);
-  border: 1px solid rgba(59, 130, 246, 0.3);
-  color: var(--primary, #3b82f6);
-  padding: 4px 10px;
-  border-radius: 20px;
-  font-size: 12px;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.user-badge-btn:hover {
-  background-color: rgba(59, 130, 246, 0.2);
-  border-color: var(--primary, #3b82f6);
-}
-
-.chevron-icon {
-  transition: transform 0.2s ease;
-  color: var(--text-muted, #64748b);
-}
-
-.chevron-icon.open {
-  transform: rotate(180deg);
-}
-
-.user-dropdown-menu {
-  position: absolute;
-  top: calc(100% + 8px);
-  right: 0;
-  width: 170px;
-  background-color: var(--bg-card, #ffffff);
-  border: 1px solid var(--border-color, #e2e8f0);
-  border-radius: 10px;
-  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.12), 0 8px 10px -6px rgba(0, 0, 0, 0.06);
-  padding: 6px;
-  z-index: 1000;
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-}
-
-.dropdown-header {
-  padding: 6px 8px;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.dropdown-user-name {
-  font-weight: 700;
-  font-size: 13px;
-  color: var(--text-main, #0f172a);
-}
-
-.dropdown-user-id {
-  font-size: 11px;
-  color: var(--text-muted, #64748b);
-}
-
-.dropdown-divider {
-  height: 1px;
-  background-color: var(--border-color, #e2e8f0);
-  margin: 2px 0;
-}
-
-.dropdown-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  width: 100%;
-  padding: 7px 10px;
-  border-radius: 6px;
-  border: none;
-  background: transparent;
-  color: var(--text-main, #334155);
-  font-size: 12px;
-  cursor: pointer;
-  transition: background-color 0.15s ease, color 0.15s ease;
-  text-align: left;
-}
-
-.dropdown-item:hover {
-  background-color: var(--bg-hover, #f1f5f9);
-  color: var(--primary, #3b82f6);
-}
-
-.dropdown-item.danger {
-  color: #ef4444;
-}
-
-.dropdown-item.danger:hover {
-  background-color: rgba(239, 68, 68, 0.1);
-  color: #dc2626;
-}
-
-.user-name-label {
-  font-weight: 700;
-  max-width: 110px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.user-badge.local-mode {
-  background-color: rgba(16, 185, 129, 0.1);
-  border: 1px solid rgba(16, 185, 129, 0.3);
-  color: #059669;
-}
-
-.mode-label {
-  font-weight: 600;
-}
-
-.login-trigger-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  background-color: var(--primary, #3b82f6);
-  color: #ffffff;
-  border: none;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.login-trigger-btn:hover {
-  opacity: 0.9;
-  transform: translateY(-1px);
-}
 
 /* =========================================================
    Desktop OS Layout & Floating Dock Bar Styles
@@ -3130,6 +2954,17 @@ option {
 
 .layout-nav-desktop .main-content {
   padding-bottom: 84px;
+}
+
+.layout-nav-search {
+  position: relative;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.layout-nav-search .main-content {
+  padding: 0;
+  overflow: hidden;
 }
 
 .desktop-dock-wrapper {

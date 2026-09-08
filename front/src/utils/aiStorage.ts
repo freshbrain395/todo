@@ -1,5 +1,5 @@
 import { api } from './apiClient'
-import type { LlmConfig, LlmProvider, PromptItem, SkillItem, ChatSession } from '../types'
+import type { LlmConfig, LlmProvider, PromptItem, SkillItem, ChatSession, NavPosition } from '../types'
 import { defaultPromptsLibrary, defaultSkillsLibrary } from './aiDefaults'
 
 export const DEFAULT_PROVIDERS: LlmProvider[] = [
@@ -185,10 +185,10 @@ export function saveTheme(theme: string): void {
 }
 
 // ============ Navigation Position ============
-export function getNavPosition(): 'top' | 'left' | 'desktop' | null {
-  return (navPositionCache as 'top' | 'left' | 'desktop') || null
+export function getNavPosition(): NavPosition | null {
+  return (navPositionCache as NavPosition) || null
 }
-export function saveNavPosition(navPosition: 'top' | 'left' | 'desktop'): void {
+export function saveNavPosition(navPosition: NavPosition): void {
   navPositionCache = navPosition
   persist(api.saveAppConfig('todo_nav_position', navPosition))
 }

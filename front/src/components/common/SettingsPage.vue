@@ -10,6 +10,14 @@
         <nav class="settings-nav-list">
           <button
             class="settings-nav-item"
+            :class="{ active: activeTab === 'appearance' }"
+            @click="activeTab = 'appearance'"
+          >
+            <Palette :size="16" /> <span>外观与主题</span>
+          </button>
+
+          <button
+            class="settings-nav-item"
             :class="{ active: activeTab === 'llm' }"
             @click="activeTab = 'llm'"
           >
@@ -48,26 +56,10 @@
 
           <button
             class="settings-nav-item"
-            :class="{ active: activeTab === 'appearance' }"
-            @click="activeTab = 'appearance'"
-          >
-            <Palette :size="16" /> <span>外观与主题</span>
-          </button>
-
-          <button
-            class="settings-nav-item"
             :class="{ active: activeTab === 'audio' }"
             @click="activeTab = 'audio'"
           >
             <Volume2 :size="16" /> <span>提示与音效</span>
-          </button>
-
-          <button
-            class="settings-nav-item"
-            :class="{ active: activeTab === 'account' }"
-            @click="activeTab = 'account'"
-          >
-            <User :size="16" /> <span>账号与权限</span>
           </button>
 
           <button
@@ -83,8 +75,43 @@
       <!-- 右侧设置详细内容区 -->
       <main class="settings-content">
 
-      <!-- 选项卡 1 ~ 4: AI 模块相关设置 (渲染 AiSettingsView) -->
-      <div v-if="['llm', 'prompts', 'tools', 'skills'].includes(activeTab)" class="tab-pane">
+      <!-- 选项卡 1: 外观与主题 (优先展示) -->
+      <div v-if="activeTab === 'appearance'" class="tab-pane">
+        <div class="settings-section">
+          <h3 class="section-title"><Palette :size="16" /> 界面主题与视觉外观</h3>
+          <div class="setting-item">
+            <div class="item-label">
+              <span>系统应用主题</span>
+              <small>选择您喜爱的界面视觉风格（浅色、暗黑或极光风格）</small>
+            </div>
+            <div class="item-control">
+              <select v-model="theme" class="select-input" @change="saveThemeSettings">
+                <option value="light">浅色明亮 (Light Classic)</option>
+                <option value="dark">暗黑现代 (Dark Modern)</option>
+                <option value="nord">极光冰蓝 (Nord Aurora)</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="setting-item">
+            <div class="item-label">
+              <span>界面风格</span>
+              <small>选择应用界面的整体布局与交互形态（顶部导航、侧边栏、桌面OS或搜索引擎）</small>
+            </div>
+            <div class="item-control">
+              <select v-model="navPosition" class="select-input" @change="saveNavPositionSettings">
+                <option value="top">顶部导航栏风格 (Top Navbar)</option>
+                <option value="left">左侧边栏风格 (VS Code 风格)</option>
+                <option value="desktop">桌面图标风格 (Desktop OS 风格)</option>
+                <option value="search">搜索引擎风格 (Search Engine 风格)</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 选项卡 2 ~ 5: AI 模块相关设置 (渲染 AiSettingsView) -->
+      <div v-else-if="['llm', 'prompts', 'tools', 'skills'].includes(activeTab)" class="tab-pane">
         <AiSettingsView
           :active-tab="(activeTab as 'llm' | 'prompts' | 'tools' | 'skills')"
           :saved-providers="savedProviders"
@@ -126,40 +153,6 @@
         />
       </div>
 
-      <!-- 选项卡 5: 外观界面主题 -->
-      <div v-else-if="activeTab === 'appearance'" class="tab-pane">
-        <div class="settings-section">
-          <h3 class="section-title"><Palette :size="16" /> 界面主题与视觉外观</h3>
-          <div class="setting-item">
-            <div class="item-label">
-              <span>系统应用主题</span>
-              <small>选择您喜爱的界面视觉风格（浅色、暗黑或极光风格）</small>
-            </div>
-            <div class="item-control">
-              <select v-model="theme" class="select-input" @change="saveThemeSettings">
-                <option value="light">浅色明亮 (Light Classic)</option>
-                <option value="dark">暗黑现代 (Dark Modern)</option>
-                <option value="nord">极光冰蓝 (Nord Aurora)</option>
-              </select>
-            </div>
-          </div>
-
-          <div class="setting-item">
-            <div class="item-label">
-              <span>导航栏布局位置</span>
-              <small>选择导航栏展示在顶部或作为类似 VS Code 的左侧边栏</small>
-            </div>
-            <div class="item-control">
-              <select v-model="navPosition" class="select-input" @change="saveNavPositionSettings">
-                <option value="top">顶部导航栏 (Top Navbar)</option>
-                <option value="left">左侧边栏 (VS Code 风格)</option>
-                <option value="desktop">桌面图标视图 (Desktop OS 风格)</option>
-              </select>
-            </div>
-          </div>
-        </div>
-      </div>
-
       <!-- 选项卡 6: 提示与音效 -->
       <div v-else-if="activeTab === 'audio'" class="tab-pane">
         <div class="settings-section">
@@ -198,27 +191,6 @@
                 class="volume-slider"
                 @input="saveAudioSettings"
               />
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- 选项卡 7: 账号与权限 -->
-      <div v-else-if="activeTab === 'account'" class="tab-pane">
-        <div class="settings-section">
-          <h3 class="section-title"><User :size="16" /> 用户账号与权限配置</h3>
-          <div class="setting-item">
-            <div class="item-label">
-              <span>当前登录账号：<strong>{{ currentUserName }}</strong> <span v-if="isAdmin" class="admin-tag"><Crown :size="12" /> 管理员</span></span>
-              <small>当前账号配置均实时存储在前端 JSON 集合中</small>
-            </div>
-            <div class="item-control">
-              <button v-if="isAdmin" class="btn btn-admin-manage" @click="isAdminModalOpen = true">
-                <ShieldCheck :size="14" /> 管理员用户列表与权限
-              </button>
-              <button class="btn btn-listen" @click="isSwitchModalOpen = true">
-                <Users :size="14" /> 切换 / 新增用户账号
-              </button>
             </div>
           </div>
         </div>
@@ -270,42 +242,24 @@
       </div>
     </main>
   </div>
-
-    <!-- 用户切换弹窗 -->
-    <UserSwitchModal
-      :isOpen="isSwitchModalOpen"
-      @close="isSwitchModalOpen = false"
-      @userSwitched="onUserSwitched"
-    />
-
-    <!-- 管理员用户管理弹窗 -->
-    <AdminUserManagementModal
-      :isOpen="isAdminModalOpen"
-      @close="isAdminModalOpen = false"
-      @refresh="onUserSwitched"
-    />
-  </div>
+</div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
 import {
-  Settings, Volume2, Trash2, RotateCcw, User, Users,
-  FileJson, Download, Upload, ShieldCheck, Palette, Brain,
-  Sparkles, Wrench, BookOpen, Crown
+  Settings, Volume2, Trash2, RotateCcw,
+  FileJson, Download, Upload, Palette, Brain,
+  Sparkles, Wrench, BookOpen
 } from 'lucide-vue-next'
 import { soundPlayer, type SoundType } from '../../utils/audio'
 import { showConfirm } from '../../utils/confirmState'
-import UserSwitchModal from './UserSwitchModal.vue'
-import AdminUserManagementModal from './AdminUserManagementModal.vue'
 import AiSettingsView from '../ai/AiSettingsView.vue'
 
 import {
   getCurrentUserId,
   getUserConfig,
   saveUserConfig,
-  getAllUserAccountsMap,
-  isCurrentAdmin,
   DEFAULT_USER_CONFIG,
   type UserAppConfig
 } from '../../utils/configManager'
@@ -341,8 +295,6 @@ const emit = defineEmits<{
   (e: 'userChanged'): void
 }>()
 
-const isSwitchModalOpen = ref(false)
-const isAdminModalOpen = ref(false)
 const fileInputRef = ref<HTMLInputElement | null>(null)
 
 const userId = ref(getCurrentUserId())
@@ -367,9 +319,9 @@ function saveNavPositionSettings() {
   emit('update:navPosition', navPosition.value)
 }
 
-// Single Flat Tab Navigation State (8 items in PRD order)
-type SettingsFlatTab = 'llm' | 'prompts' | 'tools' | 'skills' | 'appearance' | 'audio' | 'account' | 'backup'
-const activeTab = ref<SettingsFlatTab>('llm')
+// Single Flat Tab Navigation State (7 items: appearance first)
+type SettingsFlatTab = 'appearance' | 'llm' | 'prompts' | 'tools' | 'skills' | 'audio' | 'backup'
+const activeTab = ref<SettingsFlatTab>('appearance')
 
 const llmConfig = ref<LlmConfig>({ ...currentConfig.value.llmConfig })
 
@@ -665,13 +617,6 @@ function deleteSkill(id: string) {
   saveSkillsStorage()
 }
 
-const isAdmin = computed(() => isCurrentAdmin())
-
-const currentUserName = computed(() => {
-  const map = getAllUserAccountsMap()
-  return map[userId.value]?.user.username || '未知用户'
-})
-
 function syncFromConfig() {
   userId.value = getCurrentUserId()
   currentConfig.value = getUserConfig(userId.value)
@@ -697,16 +642,6 @@ function saveAudioSettings() {
   })
   emit('update:soundType', soundType.value)
   emit('update:soundVolume', soundVolume.value)
-}
-
-function onUserSwitched() {
-  syncFromConfig()
-  emit('update:soundType', soundType.value)
-  emit('update:soundVolume', soundVolume.value)
-  emit('update:theme', theme.value)
-  emit('update:navPosition', navPosition.value)
-  emit('update:config', llmConfig.value)
-  emit('userChanged')
 }
 
 // JSON 导出

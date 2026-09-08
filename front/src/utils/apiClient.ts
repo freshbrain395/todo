@@ -1,4 +1,4 @@
-import type { Todo, User, LlmConfig, AiActionResult, LlmProvider, PromptItem, SkillItem, ChatSession } from '../types'
+import type { Todo, LlmConfig, AiActionResult, LlmProvider, PromptItem, SkillItem, ChatSession } from '../types'
 
 // 兼容性的 Storage 访问器（适配 Node/Vitest、Browser 以及 Tauri 环境）
 const inMemoryStorage = new Map<string, string>()
@@ -72,35 +72,9 @@ export async function invokeApi<T>(cmd: string, args: Record<string, any> = {}):
 function webFallbackHandler<T>(cmd: string, args: Record<string, any>): T {
   const userId = args.user_id || 0
   const todoKey = `web_todos_${userId}`
-  const userKey = `web_users`
   const clockKey = `web_clock_config`
 
   switch (cmd) {
-    // === 用户模块 ===
-    case 'register_user': {
-      const users: User[] = JSON.parse(getStorageItem(userKey) || '[]')
-      if (users.some(u => u.username === args.username)) {
-        throw new Error('用户名已存在')
-      }
-      const newUser: User = {
-        id: Date.now(),
-        username: args.username,
-        created_at: new Date().toISOString()
-      }
-      users.push(newUser)
-      setStorageItem(userKey, JSON.stringify(users))
-      return newUser as T
-    }
-
-    case 'login_user': {
-      const users: User[] = JSON.parse(getStorageItem(userKey) || '[]')
-      const found = users.find(u => u.username === args.username)
-      if (!found) {
-        throw new Error('用户不存在或密码错误')
-      }
-      return found as T
-    }
-
     // === 待办事项模块 ===
     case 'get_todos': {
       if (!getStorageItem(todoKey)) {
@@ -302,10 +276,8 @@ function webFallbackHandler<T>(cmd: string, args: Record<string, any>): T {
   }
 }
 
-// 导出所有 11 个独立 API 函数名
+// 导出所有独立 API 函数名
 export const api = {
-  registerUser: (username: string, password: String) => invokeApi<User>('register_user', { username, password }),
-  loginUser: (username: string, password: String) => invokeApi<User>('login_user', { username, password }),
   getTodos: (filter = 'all', search = '', userId?: number) => invokeApi<Todo[]>('get_todos', { filter, search, user_id: userId }),
   addTodo: (title: string, priority = 'medium', category = '工作', remindAt?: string | null, userId?: number) =>
     invokeApi<number>('add_todo', { title, priority, category, remind_at: remindAt, user_id: userId }),

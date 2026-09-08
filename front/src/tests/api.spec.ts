@@ -20,31 +20,6 @@ describe('前端所有 11 个 API 接口完整性与功能测试', () => {
     mockStorage.clear()
   })
 
-  // 1. 用户模块 API 测试
-  describe('用户 API (register_user & login_user)', () => {
-    it('应能正确注册新用户 (register_user)', async () => {
-      const user = await api.registerUser('testuser', 'password123')
-      expect(user).toBeDefined()
-      expect(user.username).toBe('testuser')
-      expect(user.id).toBeGreaterThan(0)
-    })
-
-    it('注册重复用户名时应抛出异常', async () => {
-      await api.registerUser('duplicate_user', 'pwd')
-      await expect(api.registerUser('duplicate_user', 'pwd')).rejects.toThrow('用户名已存在')
-    })
-
-    it('已注册用户应能成功登录 (login_user)', async () => {
-      await api.registerUser('loginuser', 'pass123')
-      const loggedUser = await api.loginUser('loginuser', 'pass123')
-      expect(loggedUser).toBeDefined()
-      expect(loggedUser.username).toBe('loginuser')
-    })
-
-    it('登录未注册用户时应抛出错误', async () => {
-      await expect(api.loginUser('non_existent', 'pass')).rejects.toThrow('用户不存在或密码错误')
-    })
-  })
 
   // 2. 待办事项 CRUD API 测试
   describe('待办事项 API (get_todos, add_todo, update_todo_status, update_todo, delete_todo)', () => {

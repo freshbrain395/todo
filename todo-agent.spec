@@ -1,7 +1,9 @@
-# -*- mode: python ; coding: utf-8 -*-
+from pathlib import Path
 from PyInstaller.utils.hooks import collect_all
 
-datas = [('dist', 'dist')]
+front_dist = Path('front/dist')
+dist_src = 'front/dist' if front_dist.exists() else 'dist'
+datas = [(dist_src, 'dist')]
 binaries = []
 hiddenimports = []
 tmp_ret = collect_all('uvicorn')
@@ -43,7 +45,7 @@ exe = EXE(
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
-    upx=True,
+    upx=False,
     upx_exclude=[],
     runtime_tmpdir=None,
     console=True,

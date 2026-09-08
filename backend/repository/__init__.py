@@ -1,5 +1,4 @@
 from backend.repository.db import DbState
-from backend.repository.user import register_user, login_user, hash_password
 from backend.repository.todo import (
     get_todos,
     add_todo,
@@ -22,9 +21,6 @@ from backend.repository.local_user import get_local_users, save_local_users
 
 __all__ = [
     "DbState",
-    "register_user",
-    "login_user",
-    "hash_password",
     "get_todos",
     "add_todo",
     "update_todo_status",

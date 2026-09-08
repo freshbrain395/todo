@@ -4,7 +4,6 @@ from pathlib import Path
 from fastapi.testclient import TestClient
 
 from backend.repository.db import DbState
-from backend.service.user import UserService
 from backend.service.todo import TodoService
 from backend.service.config import ConfigService
 from backend.service.ai import fallback_intent_parse
@@ -16,22 +15,6 @@ def temp_db(tmp_path: Path):
     db_file = tmp_path / "test_todos.db"
     db = DbState(db_file)
     return db
-
-
-def test_user_service(temp_db):
-    service = UserService(temp_db)
-    user = service.register("testuser", "password123")
-    assert user["username"] == "testuser"
-    assert user["id"] > 0
-
-    login_res = service.login("testuser", "password123")
-    assert login_res["id"] == user["id"]
-
-    with pytest.raises(ValueError):
-        service.login("testuser", "wrongpassword")
-
-    with pytest.raises(ValueError):
-        service.register("testuser", "password123")
 
 
 def test_todo_service(temp_db):

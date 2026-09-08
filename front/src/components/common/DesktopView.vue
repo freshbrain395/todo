@@ -122,7 +122,7 @@
           </div>
           <div class="app-info">
             <div class="app-name">系统设置</div>
-            <div class="app-desc">主题外观、音效与账号</div>
+            <div class="app-desc">主题外观与音效偏好</div>
           </div>
         </div>
       </div>

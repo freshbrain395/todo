@@ -14,7 +14,7 @@ export interface UserAppConfig {
   soundType: SoundType;
   soundVolume: number; // 0.0 ~ 1.0
   theme: 'light' | 'dark' | 'nord';
-  navPosition?: 'top' | 'left' | 'desktop';
+  navPosition?: 'top' | 'left' | 'desktop' | 'search';
   llmConfig: {
     provider: string;
     base_url: string;

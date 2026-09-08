@@ -1,107 +1,112 @@
 # Todo Agent (Python + Vue 3)
 
-这是一个现代化的 TODO 智能体应用，结合大语言模型（LLM）实现自然语言任务规划与意图解析，支持原生桌面窗口、交互式终端 CLI 与 Web 浏览器三种使用模式。
+[English](README.md) | [简体中文](README_zh.md)
 
 ---
 
-## 🚀 启动方式汇总
+A modern LLM-powered TODO agent application designed with natural language task planning and intent parsing. It supports three execution modes: Native Desktop GUI, Interactive Terminal CLI, and Web Browser.
 
-本项目支持多种启动方式，您可以根据使用场景选择：
+---
 
-### 方式一：原生桌面 GUI 窗口（非浏览器模式，推荐）
+### 🚀 Getting Started
 
-无需打开系统外部浏览器，直接以独立的桌面客户端窗口运行（基于 `pywebview`）：
+Choose from multiple launch modes depending on your workflow:
 
-- **通过 Python 脚本直接启动**：
+#### Mode 1: Native Desktop GUI Window (Recommended)
+
+Runs directly as an independent desktop window using `pywebview` without opening an external browser:
+
+- **Launch via Python script directly**:
   ```bash
   uv run python run.py
-  # 或显式指定 gui 参数
+  # or explicitly pass the gui argument
   uv run python run.py gui
   ```
-- **通过一键批处理脚本（Windows）**：
+- **Launch via Windows batch script**:
   ```cmd
   run.bat
   ```
-  *(若尚未生成可执行文件，该脚本会自动执行打包并拉起客户端)*
-- **直接运行打包好的可执行文件**：
+  *(If the binary has not been built yet, this script will automatically package and launch it)*
+- **Run the packaged standalone executable**:
   ```cmd
   .\release\todo-agent.exe
   ```
 
 ---
 
-### 方式二：交互式智能终端 CLI（非浏览器模式）
+#### Mode 2: Interactive Terminal CLI
 
-完全脱离图形界面在终端中交互，支持自然语言意图识别与 Slash 快捷命令（基于 `prompt-toolkit` + `rich`）：
+Run completely inside your terminal without GUI overhead. Supports natural language intent understanding and slash commands powered by `prompt-toolkit` and `rich`:
 
-- **使用 `uv` 启动**：
+- **Launch via `uv`**:
   ```bash
   uv run todo-cli
-  # 或
+  # or
   uv run python run.py cli
   ```
-- **使用 `pnpm` 启动**：
+- **Launch via `pnpm`**:
   ```bash
   pnpm run cli
   ```
-- **常用 CLI 指令**：
-  - 进入交互终端后可直接输入自然语言（如：`提醒我明天下午3点开周会`）。
-  - 快捷指令：`/help`、`/list`、`/add <内容>`、`/done <ID>`、`/delete <ID>`、`/prompt` 等。
+- **Common CLI Commands**:
+  - Input plain natural language directly (e.g., `Remind me to attend the team meeting tomorrow at 3 PM`).
+  - Slash commands: `/help`, `/list`, `/add <text>`, `/done <ID>`, `/delete <ID>`, `/prompt`, `/model`, `/provider`, etc.
 
 ---
 
-### 方式三：Web 浏览器开发与联调模式
+#### Mode 3: Web Browser Development & Debugging
 
-适合进行前端界面开发调试或直接在浏览器中使用：
+Ideal for frontend development, debugging, or using inside a browser:
 
-- **一键启动前后端（开发推荐）**：
+- **Launch both Frontend and Backend concurrently (Recommended)**:
   ```bash
-  # 1. 安装前端依赖（首次使用）
+  # 1. Install dependencies (first time only)
   pnpm install
 
-  # 2. 一键启动前后端（后端 8000 端口 + 前端 1420 端口）
+  # 2. Concurrently run backend (:8000) and frontend (:1420)
   pnpm dev
   ```
-- **仅启动前端 Web 开发服务器**：
+- **Launch Frontend only**:
   ```bash
   pnpm run dev:frontend
   ```
-- **仅启动 FastAPI 后端服务**：
+- **Launch FastAPI Backend only**:
   ```bash
   uv run todo-server
-  # 或
+  # or
   pnpm run dev:backend
   ```
 
 ---
 
-## 🛠️ 项目构建与测试
+### 🛠️ Build and Testing
 
-### 1. 前端构建与测试
+#### 1. Frontend Build & Test
 ```bash
-pnpm run build          # 构建前端生产静态资源 (dist)
-pnpm test               # 运行前端单元测试
+pnpm run build          # Build static web production assets (front/dist)
+pnpm test               # Run frontend unit tests
 ```
 
-### 2. 桌面客户端打包
+#### 2. Desktop Client Packaging
 ```bash
-pnpm run build:exe      # 打包生成 release/todo-agent.exe 独立可执行程序
+pnpm run build:exe      # Package standalone release/todo-agent.exe
 ```
 
-### 3. 后端单元测试
+#### 3. Backend Unit Tests
 ```bash
-uv run --extra dev pytest backend/tests
+uv run python -m pytest backend/tests
 ```
 
 ---
 
-## 📁 架构分层
+### 📁 Project Architecture
 
-- **前端 UI**：Vue 3 + Vite + TypeScript + Lucide Icons
-- **后端架构**：Python 3 (基于 `uv` 包管理器)
-  - `backend/api/`：FastAPI 路由组与通用 RPC 适配器
-  - `backend/service/`：业务逻辑层、LLM 智能体意图解析引擎
-  - `backend/repository/`：SQLite 数据访问层（Todo、User、Config、AI Session）
-  - `backend/cli.py`：基于 Prompt Toolkit + Rich 的交互式命令行终端
-  - `backend/main.py`：原生桌面 GUI、后端 Server 与 CLI 多入口调度
+- **Frontend** (`front/`): Vue 3 + Vite + TypeScript + Lucide Icons
+- **Backend** (`backend/`): Python 3 (managed with `uv`)
+  - `backend/api/`: FastAPI route handlers and RPC bridge
+  - `backend/service/`: Business domain logic, LLM agent intent parsing
+  - `backend/repository/`: SQLite storage layer (Todo, Config, AI Session)
+  - `backend/cli.py`: Interactive CLI with Prompt Toolkit and Rich
+  - `backend/main.py`: Entrypoint dispatcher for Desktop GUI, Server, and CLI
+
 

@@ -3,7 +3,6 @@ from typing import Optional, List, Dict, Any
 from fastapi import APIRouter, HTTPException, Depends
 
 from backend.repository.db import DbState
-from backend.service.user import UserService
 from backend.service.todo import TodoService
 from backend.service.config import ConfigService
 from backend.service.ai_config import AiConfigService
@@ -15,8 +14,6 @@ from backend.service.ai import (
     parse_intent_and_execute,
 )
 from backend.api.schemas import (
-    RegisterRequest,
-    LoginRequest,
     TodoCreateRequest,
     TodoUpdateRequest,
     TodoStatusRequest,
@@ -30,30 +27,6 @@ router = APIRouter()
 
 def get_db() -> DbState:
     return DbState.get_instance()
-
-
-# ==================== 用户模块 ====================
-
-@router.post("/api/user/register")
-def register_user_endpoint(req: RegisterRequest, db: DbState = Depends(get_db)):
-    try:
-        service = UserService(db)
-        return service.register(req.username, req.password)
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@router.post("/api/user/login")
-def login_user_endpoint(req: LoginRequest, db: DbState = Depends(get_db)):
-    try:
-        service = UserService(db)
-        return service.login(req.username, req.password)
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
 
 
 # ==================== 待办模块 ====================
@@ -155,20 +128,13 @@ async def invoke_endpoint(req: InvokeRequest, db: DbState = Depends(get_db)):
     cmd = req.cmd
     args = req.args
 
-    user_service = UserService(db)
     todo_service = TodoService(db)
     config_service = ConfigService(db)
     ai_config_service = AiConfigService(db)
     local_user_service = LocalUserService(db)
 
     try:
-        if cmd == "register_user":
-            return user_service.register(args.get("username", ""), args.get("password", ""))
-
-        elif cmd == "login_user":
-            return user_service.login(args.get("username", ""), args.get("password", ""))
-
-        elif cmd == "get_todos":
+        if cmd == "get_todos":
             return todo_service.get_todos(
                 filter_type=args.get("filter", "all"),
                 search=args.get("search", ""),
