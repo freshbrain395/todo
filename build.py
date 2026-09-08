@@ -4,13 +4,11 @@ import argparse
 import os
 import shutil
 import subprocess
-import sys
 from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parent
-FRONT_DIR = ROOT / "front"
-FRONT_DIST = FRONT_DIR / "dist"
+FRONT_DIST = ROOT / "front" / "dist"
 RELEASE_DIR = ROOT / "release"
 BUILD_DIR = ROOT / "build"
 PYINSTALLER_WORK_DIR = BUILD_DIR / "pyinstaller"
@@ -48,10 +46,9 @@ def clean() -> None:
     for path in (FRONT_DIST, PYINSTALLER_WORK_DIR):
         if path.exists():
             shutil.rmtree(path)
-    if EXE_FILE.exists():
-        EXE_FILE.unlink()
-    if INSTALLER_EXE.exists():
-        INSTALLER_EXE.unlink()
+    for path in (EXE_FILE, INSTALLER_EXE):
+        if path.exists():
+            path.unlink()
     RELEASE_DIR.mkdir(parents=True, exist_ok=True)
 
 
@@ -66,8 +63,8 @@ def build_frontend() -> None:
 
 def build_exe() -> None:
     print("==> Building Windows executable")
-    if sys.platform != "win32":
-        print("[警告] 当前不是 Windows。PyInstaller/安装器建议在 Windows 上构建最终发布包。")
+    if not SPEC_FILE.exists():
+        raise RuntimeError(f"找不到 PyInstaller spec: {SPEC_FILE}")
 
     run(
         [
@@ -78,29 +75,11 @@ def build_exe() -> None:
             "PyInstaller",
             "--noconfirm",
             "--clean",
-            "--noupx",
-            "--onefile",
-            "--name",
-            "todo",
             "--distpath",
             str(RELEASE_DIR),
             "--workpath",
             str(PYINSTALLER_WORK_DIR),
-            "--add-data",
-            f"{FRONT_DIST}{os.pathsep}dist",
-            "--collect-all",
-            "uvicorn",
-            "--collect-all",
-            "fastapi",
-            "--collect-all",
-            "backend",
-            "--collect-all",
-            "webview",
-            "--collect-all",
-            "pythonnet",
-            "--collect-all",
-            "clr_loader",
-            str(ROOT / "backend" / "main.py"),
+            str(SPEC_FILE),
         ]
     )
 
