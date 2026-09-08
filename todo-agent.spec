@@ -1,28 +1,36 @@
 from pathlib import Path
 from PyInstaller.utils.hooks import collect_all
 
-front_dist = Path('front/dist')
-dist_src = 'front/dist' if front_dist.exists() else 'dist'
-datas = [(dist_src, 'dist')]
+ROOT = Path(SPECPATH).resolve()
+FRONT_DIST = ROOT / "front" / "dist"
+
+if not (FRONT_DIST / "index.html").exists():
+    raise SystemExit(
+        "找不到前端构建产物 front/dist/index.html，请先运行 `python build.py frontend`。"
+    )
+
+
+datas = [(str(FRONT_DIST), "dist")]
 binaries = []
 hiddenimports = []
-tmp_ret = collect_all('uvicorn')
-datas += tmp_ret[0]; binaries += tmp_ret[1]; hiddenimports += tmp_ret[2]
-tmp_ret = collect_all('fastapi')
-datas += tmp_ret[0]; binaries += tmp_ret[1]; hiddenimports += tmp_ret[2]
-tmp_ret = collect_all('backend')
-datas += tmp_ret[0]; binaries += tmp_ret[1]; hiddenimports += tmp_ret[2]
-tmp_ret = collect_all('webview')
-datas += tmp_ret[0]; binaries += tmp_ret[1]; hiddenimports += tmp_ret[2]
-tmp_ret = collect_all('pythonnet')
-datas += tmp_ret[0]; binaries += tmp_ret[1]; hiddenimports += tmp_ret[2]
-tmp_ret = collect_all('clr_loader')
-datas += tmp_ret[0]; binaries += tmp_ret[1]; hiddenimports += tmp_ret[2]
+
+for package in (
+    "uvicorn",
+    "fastapi",
+    "backend",
+    "webview",
+    "pythonnet",
+    "clr_loader",
+):
+    package_datas, package_binaries, package_hiddenimports = collect_all(package)
+    datas += package_datas
+    binaries += package_binaries
+    hiddenimports += package_hiddenimports
 
 
 a = Analysis(
-    ['backend/main.py'],
-    pathex=[],
+    [str(ROOT / "backend" / "main.py")],
+    pathex=[str(ROOT)],
     binaries=binaries,
     datas=datas,
     hiddenimports=hiddenimports,
@@ -41,7 +49,7 @@ exe = EXE(
     a.binaries,
     a.datas,
     [],
-    name='todo',
+    name="todo",
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
