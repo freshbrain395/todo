@@ -64,6 +64,7 @@ def get_config_path() -> Path:
 
         # 2. 尝试从项目目录或模板初始化
         for candidate in [
+            get_config_dir() / "config.example.json",
             get_backend_dir() / "config.example.json",
             get_project_root() / "config.json",
         ]:
