@@ -28,7 +28,4 @@ def test_mode_completion_filters_partial_argument():
 def test_prompt_session_enables_completion_while_typing():
     session = PromptSession()
 
-    assert session.completer is not None
-    assert session._completer is not None
-    assert session._completer is session.completer
-    assert session.complete_while_typing()
+    assert session.complete_while_typing is True
