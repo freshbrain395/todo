@@ -47,7 +47,7 @@ DEFAULT_AGENT_PROMPT = """你是一个智能、高效且亲切的 Todo Agent 个
    - complete: 标记完成。data 包含 id (任务ID整数)
    - update: 修改已有任务（如调整优先级、修改标题或提醒时间）。data 包含 id (整数)，以及被修改字段
    - delete: 删除任务。data 包含 id (整数)
-   - query: 查询任务。在 raw_response 中直接根据上下文向用户总结汇报任务
+   - query: 查询任务。data 可包含 filter_type ("all"|"pending"|"completed", 默认 "all") 与 search (搜索关键词字符串, 可选)。在 raw_response 中直接根据上下文向用户总结汇报任务
    - 在 raw_response 中给出简明有力的反馈（例如："✓ 已创建待办 #23", "✓ 已将 #23 设置为高优先级"）
 3. 严格输出标准 JSON 格式，不输出额外的 markdown 标记外的闲聊字符。
 
@@ -59,7 +59,9 @@ JSON 输出格式标准：
     "title": "任务标题",
     "priority": "high" | "medium" | "low",
     "category": "工作" | "生活" | "学习" | "个人",
-    "remind_at": "YYYY-MM-DD HH:MM:SS"
+    "remind_at": "YYYY-MM-DD HH:MM:SS",
+    "filter_type": "all" | "pending" | "completed",
+    "search": "关键词"
   },
   "raw_response": "给用户的亲切回复文本"
 }"""
@@ -77,7 +79,9 @@ DEFAULT_JSON_PROMPT = """你现在处于 JSON 模式。
     "title": "任务标题",
     "priority": "high" | "medium" | "low",
     "category": "工作" | "生活" | "学习" | "个人",
-    "remind_at": "YYYY-MM-DD HH:MM:SS"
+    "remind_at": "YYYY-MM-DD HH:MM:SS",
+    "filter_type": "all" | "pending" | "completed",
+    "search": "关键词"
   },
   "raw_response": "执行结果反馈或回答"
 }"""
@@ -507,31 +511,38 @@ async def parse_intent_and_execute(
             )
 
     elif action == "query":
+        filter_type = data.get("filter_type") or "all"
+        if filter_type not in ["all", "pending", "completed"]:
+            filter_type = "all"
+        search = data.get("search") or ""
+
         reply = parsed_result.get("raw_response")
         if reply and "{" not in reply:
             return AiActionResult(
                 action="query",
-                data={},
+                data={"filter_type": filter_type, "search": search},
                 message=reply,
                 should_refresh=False,
             )
-        todos = todo_repo.get_todos(db, "pending", "", user_id)
+        todos = todo_repo.get_todos(db, filter_type, search, user_id)
         if not todos:
+            empty_msg = "未找到符合条件的待办任务。" if (filter_type != "all" or search) else "你当前没有任何待办任务，太棒了！🎉"
             return AiActionResult(
                 action="query",
-                data={"todos": []},
-                message="你当前没有任何未完成的任务，太棒了！🎉",
+                data={"filter_type": filter_type, "search": search, "todos": []},
+                message=empty_msg,
                 should_refresh=False,
             )
-        lines = [f"你当前有 {len(todos)} 个待办："]
+        lines = [f"为你找到 {len(todos)} 个待办："]
         for idx, t in enumerate(todos[:10], 1):
             pri_tag = "高" if t["priority"] == "high" else ("中" if t["priority"] == "medium" else "低")
-            lines.append(f"  {idx}. #{t['id']} [{t['category']}] {t['title']} ({pri_tag}优先级)")
+            status_tag = "✓已完成" if t.get("completed") else "待办"
+            lines.append(f"  {idx}. #{t['id']} [{status_tag}] [{t['category']}] {t['title']} ({pri_tag}优先级)")
         if len(todos) > 10:
             lines.append(f"  ... 还有 {len(todos) - 10} 项未列出")
         return AiActionResult(
             action="query",
-            data={"todos": todos},
+            data={"filter_type": filter_type, "search": search, "todos": todos},
             message="\n".join(lines),
             should_refresh=False,
         )

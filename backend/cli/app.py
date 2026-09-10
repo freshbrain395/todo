@@ -58,7 +58,7 @@ SLASH_COMMANDS = [
     ("/mode", "切换工作模式 (chat / agent / json)"),
     ("/todo", "创建待办任务 (/todo <标题>)"),
     ("/add", "新建待办任务 (/add <标题>)"),
-    ("/list", "查看所有待办任务"),
+    ("/list", "查看待办任务 (/list [all|pending|completed] [关键词])"),
     ("/done", "完成待办任务 (/done <ID>)"),
     ("/undone", "撤销完成状态 (/undone <ID>)"),
     ("/delete", "删除待办任务 (/delete <ID>)"),
@@ -123,6 +123,13 @@ class SlashCommandCompleter(Completer):
             for opt, desc in options:
                 if opt.startswith(sub):
                     yield Completion(opt, start_position=-len(sub), display=f"{opt:<8} {desc}")
+        # /list 二级补全
+        if text.startswith("/list "):
+            sub = text[len("/list "):].lower()
+            options = [("all", "查看全部待办"), ("pending", "查看未完成待办"), ("completed", "查看已完成待办")]
+            for opt, desc in options:
+                if opt.startswith(sub):
+                    yield Completion(opt, start_position=-len(sub), display=f"{opt:<10} {desc}")
             return
         # 一级 Slash 命令补全
         if text.startswith("/"):
@@ -242,11 +249,14 @@ def show_help():
     console.print(table)
 
 
-def list_todos(db: DbState):
+def list_todos(db: DbState, filter_type: str = "all", search: str = ""):
     service = TodoService(db)
-    todos = service.get_todos("all", "")
+    todos = service.get_todos(filter_type, search)
     if not todos:
-        console.print("[yellow]当前待办列表为空，使用 /add <标题> 新建一个吧！[/yellow]")
+        if filter_type != "all" or search:
+            console.print("[yellow]未找到符合条件的待办任务。[/yellow]")
+        else:
+            console.print("[yellow]当前待办列表为空，使用 /add <标题> 新建一个吧！[/yellow]")
         return
 
     term_w = get_terminal_width()
@@ -764,8 +774,26 @@ async def handle_command(
         show_help()
         return True
 
-    elif line == "/list":
-        list_todos(db)
+    elif line == "/list" or line.startswith("/list "):
+        parts = line.split(maxsplit=2)
+        filter_type = "all"
+        search = ""
+        if len(parts) == 2:
+            arg = parts[1].strip()
+            if arg.lower() in ["all", "pending", "completed"]:
+                filter_type = arg.lower()
+            else:
+                search = arg
+        elif len(parts) >= 3:
+            first_arg = parts[1].strip().lower()
+            if first_arg in ["all", "pending", "completed"]:
+                filter_type = first_arg
+                search = parts[2].strip()
+            else:
+                console.print(f"[red]错误: 非法的过滤类型 '{parts[1]}'. 可选类型: all, pending, completed (例如: /list pending 会议)[/red]")
+                return True
+
+        list_todos(db, filter_type=filter_type, search=search)
         return True
 
     elif line.startswith("/add ") or line.startswith("/todo "):
