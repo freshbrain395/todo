@@ -281,7 +281,8 @@ import {
   saveSkills,
   getToolConfig,
   saveToolConfig,
-  saveNavPosition
+  saveNavPosition,
+  saveLlmConfig
 } from '../../utils/aiStorage'
 
 
@@ -333,6 +334,7 @@ watch(() => currentConfig.value.llmConfig, (newVal) => {
 
 watch(llmConfig, (newVal) => {
   saveUserConfig(userId.value, { llmConfig: newVal })
+  saveLlmConfig({ ...newVal })
   emit('update:config', { ...newVal })
 }, { deep: true })
 

@@ -1,5 +1,6 @@
 import os
 import json
+import shutil
 from pathlib import Path
 from dataclasses import dataclass, asdict
 from typing import Any, Dict
@@ -7,6 +8,21 @@ import platformdirs
 
 APP_NAME = "Todo Agent"
 APP_AUTHOR = "Todo Agent"
+
+
+def get_backend_dir() -> Path:
+    return Path(__file__).resolve().parent.parent
+
+
+def get_project_root() -> Path:
+    return get_backend_dir().parent
+
+
+def get_config_dir() -> Path:
+    """获取后端专用的 config 目录"""
+    cfg_dir = get_backend_dir() / "config"
+    cfg_dir.mkdir(parents=True, exist_ok=True)
+    return cfg_dir
 
 
 def get_app_dir() -> Path:
@@ -28,32 +44,37 @@ def get_db_path() -> Path:
     return get_app_dir() / "todos.db"
 
 
-def get_project_root() -> Path:
-    return Path(__file__).resolve().parent.parent
-
-
-def get_backend_dir() -> Path:
-    return Path(__file__).resolve().parent
-
-
 def get_config_path() -> Path:
-    """获取全局统一 JSON 配置文件路径 (存储在 %APPDATA%\\Todo Agent\\config.json)"""
+    """
+    获取全局统一 JSON 配置文件路径。
+    优先保存在后端的 config 文件夹 (backend/config/config.json)，
+    若用户数据目录 (%APPDATA%\\Todo Agent\\config.json) 存在已有配置，则无缝迁移并同步。
+    """
+    pkg_cfg = get_config_dir() / "config.json"
     app_cfg = get_app_dir() / "config.json"
-    if not app_cfg.exists():
-        # 如果用户目录中尚无配置文件，尝试从项目目录或模板初始化
+
+    if not pkg_cfg.exists():
+        # 1. 尝试从用户历史目录迁移
+        if app_cfg.exists():
+            try:
+                shutil.copy2(app_cfg, pkg_cfg)
+                return pkg_cfg
+            except Exception:
+                pass
+
+        # 2. 尝试从项目目录或模板初始化
         for candidate in [
-            get_backend_dir() / "config.json",
             get_backend_dir() / "config.example.json",
             get_project_root() / "config.json",
         ]:
             if candidate.exists():
                 try:
-                    import shutil
-                    shutil.copy2(candidate, app_cfg)
-                    return app_cfg
+                    shutil.copy2(candidate, pkg_cfg)
+                    return pkg_cfg
                 except Exception:
                     pass
-    return app_cfg
+
+    return pkg_cfg
 
 
 # 兼容别名
@@ -80,11 +101,20 @@ def read_raw_config() -> Dict[str, Any]:
 
 
 def write_raw_config(data: Dict[str, Any]) -> None:
-    """写入全局统一 JSON 配置文件"""
+    """写入全局统一 JSON 配置文件并自动同步用户数据目录"""
     path = get_config_path()
     path.parent.mkdir(parents=True, exist_ok=True)
     with open(path, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
+
+    # 保持与用户漫游目录数据的一致性备份
+    try:
+        app_cfg = get_app_dir() / "config.json"
+        if app_cfg.resolve() != path.resolve():
+            with open(app_cfg, "w", encoding="utf-8") as f:
+                json.dump(data, f, ensure_ascii=False, indent=2)
+    except Exception:
+        pass
 
 
 @dataclass
