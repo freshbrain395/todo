@@ -65,7 +65,23 @@ JSON 输出格式标准：
 }"""
 
 DEFAULT_SYSTEM_PROMPT = DEFAULT_AGENT_PROMPT
-DEFAULT_CHAT_PROMPT = DEFAULT_AGENT_PROMPT
+DEFAULT_CHAT_PROMPT = "你是一个亲切友好的 AI 对话助手。请以自然语言与用户畅聊、解答疑问，不主动进行待办事项调度与修改。"
+DEFAULT_JSON_PROMPT = """你现在处于 JSON 模式。
+必须只返回合法 JSON，禁止 Markdown 标记（不要包含 ```json 或 ```），禁止任何 JSON 之外的问候或解释文字。
+
+输出 JSON 格式要求：
+{
+  "action": "chat" | "add" | "complete" | "update" | "delete" | "query",
+  "data": {
+    "id": 123,
+    "title": "任务标题",
+    "priority": "high" | "medium" | "low",
+    "category": "工作" | "生活" | "学习" | "个人",
+    "remind_at": "YYYY-MM-DD HH:MM:SS"
+  },
+  "raw_response": "执行结果反馈或回答"
+}"""
+
 
 
 import os
@@ -311,6 +327,7 @@ async def parse_intent_and_execute(
             "system": sys_prompt,
             "prompt": user_input,
             "stream": False,
+            "think": bool(config.enable_thinking),
         }
 
     content_text = ""
@@ -323,7 +340,10 @@ async def parse_intent_and_execute(
                 if is_openai_compat:
                     content_text = res_json.get("choices", [{}])[0].get("message", {}).get("content", "")
                 else:
+                    # Ollama 原生 API 返回 response 字段；当 think: true 时，思考内容可能单独放在 thinking 字段，content 放在 response
                     content_text = res_json.get("response", "")
+                    if not content_text and res_json.get("message"):
+                        content_text = res_json.get("message", {}).get("content", "")
             else:
                 err_msg = f"API 状态码: {resp.status_code} - {resp.text}"
                 fallback = fallback_intent_parse(user_input, err_msg)
