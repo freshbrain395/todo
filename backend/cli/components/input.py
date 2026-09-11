@@ -28,7 +28,7 @@ class CliLogBuffer:
     def __init__(self, max_lines: int = 5000):
         self.max_lines = max(100, max_lines)
         self.lines: List[str] = []
-        self.scroll_offset: int = 0  # 0 = stick to bottom; >0 = lines scrolled up
+        self.scroll_offset: int = 0
         self._on_change: Optional[Callable[[], None]] = None
         self._pending: str = ""
 
@@ -165,11 +165,9 @@ def create_fixed_input_app(
     )
 
     def accept_handler(buff: Buffer) -> bool:
-        # Menu owns Enter while open — never submit the input line.
         if host.is_active():
             return True
         text = buff.text
-        # Drop completion popup before command runs / menu opens.
         buff.complete_state = None
         buff.reset(append_to_history=bool(text.strip()))
 
@@ -231,7 +229,6 @@ def create_fixed_input_app(
     )
 
     completion_max_h = compute_completion_menu_max_height()
-    # Pin completions above input+toolbar; hide while bottom selection menu is open.
     root = FloatContainer(
         content=HSplit([log_window, input_window, menu_window, toolbar_window]),
         floats=[
@@ -290,7 +287,6 @@ def create_fixed_input_app(
         )
     except Exception:
         from prompt_toolkit.output import DummyOutput
-
         app = Application(
             layout=Layout(root, focused_element=input_window),
             key_bindings=merged,
@@ -316,7 +312,6 @@ class NestedPromptAdapter:
 
     def __init__(self):
         from ..app import PromptSession
-
         self._session = PromptSession()
 
     async def prompt_async(self, *args, **kwargs):
@@ -328,7 +323,7 @@ from prompt_toolkit.formatted_text import AnyFormattedText, HTML
 
 
 class BoxedPromptSession(_OriginalPromptSession):
-    """带边框的现代终端输入框组件（支持动态标题、占位符、浮动补全与滚动 REPL 模式）"""
+    """带边框的现代终端输入框组件。"""
 
     def __init__(
         self,
@@ -338,7 +333,6 @@ class BoxedPromptSession(_OriginalPromptSession):
         *args,
         **kwargs,
     ):
-        kwargs["show_frame"] = True
         self.box_title = title
         self.box_placeholder = placeholder
         self.prompt_text = prompt_text
@@ -346,24 +340,28 @@ class BoxedPromptSession(_OriginalPromptSession):
         super().__init__(*args, **kwargs)
 
     def _create_layout(self):
+        """Wrap the actual PromptSession input container in a real prompt_toolkit Frame.
+
+        The previous implementation passed the unsupported ``show_frame`` argument to
+        PromptSession and tried to locate an internal ``alternative_content`` node.
+        That made the frame either disappear or fail on prompt-toolkit versions used by
+        this project. Wrapping the final layout container is version-stable.
+        """
         layout = super()._create_layout()
-        try:
-            if hasattr(layout.container, "children") and len(layout.container.children) > 0:
-                cond_container = layout.container.children[0]
-                main_input = getattr(cond_container, "alternative_content", None)
-                if main_input is not None:
-                    from prompt_toolkit.widgets import Frame
 
-                    def _get_title():
-                        if callable(self.box_title):
-                            return self.box_title()
-                        return self.box_title or ""
+        from prompt_toolkit.widgets import Frame
 
-                    new_frame = Frame(body=main_input, title=_get_title)
-                    self._frame_widget = new_frame
-                    cond_container.content = new_frame.container
-        except Exception:
-            pass
+        def _get_title():
+            if callable(self.box_title):
+                return self.box_title()
+            return self.box_title or ""
+
+        frame = Frame(
+            body=layout.container,
+            title=_get_title,
+        )
+        self._frame_widget = frame
+        layout.container = frame.container
         return layout
 
     @property
@@ -391,4 +389,3 @@ def create_boxed_input_session(
         prompt_text=prompt_text,
         **kwargs,
     )
-
