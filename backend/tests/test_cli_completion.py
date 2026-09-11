@@ -29,3 +29,26 @@ def test_prompt_session_enables_completion_while_typing():
     session = PromptSession()
 
     assert session.complete_while_typing is True
+
+
+def test_prompt_session_fixes_menu_position_at_left():
+    from prompt_toolkit.layout.containers import FloatContainer
+
+    session = PromptSession()
+
+    def find_floats(container):
+        if isinstance(container, FloatContainer):
+            return container.floats
+        for child in getattr(container, "get_children", lambda: [])():
+            res = find_floats(child)
+            if res:
+                return res
+        return []
+
+    floats = find_floats(session.layout.container)
+    # 验证补全浮动菜单的 xcursor 为 False 且固定在左侧 left=0
+    menu_floats = [f for f in floats if f.ycursor]
+    assert len(menu_floats) >= 2
+    for f in menu_floats:
+        assert f.xcursor is False
+        assert f.left == 0

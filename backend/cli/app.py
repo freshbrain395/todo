@@ -2,8 +2,8 @@ import os
 import sys
 import json
 import asyncio
-from typing import List, Optional, Dict, Any, Tuple
-from prompt_toolkit import PromptSession
+from typing import List, Optional, Dict, Any, Tuple, Callable
+from prompt_toolkit import PromptSession as _PromptSession
 from prompt_toolkit.application import Application
 from prompt_toolkit.key_binding import KeyBindings
 from prompt_toolkit.layout.containers import HSplit, Window
@@ -33,8 +33,6 @@ from .layout import (
     display_width,
     truncate_to_width,
     pad_to_width,
-    build_box_header,
-    build_box_footer,
 )
 
 console = Console(force_terminal=True, legacy_windows=False)
@@ -112,36 +110,193 @@ FALLBACK_MODELS = {
 }
 
 
+class PromptSession(_PromptSession):
+    """Enable completion menus to appear automatically while typing and keep menu position fixed."""
+
+    def __init__(self, *args: Any, **kwargs: Any):
+        kwargs.setdefault("complete_while_typing", True)
+        try:
+            super().__init__(*args, **kwargs)
+        except Exception:
+            if "output" not in kwargs:
+                try:
+                    from prompt_toolkit.output import DummyOutput
+                    kwargs["output"] = DummyOutput()
+                    super().__init__(*args, **kwargs)
+                except Exception:
+                    raise
+            else:
+                raise
+        self._fix_menu_floats()
+
+    def _fix_menu_floats(self) -> None:
+        """保持补全菜单水平位置固定在左侧，不随光标向右位移。"""
+        def _walk(container: Any) -> None:
+            from prompt_toolkit.layout.containers import FloatContainer
+            if isinstance(container, FloatContainer):
+                for f in container.floats:
+                    if f.xcursor:
+                        f.xcursor = False
+                        f.left = 0
+            for child in getattr(container, "get_children", lambda: [])():
+                _walk(child)
+
+        try:
+            _walk(self.layout.container)
+        except Exception:
+            pass
+
+
 class SlashCommandCompleter(Completer):
     def get_completions(self, document, complete_event):
         text = document.text_before_cursor
 
-        # /think 二级补全
-        if text.startswith("/think "):
-            sub = text[len("/think "):].lower()
-            options = [("on", "开启思考模式"), ("off", "关闭思考模式"), ("toggle", "切换思考模式开关")]
+        # /mode 二级补全
+        if text == "/mode" or text.startswith("/mode "):
+            sub = "" if text == "/mode" else text[len("/mode "):].lower()
+            options = [
+                ("chat", "普通聊天模式"),
+                ("agent", "Todo Agent 助理模式"),
+                ("json", "严格 JSON 输出模式"),
+            ]
             for opt, desc in options:
                 if opt.startswith(sub):
-                    yield Completion(opt, start_position=-len(sub), display=f"{opt:<8} {desc}")
-        # /list 二级补全
-        if text.startswith("/list "):
-            sub = text[len("/list "):].lower()
-            options = [("all", "查看全部待办"), ("pending", "查看未完成待办"), ("completed", "查看已完成待办")]
-            for opt, desc in options:
-                if opt.startswith(sub):
-                    yield Completion(opt, start_position=-len(sub), display=f"{opt:<10} {desc}")
+                    replacement = f"/mode {opt}"
+                    if text == replacement:
+                        replacement = f"/mode {opt} "
+                    yield Completion(
+                        replacement,
+                        start_position=-len(text),
+                        display=f"{opt:<12} {desc}",
+                    )
             return
+
+        # /think 二级补全
+        if text == "/think" or text.startswith("/think "):
+            sub = "" if text == "/think" else text[len("/think "):].lower()
+            options = [
+                ("toggle", "切换思考模式开关"),
+                ("on", "开启思考模式 (Thinking)"),
+                ("off", "关闭思考模式"),
+            ]
+            for opt, desc in options:
+                if opt.startswith(sub):
+                    replacement = f"/think {opt}"
+                    if text == replacement:
+                        replacement = f"/think {opt} "
+                    yield Completion(
+                        replacement,
+                        start_position=-len(text),
+                        display=f"{opt:<12} {desc}",
+                    )
+            return
+
+        # /list 二级补全
+        if text == "/list" or text.startswith("/list "):
+            sub = "" if text == "/list" else text[len("/list "):].lower()
+            options = [
+                ("all", "查看全部待办任务"),
+                ("pending", "查看未完成待办任务"),
+                ("completed", "查看已完成待办任务"),
+            ]
+            for opt, desc in options:
+                if opt.startswith(sub):
+                    replacement = f"/list {opt}"
+                    if text == replacement:
+                        replacement = f"/list {opt} "
+                    yield Completion(
+                        replacement,
+                        start_position=-len(text),
+                        display=f"{opt:<12} {desc}",
+                    )
+            return
+
+        # /provider 二级补全
+        if text == "/provider" or text.startswith("/provider "):
+            sub = "" if text == "/provider" else text[len("/provider "):].lower()
+            options = [
+                ("custom", "自定义 AI 供应商管理 (添加/修改/删除)"),
+                ("ollama", "切换至 Ollama 本地供应商"),
+                ("deepseek", "切换至 DeepSeek 官方供应商"),
+                ("openai", "切换至 OpenAI 官方供应商"),
+            ]
+            for opt, desc in options:
+                if opt.startswith(sub):
+                    replacement = f"/provider {opt}"
+                    if text == replacement:
+                        replacement = f"/provider {opt} "
+                    yield Completion(
+                        replacement,
+                        start_position=-len(text),
+                        display=f"{opt:<12} {desc}",
+                    )
+            return
+
+        # /model 二级补全
+        if text == "/model" or text.startswith("/model "):
+            sub = "" if text == "/model" else text[len("/model "):].lower()
+            options = [
+                ("deepseek-chat", "DeepSeek 通用模型"),
+                ("gpt-4o-mini", "OpenAI 轻量快速模型"),
+                ("gpt-4o", "OpenAI 旗舰推理模型"),
+                ("llama3:latest", "Ollama 开源本地模型"),
+            ]
+            for opt, desc in options:
+                if opt.startswith(sub):
+                    replacement = f"/model {opt}"
+                    if text == replacement:
+                        replacement = f"/model {opt} "
+                    yield Completion(
+                        replacement,
+                        start_position=-len(text),
+                        display=f"{opt:<16} {desc}",
+                    )
+            return
+
+        # /prompt 二级补全
+        if text == "/prompt" or text.startswith("/prompt "):
+            sub = "" if text == "/prompt" else text[len("/prompt "):].lower()
+            options = [
+                ("p1", "任务拆解助手 (多步目标细化)"),
+                ("p2", "GTD 每日复盘 (任务检视与反思)"),
+                ("p3", "四象限优先级评估 (重要紧急度梳理)"),
+            ]
+            for opt, desc in options:
+                if opt.startswith(sub):
+                    replacement = f"/prompt {opt}"
+                    if text == replacement:
+                        replacement = f"/prompt {opt} "
+                    yield Completion(
+                        replacement,
+                        start_position=-len(text),
+                        display=f"{opt:<12} {desc}",
+                    )
+            return
+
+        # /skill 二级补全
+        if text == "/skill" or text.startswith("/skill "):
+            sub = "" if text == "/skill" else text[len("/skill "):].lower()
+            options = [
+                ("skill-gtd", "GTD 时间管理与任务梳理导师"),
+                ("skill-pomodoro", "番茄工作法与专注节奏教练"),
+                ("skill-review", "待办进度与周度复盘专家"),
+            ]
+            for opt, desc in options:
+                if opt.startswith(sub):
+                    replacement = f"/skill {opt}"
+                    if text == replacement:
+                        replacement = f"/skill {opt} "
+                    yield Completion(
+                        replacement,
+                        start_position=-len(text),
+                        display=f"{opt:<16} {desc}",
+                    )
+            return
+
         # 一级 Slash 命令补全
         if text.startswith("/"):
-            query = text.lower()
-            # 如果包含空格且命令已结束（如 '/mode '），不应把其他命令的描述当成命令匹配
-            if " " in query:
-                return
+            query = text.lower().strip()
             term_w = get_terminal_width()
-            # 三级过滤策略：
-            # 1. 精确匹配优先：输入完整命令（如 /mode）时只显示该命令
-            # 2. 前缀匹配合并：有前缀匹配结果时，只展示前缀匹配项，避免描述匹配引入无关项
-            # 3. 兜底描述匹配：仅当前缀无匹配时，才回退到描述关键词搜索
             has_exact = any(c.lower() == query for c, _ in SLASH_COMMANDS)
             has_prefix = any(
                 c.lower().startswith(query) and c.lower() != query
@@ -157,6 +312,7 @@ class SlashCommandCompleter(Completer):
                     matched = prefix
                 else:
                     matched = prefix or desc_match
+
                 if matched:
                     if term_w < 80:
                         max_desc_w = max(10, term_w - 20)
@@ -164,7 +320,13 @@ class SlashCommandCompleter(Completer):
                         display_text = f"{cmd:<10} {disp_desc}"
                     else:
                         display_text = f"{cmd:<12} {desc}"
-                    yield Completion(cmd, start_position=-len(text), display=display_text, display_meta="")
+
+                    if exact:
+                        rep = f"{cmd} " if text == cmd else cmd
+                    else:
+                        rep = cmd
+
+                    yield Completion(rep, start_position=-len(text), display=display_text, display_meta="")
 
 
 # 增强 CompletionsMenuControl：当用户刚弹出补全列表（complete_index 为 None）时，首项默认以高亮选中样式显示
@@ -238,15 +400,32 @@ def print_banner(display_cfg, current_mode_name: str = "agent"):
     console.print(Panel(banner_text, border_style="cyan", padding=(0, 2)))
 
 
-def show_help():
-    table = Table(title="📌 常用 Slash 命令帮助", title_style="bold green")
-    table.add_column("命令", style="cyan", no_wrap=True)
-    table.add_column("说明", style="white")
+async def show_help():
+    """交互式显示可用 Slash 命令帮助，支持上下箭头浏览，Esc/q 返回"""
+    items = [
+        {"id": cmd, "cmd": cmd, "desc": desc}
+        for cmd, desc in SLASH_COMMANDS
+    ]
+    term_w = get_terminal_width(fallback=80)
+    cmd_w = 12 if term_w >= 80 else 10
 
-    for cmd, desc in SLASH_COMMANDS:
-        table.add_row(cmd, desc)
+    def render_cmd(it: Dict[str, Any]) -> str:
+        c = it["cmd"]
+        d = it["desc"]
+        if term_w < 80:
+            max_d_w = max(10, term_w - cmd_w - 6)
+            d = truncate_to_width(d, max_d_w)
+        return f"{c:<{cmd_w}} {d}"
 
-    console.print(table)
+    await run_interactive_selection_menu(
+        title="📌 常用 Slash 命令帮助",
+        items=items,
+        key_fn=lambda it: it["id"],
+        render_item_fn=render_cmd,
+        extra_bindings={"q": "cancel", "Q": "cancel"},
+        help_hint="↑/↓ 浏览 | Esc/q 返回",
+        max_visible_items=12,
+    )
 
 
 def list_todos(db: DbState, filter_type: str = "all", search: str = ""):
@@ -441,19 +620,36 @@ def create_bottom_toolbar_getter(
     return get_toolbar
 
 
-async def select_provider_interactive(
-    providers: List[Dict[str, Any]],
-    current_id: str,
+async def run_interactive_selection_menu(
+    title: str,
+    items: List[Dict[str, Any]],
+    current_id: Optional[str] = None,
+    key_fn: Optional[Callable[[Dict[str, Any]], str]] = None,
+    render_item_fn: Optional[Callable[[Dict[str, Any]], str]] = None,
+    extra_bindings: Optional[Dict[str, str]] = None,
+    help_hint: str = "↑/↓ 选择 | Enter 确认 | Esc 取消",
+    max_visible_items: int = 12,
 ) -> Tuple[Optional[str], Optional[Dict[str, Any]]]:
-    """二级菜单：使用上下箭头选择 AI 供应商，支持 Enter 切换 或 k 配置 Key（自适应终端宽度）"""
-    if not providers:
+    """
+    通用二级交互选择菜单组件：
+    - 无边框纯净排版，选项统一新增缩进
+    - 统一键盘交互 (↑/↓ 循环切换、Enter 确认、Esc 取消、支持扩展热键)
+    - 统一选中与前景色高亮 (❯ 标记、[当前] 指示、全终端融入透明样式)
+    - 支持长列表安全高度截断与平滑窗口滚动指示
+    """
+    if not items:
         return (None, None)
 
-    selected_index = 0
-    for idx, p in enumerate(providers):
-        if p.get("id", "").lower() == (current_id or "").lower():
-            selected_index = idx
-            break
+    _key = key_fn or (lambda it: str(it.get("id", "")))
+    _render = render_item_fn or (lambda it: str(it.get("title") or it.get("name") or it.get("id") or ""))
+
+    selected_index = [0]
+    if current_id:
+        target_cur = str(current_id).strip().lower()
+        for idx, it in enumerate(items):
+            if str(_key(it)).strip().lower() == target_cur:
+                selected_index[0] = idx
+                break
 
     action_holder: List[Optional[str]] = [None]
     result_holder: List[Optional[Dict[str, Any]]] = [None]
@@ -462,25 +658,18 @@ async def select_provider_interactive(
 
     @kb.add("up")
     def _(event):
-        nonlocal selected_index
-        selected_index = (selected_index - 1) % len(providers)
+        selected_index[0] = (selected_index[0] - 1) % len(items)
+        event.app.invalidate()
 
     @kb.add("down")
     def _(event):
-        nonlocal selected_index
-        selected_index = (selected_index + 1) % len(providers)
+        selected_index[0] = (selected_index[0] + 1) % len(items)
+        event.app.invalidate()
 
     @kb.add("enter")
     def _(event):
-        action_holder[0] = "switch"
-        result_holder[0] = providers[selected_index]
-        event.app.exit()
-
-    @kb.add("k")
-    @kb.add("K")
-    def _(event):
-        action_holder[0] = "set_key"
-        result_holder[0] = providers[selected_index]
+        action_holder[0] = "confirm"
+        result_holder[0] = items[selected_index[0]]
         event.app.exit()
 
     @kb.add("escape")
@@ -489,137 +678,186 @@ async def select_provider_interactive(
         action_holder[0] = "cancel"
         event.app.exit()
 
+    if extra_bindings:
+        for key_str, act_name in extra_bindings.items():
+            @kb.add(key_str)
+            def _(event, act=act_name):
+                action_holder[0] = act
+                result_holder[0] = items[selected_index[0]]
+                event.app.exit()
+
     def get_text():
         term_w = get_terminal_width(fallback=80)
-        menu_w = max(50, term_w - 4)
+        max_w = max(20, term_w - 2)
 
-        header = build_box_header("🤖 选择 AI 供应商 [Enter 切换 | k 设置Key | Esc 取消]", menu_w)
-        tokens = [("class:menu-title", header)]
+        total = len(items)
+        vis_count = min(total, max_visible_items)
 
-        inner_w = max(20, menu_w - 4)
-        for idx, p in enumerate(providers):
-            is_cur = p.get("id", "").lower() == (current_id or "").lower()
-            is_sel = idx == selected_index
+        if total <= vis_count:
+            start_i = 0
+            end_i = total
+        else:
+            half = vis_count // 2
+            if selected_index[0] < half:
+                start_i = 0
+                end_i = vis_count
+            elif selected_index[0] >= total - (vis_count - half):
+                start_i = total - vis_count
+                end_i = total
+            else:
+                start_i = selected_index[0] - half
+                end_i = start_i + vis_count
+
+        all_lines: List[Tuple[str, str]] = []
+
+        if start_i > 0:
+            more_up = truncate_to_width("    ▲ 更多项目...", max_w)
+            all_lines.append(("class:menu-dim", more_up))
+
+        for idx in range(start_i, end_i):
+            it = items[idx]
+            it_key = str(_key(it)).strip().lower()
+            is_cur = bool(current_id and it_key == str(current_id).strip().lower())
+            is_sel = idx == selected_index[0]
             pointer = "❯ " if is_sel else "  "
             cur_tag = " [当前]" if is_cur else ""
 
-            if p.get("id") == "ollama" or "11434" in (p.get("base_url") or ""):
-                key_tag = "✓ 已配Key" if p.get("api_key") else "本地免Key"
-            else:
-                key_tag = "✓ 已配Key" if p.get("api_key") else "✗ 无Key"
+            item_text = _render(it)
+            raw_line = f"  {pointer}{item_text}{cur_tag}"
+            line_str = truncate_to_width(raw_line, max_w)
+            style = "class:menu-selected" if is_sel else "class:menu-item"
+            all_lines.append((style, line_str))
 
-            # 组合行内容并自适应截断
-            name = p.get("name", p.get("id"))
-            model = p.get("model", "")
-            raw_line = f"{pointer}{name} ({model}) [{key_tag}]{cur_tag}"
-            line_str = truncate_to_width(raw_line, inner_w) + "\n"
+        if end_i < total:
+            more_down = truncate_to_width("    ▼ 更多项目...", max_w)
+            all_lines.append(("class:menu-dim", more_down))
 
-            if is_sel:
-                tokens.append(("class:menu-selected", line_str))
-            else:
-                tokens.append(("class:menu-item", line_str))
+        hint_text = truncate_to_width(f"{title} [{help_hint}]", max_w)
+        all_lines.append(("class:menu-title", hint_text))
 
-        footer = build_box_footer(menu_w)
-        tokens.append(("class:menu-dim", footer))
+        tokens = []
+        for i, (style, text) in enumerate(all_lines):
+            tokens.append((style, text + ("\n" if i < len(all_lines) - 1 else "")))
         return tokens
 
-    control = FormattedTextControl(get_text)
-    window = Window(content=control, height=len(providers) + 3)
-    app = Application(
-        layout=Layout(HSplit([window])),
-        key_bindings=kb,
-        style=CLI_STYLE,
-        full_screen=False,
-    )
+    total_vis = min(len(items), max_visible_items)
+    scroll_extra = (1 if len(items) > max_visible_items else 0) * 2
+    window_h = min(total_vis + 1 + scroll_extra, 16)
 
-    await app.run_async()
+    control = FormattedTextControl(get_text)
+    window = Window(content=control, height=window_h)
+    try:
+        app = Application(
+            layout=Layout(HSplit([window])),
+            key_bindings=kb,
+            style=CLI_STYLE,
+            full_screen=False,
+            erase_when_done=True,
+        )
+    except Exception:
+        from prompt_toolkit.output import DummyOutput
+        app = Application(
+            layout=Layout(HSplit([window])),
+            key_bindings=kb,
+            style=CLI_STYLE,
+            full_screen=False,
+            erase_when_done=True,
+            output=DummyOutput(),
+        )
+
+    try:
+        await app.run_async()
+    except Exception:
+        pass
     return (action_holder[0], result_holder[0])
+
+
+async def select_provider_interactive(
+    providers: List[Dict[str, Any]],
+    current_id: str,
+) -> Tuple[Optional[str], Optional[Dict[str, Any]]]:
+    """二级菜单：使用上下箭头选择 AI 供应商，支持 Enter 切换、e 编辑、d 删除(自定义)、或选择自定义供应商管理"""
+    if not providers:
+        return (None, None)
+
+    custom_option = {
+        "id": "__custom__",
+        "name": "[⚙ 自定义供应商管理 (添加/管理)...]",
+        "model": "",
+        "base_url": "",
+        "api_key": "",
+    }
+    all_items = list(providers) + [custom_option]
+
+    def render_provider(p: Dict[str, Any]) -> str:
+        if p.get("id") == "__custom__":
+            return p.get("name", "")
+        if p.get("id") == "ollama" or "11434" in (p.get("base_url") or ""):
+            key_tag = "✓ 已配Key" if p.get("api_key") else "本地免Key"
+        else:
+            key_tag = "✓ 已配Key" if p.get("api_key") else "✗ 无Key"
+        custom_tag = " [自定义]" if p.get("is_custom") else ""
+        name = p.get("name", p.get("id"))
+        model = p.get("model", "")
+        return f"{name:<16} ({model}) [{key_tag}]{custom_tag}"
+
+    action, selected = await run_interactive_selection_menu(
+        title="🤖 选择 AI 供应商",
+        items=all_items,
+        current_id=current_id,
+        key_fn=lambda it: str(it.get("id", "")),
+        render_item_fn=render_provider,
+        extra_bindings={
+            "e": "edit", "E": "edit",
+            "d": "delete", "D": "delete",
+            "c": "custom", "C": "custom",
+            "a": "custom", "A": "custom",
+        },
+        help_hint="↑/↓ 选择 | Enter 切换 | e 编辑 | d 删除(自定义) | c 自定义管理 | Esc 取消",
+        max_visible_items=10,
+    )
+    if action in ("custom", "add"):
+        return ("custom", None)
+    elif action == "confirm":
+        if selected and selected.get("id") == "__custom__":
+            return ("custom", None)
+        return ("switch", selected)
+    elif action == "edit":
+        if selected and selected.get("id") == "__custom__":
+            return ("custom", None)
+        return ("edit", selected)
+    elif action == "delete":
+        if selected and selected.get("id") == "__custom__":
+            return ("custom", None)
+        return ("delete", selected)
+    return (None, None)
 
 
 async def select_model_interactive(
     models: List[str],
     current_model: str,
 ) -> Optional[str]:
-    """二级菜单：使用上下箭头选择模型（自适应终端宽度）"""
+    """二级菜单：使用上下箭头选择 LLM 模型"""
     if not models:
         return None
 
-    # 加入自定义选项
-    options = list(models)
     custom_option = "[➕ 输入自定义模型名称...]"
-    options.append(custom_option)
+    all_models = list(models)
+    if custom_option not in all_models:
+        all_models.append(custom_option)
 
-    selected_index = 0
-    for idx, m in enumerate(options):
-        if m.lower() == (current_model or "").lower():
-            selected_index = idx
-            break
-
-    result_holder: List[Optional[str]] = [None]
-    cancelled_holder = [False]
-
-    kb = KeyBindings()
-
-    @kb.add("up")
-    def _(event):
-        nonlocal selected_index
-        selected_index = (selected_index - 1) % len(options)
-
-    @kb.add("down")
-    def _(event):
-        nonlocal selected_index
-        selected_index = (selected_index + 1) % len(options)
-
-    @kb.add("enter")
-    def _(event):
-        result_holder[0] = options[selected_index]
-        event.app.exit()
-
-    @kb.add("escape")
-    @kb.add("c-c")
-    def _(event):
-        cancelled_holder[0] = True
-        event.app.exit()
-
-    def get_text():
-        term_w = get_terminal_width(fallback=80)
-        menu_w = max(50, term_w - 4)
-
-        header = build_box_header("🧠 选择 LLM 模型 [↑/↓ 选择 | Enter 确认 | Esc 取消]", menu_w)
-        tokens = [("class:menu-title", header)]
-
-        inner_w = max(20, menu_w - 4)
-        for idx, m in enumerate(options):
-            is_cur = m.lower() == (current_model or "").lower()
-            is_sel = idx == selected_index
-            pointer = "❯ " if is_sel else "  "
-            cur_tag = " [当前]" if is_cur else ""
-
-            raw_line = f"{pointer}{m}{cur_tag}"
-            line_str = truncate_to_width(raw_line, inner_w) + "\n"
-
-            if is_sel:
-                tokens.append(("class:menu-selected", line_str))
-            else:
-                tokens.append(("class:menu-item", line_str))
-
-        footer = build_box_footer(menu_w)
-        tokens.append(("class:menu-dim", footer))
-        return tokens
-
-    control = FormattedTextControl(get_text)
-    window = Window(content=control, height=min(len(options) + 3, 16))
-    app = Application(
-        layout=Layout(HSplit([window])),
-        key_bindings=kb,
-        style=CLI_STYLE,
-        full_screen=False,
+    items = [{"id": m, "name": m} for m in all_models]
+    action, selected = await run_interactive_selection_menu(
+        title="🧠 选择 LLM 模型",
+        items=items,
+        current_id=current_model,
+        render_item_fn=lambda it: it["name"],
+        help_hint="↑/↓ 选择 | Enter 确认 | Esc 取消",
+        max_visible_items=12,
     )
-
-    await app.run_async()
-    if cancelled_holder[0]:
-        return None
-    return result_holder[0]
+    if action == "confirm" and selected:
+        return selected["id"]
+    return None
 
 
 # 交互式模式选择菜单选项定义
@@ -631,81 +869,92 @@ MODE_OPTIONS = [
 
 
 async def select_mode_interactive(current_mode_name: str = "chat") -> Optional[str]:
-    """二级菜单：使用上下箭头选择模式（无背景、默认选中第一项、高亮前景色、Enter确认、Esc取消）"""
-    # 使用列表存储 selected_index，避免 nonlocal 在 prompt_toolkit 回调中的闭包问题
-    selected_index = [0]
-    # 按照需求：第一项 chat 默认获得焦点
-    for idx, (m_name, _) in enumerate(MODE_OPTIONS):
-        if m_name.lower() == (current_mode_name or "chat").lower():
-            # 若已有当前模式可对应，否则默认 0 (chat)
-            selected_index[0] = idx
-            break
-
-    result_holder: List[Optional[str]] = [None]
-    cancelled_holder = [False]
-
-    kb = KeyBindings()
-
-    @kb.add("up")
-    def _(event):
-        selected_index[0] = (selected_index[0] - 1) % len(MODE_OPTIONS)
-        event.app.invalidate()
-
-    @kb.add("down")
-    def _(event):
-        selected_index[0] = (selected_index[0] + 1) % len(MODE_OPTIONS)
-        event.app.invalidate()
-
-    @kb.add("enter")
-    def _(event):
-        result_holder[0] = MODE_OPTIONS[selected_index[0]][0]
-        event.app.exit()
-
-    @kb.add("escape")
-    @kb.add("c-c")
-    def _(event):
-        cancelled_holder[0] = True
-        event.app.exit()
-
-    def get_text():
-        term_w = get_terminal_width(fallback=80)
-        menu_w = max(50, term_w - 4)
-
-        header = build_box_header("🔄 选择工作模式 [↑/↓ 选择 | Enter 确认 | Esc 取消]", menu_w)
-        tokens = [("class:menu-title", header)]
-
-        inner_w = max(20, menu_w - 4)
-        for idx, (opt_name, opt_desc) in enumerate(MODE_OPTIONS):
-            is_cur = opt_name.lower() == (current_mode_name or "chat").lower()
-            is_sel = idx == selected_index[0]
-            pointer = "❯ " if is_sel else "  "
-            cur_tag = " [当前]" if is_cur else ""
-
-            raw_line = f"{pointer}{opt_name:<8} {opt_desc}{cur_tag}"
-            line_str = truncate_to_width(raw_line, inner_w) + "\n"
-
-            if is_sel:
-                tokens.append(("class:menu-selected", line_str))
-            else:
-                tokens.append(("class:menu-item", line_str))
-
-        footer = build_box_footer(menu_w)
-        tokens.append(("class:menu-dim", footer))
-        return tokens
-
-    control = FormattedTextControl(get_text)
-    window = Window(content=control, height=len(MODE_OPTIONS) + 3)
-    app = Application(
-        layout=Layout(HSplit([window])),
-        key_bindings=kb,
-        style=CLI_STYLE,
-        full_screen=False,
+    """二级菜单：使用上下箭头选择工作模式"""
+    items = [
+        {"id": opt_name, "name": opt_name, "desc": opt_desc}
+        for opt_name, opt_desc in MODE_OPTIONS
+    ]
+    action, selected = await run_interactive_selection_menu(
+        title="🔄 选择工作模式",
+        items=items,
+        current_id=current_mode_name or "chat",
+        render_item_fn=lambda it: f"{it['id']:<8} {it['desc']}",
+        help_hint="↑/↓ 选择 | Enter 确认 | Esc 取消",
+        max_visible_items=10,
     )
+    if action == "confirm" and selected:
+        return selected["id"]
+    return None
 
-    await app.run_async()
-    if cancelled_holder[0]:
+
+async def select_think_interactive(current_thinking: bool = False) -> Optional[str]:
+    """二级菜单：使用上下箭头选择 AI 思考模式状态"""
+    items = [
+        {"id": "toggle", "title": "快速切换开关", "desc": "在当前开/关状态之间快速反转"},
+        {"id": "on", "title": "开启思考模式", "desc": "展示深度思考与推理过程 (Thinking)"},
+        {"id": "off", "title": "关闭思考模式", "desc": "直接输出最终回答，加快响应速度"},
+    ]
+    cur_id = "on" if current_thinking else "off"
+    action, selected = await run_interactive_selection_menu(
+        title="💭 选择思考模式 (Thinking)",
+        items=items,
+        current_id=cur_id,
+        render_item_fn=lambda it: f"{it['id']:<8} {it['title']:<16} {it['desc']}",
+        help_hint="↑/↓ 选择 | Enter 确认 | Esc 取消",
+        max_visible_items=10,
+    )
+    if action == "confirm" and selected:
+        return selected["id"]
+    return None
+
+
+async def select_prompt_interactive(prompts: List[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
+    """二级菜单：使用上下箭头选择预设 Prompt 模板"""
+    if not prompts:
         return None
-    return result_holder[0]
+
+    def render_pr(pr: Dict[str, Any]) -> str:
+        pid = pr.get("id", "")
+        title = pr.get("title", "")
+        category = pr.get("category", "")
+        return f"{pid:<8} {title:<18} [{category}]"
+
+    action, selected = await run_interactive_selection_menu(
+        title="📝 选择 Prompt 提示词模板",
+        items=prompts,
+        key_fn=lambda it: str(it.get("id", "")),
+        render_item_fn=render_pr,
+        help_hint="↑/↓ 选择 | Enter 执行 | Esc 取消",
+        max_visible_items=10,
+    )
+    if action == "confirm":
+        return selected
+    return None
+
+
+async def select_skill_interactive(skills: List[Dict[str, Any]], current_role: str = "") -> Optional[Dict[str, Any]]:
+    """二级菜单：使用上下箭头选择 AI 技能角色"""
+    if not skills:
+        return None
+
+    def render_sk(sk: Dict[str, Any]) -> str:
+        sid = sk.get("id", "")
+        title = sk.get("title", sid)
+        desc = sk.get("description", "")
+        return f"{sid:<14} {title:<16} {desc}"
+
+    action, selected = await run_interactive_selection_menu(
+        title="⚡ 选择 AI 技能角色 (Skills)",
+        items=skills,
+        current_id=current_role,
+        key_fn=lambda it: str(it.get("id", "")),
+        render_item_fn=render_sk,
+        help_hint="↑/↓ 选择 | Enter 启用 | Esc 取消",
+        max_visible_items=10,
+    )
+    if action == "confirm":
+        return selected
+    return None
 
 
 def apply_mode_switch(target_mode: str, current_mode: Dict[str, Any]) -> bool:
@@ -771,7 +1020,7 @@ async def handle_command(
         return True
 
     elif line == "/help":
-        show_help()
+        await show_help()
         return True
 
     elif line == "/list" or line.startswith("/list "):
@@ -910,11 +1159,25 @@ async def handle_command(
 
     elif line == "/think" or line.startswith("/think ") or line in ["/thinking"]:
         parts = line.split(maxsplit=1)
-        if len(parts) == 1 or parts[1].strip().lower() == "toggle":
-            llm_cfg.enable_thinking = not llm_cfg.enable_thinking
+        if len(parts) == 1:
+            if session is not None:
+                selected_th = await select_think_interactive(llm_cfg.enable_thinking)
+                if selected_th == "toggle":
+                    llm_cfg.enable_thinking = not llm_cfg.enable_thinking
+                elif selected_th == "on":
+                    llm_cfg.enable_thinking = True
+                elif selected_th == "off":
+                    llm_cfg.enable_thinking = False
+                elif selected_th is None:
+                    console.print("[dim]已取消选择思考模式。[/dim]")
+                    return True
+            else:
+                llm_cfg.enable_thinking = not llm_cfg.enable_thinking
         else:
             sub = parts[1].strip().lower()
-            if sub in ["on", "true", "1", "open", "enable"]:
+            if sub == "toggle":
+                llm_cfg.enable_thinking = not llm_cfg.enable_thinking
+            elif sub in ["on", "true", "1", "open", "enable"]:
                 llm_cfg.enable_thinking = True
             elif sub in ["off", "false", "0", "close", "disable"]:
                 llm_cfg.enable_thinking = False
@@ -934,8 +1197,145 @@ async def handle_command(
     elif line == "/provider" or line == "/providers" or line.startswith("/provider "):
         providers = ai_cfg_service.get_providers()
         parts = line.split(maxsplit=2)
+
+        async def _prompt_input(msg: str, default_val: str = "") -> str:
+            if session:
+                val = await session.prompt_async(HTML(msg), default=default_val)
+                return val.strip()
+            return ""
+
+        async def _handle_add_provider():
+            console.print("[bold cyan]➕ 添加新的自定义 AI 供应商[/bold cyan]")
+            p_id = await _prompt_input("<b>供应商唯一标识 (ID, 如 my-llm): </b>")
+            if not p_id:
+                console.print("[dim]已取消添加供应商。[/dim]")
+                return
+            # 检查是否已存在
+            existing = next((p for p in providers if p.get("id", "").lower() == p_id.lower()), None)
+            if existing:
+                console.print(f"[yellow]供应商 ID '{p_id}' 已存在，请使用编辑功能或更换 ID。[/yellow]")
+                return
+            p_name = await _prompt_input(f"<b>供应商显示名称 (默认: {p_id}): </b>", default_val=p_id)
+            p_base_url = await _prompt_input("<b>Base URL (例如: https://api.example.com/v1): </b>")
+            p_api_key = await _prompt_input("<b>API Key (可选): </b>")
+            p_model = await _prompt_input("<b>默认模型名称 (如 gpt-4o, deepseek-chat): </b>")
+
+            new_provider = {
+                "id": p_id,
+                "name": p_name or p_id,
+                "base_url": p_base_url,
+                "api_key": p_api_key,
+                "model": p_model,
+                "is_custom": True,
+            }
+            providers.append(new_provider)
+            ai_cfg_service.save_providers(providers)
+            console.print(f"[green]✓ 成功添加自定义供应商 [bold]{new_provider['name']}[/bold] 并保存至 config.json！[/green]")
+
+            # 自动切换至新建供应商
+            llm_cfg.provider = p_id
+            llm_cfg.base_url = p_base_url
+            if p_model:
+                llm_cfg.model = p_model
+            llm_cfg.api_key = p_api_key
+            save_current_llm_config(db, llm_cfg)
+            console.print(f"[green]✓ 已自动切换为新供应商: [bold]{new_provider['name']}[/bold] (模型: {llm_cfg.model})[/green]")
+
+        async def _handle_edit_provider(target_p: Dict[str, Any]):
+            is_custom = bool(target_p.get("is_custom", False))
+            p_name = target_p.get("name", target_p.get("id"))
+            console.print(f"[bold cyan]⚙ 编辑供应商: {p_name} ({target_p.get('id')}){' [自定义]' if is_custom else ' [内置]'}[/bold cyan]")
+            
+            cur_key = target_p.get("api_key") or ""
+            if is_custom:
+                cur_base_url = target_p.get("base_url") or ""
+                cur_model = target_p.get("model") or ""
+                new_base_url = await _prompt_input(f"<b>Base URL: </b>", default_val=cur_base_url)
+                new_key = await _prompt_input(f"<b>API Key: </b>", default_val=cur_key)
+                new_model = await _prompt_input(f"<b>默认模型: </b>", default_val=cur_model)
+                target_p["base_url"] = new_base_url
+                target_p["api_key"] = new_key
+                if new_model:
+                    target_p["model"] = new_model
+            else:
+                console.print(f"[dim]提示: 内置官方供应商仅需配置 API Key (Base URL 固定为 {target_p.get('base_url')})。[/dim]")
+                new_key = await _prompt_input(f"<b>API Key: </b>", default_val=cur_key)
+                target_p["api_key"] = new_key
+
+            ai_cfg_service.save_providers(providers)
+
+            # 如果当前正在使用该供应商，同步更新当前活跃配置
+            if (llm_cfg.provider or "").lower() == target_p.get("id", "").lower():
+                if is_custom:
+                    llm_cfg.base_url = target_p["base_url"]
+                    if target_p.get("model"):
+                        llm_cfg.model = target_p["model"]
+                llm_cfg.api_key = target_p["api_key"]
+                save_current_llm_config(db, llm_cfg)
+            console.print(f"[green]✓ 已成功更新 [{p_name}] 的配置并持久化！[/green]")
+
+        async def _handle_delete_provider(target_p: Dict[str, Any]):
+            if not target_p.get("is_custom"):
+                console.print(f"[yellow]⚠️ 供应商 [{target_p.get('name')}] 为系统内置官方供应商，不可删除！[/yellow]")
+                return
+            p_id = target_p.get("id")
+            p_name = target_p.get("name", p_id)
+            confirm_del = await _prompt_input(f"<b>确认删除自定义供应商 [{p_name}] 吗？(y/N): </b>", default_val="n")
+            if confirm_del.lower() in ("y", "yes"):
+                providers[:] = [p for p in providers if p.get("id") != p_id]
+                ai_cfg_service.save_providers(providers)
+                console.print(f"[green]✓ 已删除自定义供应商 [{p_name}]。[/green]")
+                # 如果当前正在使用的就是被删除的供应商，重置为第一个可用供应商
+                if (llm_cfg.provider or "").lower() == p_id.lower():
+                    fallback = providers[0] if providers else None
+                    if fallback:
+                        llm_cfg.provider = fallback.get("id", "")
+                        llm_cfg.base_url = fallback.get("base_url", "")
+                        if fallback.get("model"):
+                            llm_cfg.model = fallback.get("model")
+                        llm_cfg.api_key = fallback.get("api_key", "")
+                        save_current_llm_config(db, llm_cfg)
+                        console.print(f"[yellow]当前供应商已被重置回: [bold]{fallback.get('name')}[/bold][/yellow]")
+            else:
+                console.print("[dim]已取消删除。[/dim]")
+
+        async def _handle_custom_management():
+            # 自定义管理交互选项列表
+            custom_items = [
+                {"id": "add", "name": "➕ 添加新自定义供应商", "desc": "录入新 Base URL, API Key 与模型"},
+            ]
+            for p in providers:
+                if p.get("is_custom"):
+                    custom_items.append({
+                        "id": f"manage_{p.get('id')}",
+                        "name": f"⚙ {p.get('name', p.get('id'))}",
+                        "desc": f"Base URL: {p.get('base_url')} | Model: {p.get('model')}",
+                        "provider": p,
+                    })
+
+            act, sel = await run_interactive_selection_menu(
+                title="🛠 自定义 AI 供应商管理",
+                items=custom_items,
+                current_id="add",
+                key_fn=lambda it: it["id"],
+                render_item_fn=lambda it: f"{it['name']:<24} {it.get('desc', '')}",
+                extra_bindings={"d": "delete", "D": "delete"},
+                help_hint="↑/↓ 选择 | Enter 编辑/进入 | d 删除(自定义) | Esc 返回",
+                max_visible_items=10,
+            )
+            if act == "confirm" and sel:
+                if sel["id"] == "add":
+                    await _handle_add_provider()
+                else:
+                    await _handle_edit_provider(sel["provider"])
+            elif act == "delete" and sel:
+                if sel.get("provider"):
+                    await _handle_delete_provider(sel["provider"])
+                else:
+                    console.print("[yellow]无法删除该选项。[/yellow]")
+
         if len(parts) == 1:
-            # 二级菜单：上下箭头交互式选择，支持 Enter 切换与 k 设置 Key
+            # 二级菜单：上下箭头交互式选择，支持 Enter 切换、e 编辑、d 删除(自定义)、c 自定义管理
             action, target_p = await select_provider_interactive(providers, llm_cfg.provider)
             if action == "switch" and target_p:
                 llm_cfg.provider = target_p.get("id", "")
@@ -947,31 +1347,37 @@ async def handle_command(
                 console.print(
                     f"[green]✓ 已成功切换供应商为: [bold]{target_p.get('name')}[/bold] (模型: {llm_cfg.model})[/green]"
                 )
-            elif action == "set_key" and target_p:
-                if session:
-                    new_key = await session.prompt_async(HTML(f"<b>为 [{target_p.get('name')}] 输入新 API Key: </b>"))
-                    new_key = new_key.strip()
-                    target_p["api_key"] = new_key
-                    ai_cfg_service.save_providers(providers)
-                    if (llm_cfg.provider or "").lower() == target_p.get("id", "").lower():
-                        llm_cfg.api_key = new_key
-                        save_current_llm_config(db, llm_cfg)
-                    console.print(f"[green]✓ 已成功更新 [{target_p.get('name')}] 的 API Key 并保存至 config.json！[/green]")
+            elif action == "edit" and target_p:
+                await _handle_edit_provider(target_p)
+            elif action == "delete" and target_p:
+                await _handle_delete_provider(target_p)
+            elif action == "custom":
+                await _handle_custom_management()
             else:
                 console.print("[dim]已取消操作。[/dim]")
             return True
         else:
             sub = parts[1].strip()
-            if sub.lower() == "key" and len(parts) > 2:
-                new_key = parts[2].strip()
-                llm_cfg.api_key = new_key
-                # 同步更新 providers 列表中当前提供商的 key
-                for p in providers:
-                    if p.get("id", "").lower() == (llm_cfg.provider or "").lower():
-                        p["api_key"] = new_key
-                ai_cfg_service.save_providers(providers)
-                save_current_llm_config(db, llm_cfg)
-                console.print(f"[green]✓ 已为当前供应商 ({llm_cfg.provider}) 更新 API Key 并持久化至 config.json！[/green]")
+            if sub.lower() in ("custom", "add"):
+                await _handle_custom_management()
+                return True
+
+            if sub.lower() == "delete":
+                target_id = parts[2].strip() if len(parts) > 2 else ""
+                target_p = next((p for p in providers if p.get("id", "").lower() == target_id.lower()), None)
+                if target_p:
+                    await _handle_delete_provider(target_p)
+                else:
+                    console.print(f"[red]未找到供应商 '{target_id}' 进行删除。[/red]")
+                return True
+
+            if sub.lower() == "edit":
+                target_id = parts[2].strip() if len(parts) > 2 else llm_cfg.provider
+                target_p = next((p for p in providers if p.get("id", "").lower() == (target_id or "").lower()), None)
+                if target_p:
+                    await _handle_edit_provider(target_p)
+                else:
+                    console.print(f"[red]未找到供应商 '{target_id}' 进行编辑。[/red]")
                 return True
 
             target_p = next((p for p in providers if p.get("id", "").lower() == sub.lower()), None)
@@ -994,27 +1400,14 @@ async def handle_command(
         prompts = ai_cfg_service.get_prompts()
         parts = line.split(maxsplit=1)
         if len(parts) == 1:
-            term_w = get_terminal_width()
-            table = Table(title="📝 预设 Prompt 提示词模板", title_style="bold blue")
-            if term_w < 90:
-                table.add_column("ID", style="cyan", no_wrap=True)
-                table.add_column("标题", style="bold white")
-                table.add_column("内容", style="white")
-                for pr in prompts:
-                    text_snippet = truncate_to_width(pr.get("text", ""), max(15, term_w - 30))
-                    table.add_row(pr.get("id", ""), pr.get("title", ""), text_snippet)
+            target_pr = await select_prompt_interactive(prompts)
+            if target_pr:
+                prompt_text = target_pr.get("text", "")
+                console.print(f"[dim]📌 正在执行 Prompt [{target_pr.get('title')}]: {prompt_text}[/dim]")
+                line = prompt_text
             else:
-                table.add_column("ID", style="cyan", no_wrap=True)
-                table.add_column("分类", style="dim", width=10)
-                table.add_column("标题", style="bold white", width=16)
-                table.add_column("内容", style="white")
-                content_limit = max(40, term_w - 50)
-                for pr in prompts:
-                    text_snippet = truncate_to_width(pr.get("text", ""), content_limit)
-                    table.add_row(pr.get("id", ""), pr.get("category", ""), pr.get("title", ""), text_snippet)
-            console.print(table)
-            console.print("[dim]💡 执行指定 Prompt: /prompt <ID> (例如: /prompt p1)[/dim]")
-            return True
+                console.print("[dim]已取消选择 Prompt。[/dim]")
+                return True
         else:
             pid = parts[1].strip()
             target_pr = next((pr for pr in prompts if pr.get("id", "").lower() == pid.lower()), None)
@@ -1031,26 +1424,16 @@ async def handle_command(
         skills = ai_cfg_service.get_skills()
         parts = line.split(maxsplit=1)
         if len(parts) == 1:
-            term_w = get_terminal_width()
-            table = Table(title="⚡ AI 技能与角色模式 (Skills)", title_style="bold magenta")
-            if term_w < 90:
-                table.add_column("ID", style="cyan", no_wrap=True)
-                table.add_column("技能名称", style="bold white")
-                table.add_column("描述", style="white")
-                for sk in skills:
-                    desc = truncate_to_width(sk.get("description", ""), max(15, term_w - 30))
-                    table.add_row(sk.get("id", ""), sk.get("title", ""), desc)
+            target_sk = await select_skill_interactive(skills, current_mode.get("role", ""))
+            if target_sk:
+                current_mode["name"] = f"skill:{target_sk.get('id')}"
+                current_mode["role"] = target_sk.get("id")
+                current_mode["display_name"] = f"技能:{target_sk.get('title', target_sk.get('id'))}"
+                current_mode["system_prompt"] = target_sk.get("systemPrompt") or target_sk.get("system_prompt", "")
+                current_mode["output_format"] = "text"
+                console.print(f"[green]✓ 已切换到技能模式: [bold]{target_sk.get('title')}[/bold][/green]")
             else:
-                table.add_column("ID", style="cyan", no_wrap=True)
-                table.add_column("分类", style="dim", width=10)
-                table.add_column("技能名称", style="bold white", width=18)
-                table.add_column("描述", style="white")
-                desc_limit = max(35, term_w - 55)
-                for sk in skills:
-                    desc = truncate_to_width(sk.get("description", ""), desc_limit)
-                    table.add_row(sk.get("id", ""), sk.get("category", ""), sk.get("title", ""), desc)
-            console.print(table)
-            console.print("[dim]💡 切换技能角色模式: /skill <ID> (例如: /skill skill-gtd)[/dim]")
+                console.print("[dim]已取消选择技能。[/dim]")
             return True
         else:
             sid = parts[1].strip()
@@ -1061,10 +1444,9 @@ async def handle_command(
                 current_mode["display_name"] = f"技能:{target_sk.get('title', sid)}"
                 current_mode["system_prompt"] = target_sk.get("systemPrompt") or target_sk.get("system_prompt", "")
                 current_mode["output_format"] = "text"
-                console.print(f"[dim]已切换到技能模式: {target_sk.get('title')}[/dim]")
+                console.print(f"[green]✓ 已切换到技能模式: [bold]{target_sk.get('title')}[/bold][/green]")
             else:
                 available_sids = ", ".join([sk.get("id", "") for sk in skills])
-                console.print(f"[red]未找到技能 '{sid}'。可用 ID: {available_sids}[/red]")
             return True
 
     # 其它自然语言或意图指令，调用 AI 执行
