@@ -323,7 +323,7 @@ from prompt_toolkit.formatted_text import AnyFormattedText, HTML
 
 
 class BoxedPromptSession(_OriginalPromptSession):
-    """带边框的现代终端输入框组件。"""
+    """带边框的现代终端输入框组件，只包住主输入区域，不包裹底部工具栏。"""
 
     def __init__(
         self,
@@ -337,31 +337,33 @@ class BoxedPromptSession(_OriginalPromptSession):
         self.box_placeholder = placeholder
         self.prompt_text = prompt_text
         self._frame_widget: Optional[Any] = None
+        # prompt_toolkit 原生 show_frame 会把 Frame 精确放在 main input
+        # 外层，不会把 validation/system/bottom toolbar 一起包进去。
+        kwargs["show_frame"] = True
         super().__init__(*args, **kwargs)
 
     def _create_layout(self):
-        """Wrap the actual PromptSession input container in a real prompt_toolkit Frame.
-
-        The previous implementation passed the unsupported ``show_frame`` argument to
-        PromptSession and tried to locate an internal ``alternative_content`` node.
-        That made the frame either disappear or fail on prompt-toolkit versions used by
-        this project. Wrapping the final layout container is version-stable.
-        """
         layout = super()._create_layout()
 
+        # PromptSession 的原生布局已经把 Frame 限定在 main_input_container。
+        # 这里只修改这个 Frame 的标题，避免重新包裹整个 HSplit。
         from prompt_toolkit.widgets import Frame
 
-        def _get_title():
-            if callable(self.box_title):
-                return self.box_title()
-            return self.box_title or ""
+        def apply_title(container: Any) -> bool:
+            if isinstance(container, Frame):
+                container.title = self.box_title or ""
+                self._frame_widget = container
+                return True
+            try:
+                children = container.get_children()
+            except Exception:
+                return False
+            for child in children:
+                if apply_title(child):
+                    return True
+            return False
 
-        frame = Frame(
-            body=layout.container,
-            title=_get_title,
-        )
-        self._frame_widget = frame
-        layout.container = frame.container
+        apply_title(layout.container)
         return layout
 
     @property
