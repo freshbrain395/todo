@@ -8,8 +8,25 @@ def _completion_texts(text: str):
     return list(SlashCommandCompleter().get_completions(document, None))
 
 
-def test_mode_completion_is_available_at_command_boundary():
+def test_slash_completion_lists_slash_commands():
+    completions = _completion_texts("/")
+    texts = [item.text for item in completions]
+    assert "/help" in texts
+    assert "/mode" in texts
+    assert "/list" in texts
+
+
+def test_mode_completion_lists_mode_command_without_space():
     completions = _completion_texts("/mode")
+    # 未输入空格时，匹配的是 /mode 命令本身，不提前展开二级选项
+    texts = [item.text for item in completions]
+    assert any(t.startswith("/mode") for t in texts)
+    assert "/mode chat" not in texts
+
+
+def test_mode_completion_is_available_after_space():
+    # 键入空格后，才展开二级模式参数候选
+    completions = _completion_texts("/mode ")
 
     assert [item.text for item in completions] == [
         "/mode chat",

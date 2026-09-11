@@ -1,6 +1,7 @@
 import unittest
 from backend.cli.layout import (
     get_terminal_width,
+    get_terminal_height,
     display_width,
     truncate_to_width,
     pad_to_width,
@@ -52,6 +53,10 @@ class TestCliLayout(unittest.TestCase):
     def test_responsive_layout_modes(self):
         self.assertTrue(is_compact_terminal(threshold=9999))
         self.assertFalse(is_compact_terminal(threshold=1))
+
+    def test_terminal_height_bounds(self):
+        h = get_terminal_height(fallback=24, min_height=8)
+        self.assertGreaterEqual(h, 8)
 
 
 if __name__ == "__main__":

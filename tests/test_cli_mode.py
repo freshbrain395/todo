@@ -116,13 +116,12 @@ class TestCliModeSystem(unittest.TestCase):
         completer = SlashCommandCompleter()
         event = CompleteEvent()
 
-        # 验证 /mode 支持模式参数补全 (/mode chat, /mode agent, /mode json)
+        # 验证 /mode 未输入空格时匹配 /mode 一级命令本身，不提前展开二级选项
         comps_mode = [c.text for c in completer.get_completions(Document("/mode"), event)]
-        self.assertIn("/mode chat", comps_mode)
-        self.assertIn("/mode agent", comps_mode)
-        self.assertIn("/mode json", comps_mode)
+        self.assertTrue(any(c.startswith("/mode") for c in comps_mode))
+        self.assertNotIn("/mode chat", comps_mode)
 
-        # 验证 /mode 带空格时依然支持子模式补全
+        # 验证 /mode 输入空格后才提供二级模式参数补全
         comps_space = [c.text for c in completer.get_completions(Document("/mode "), event)]
         self.assertIn("/mode chat", comps_space)
         self.assertIn("/mode agent", comps_space)
@@ -348,6 +347,13 @@ class TestCliModeSystem(unittest.TestCase):
             self.assertEqual(kwargs["title"], "📌 常用 Slash 命令帮助")
             self.assertIn("Esc", kwargs["help_hint"])
             self.assertIn("q", kwargs.get("extra_bindings", {}))
+
+    def test_help_command_without_slash(self):
+        with patch("backend.cli.app.run_interactive_selection_menu", new_callable=AsyncMock) as mock_menu:
+            mock_menu.return_value = ("cancel", None)
+            ret = asyncio.run(handle_command("help", self.db, self.cfg, self.history, self.current_mode))
+            self.assertTrue(ret)
+            self.assertTrue(mock_menu.called)
 
     def test_interactive_selection_menu_erases_when_done(self):
         from prompt_toolkit.application import Application

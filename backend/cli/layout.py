@@ -34,6 +34,23 @@ def get_terminal_width(fallback: int = 80, min_width: int = 50, max_width: Optio
     return width
 
 
+def get_terminal_height(fallback: int = 24, min_height: int = 8, max_height: Optional[int] = None) -> int:
+    """获取当前终端行高（实时窗口尺寸）。"""
+    try:
+        size = shutil.get_terminal_size(fallback=(80, fallback))
+        height = size.lines
+    except Exception:
+        height = fallback
+
+    if height <= 0:
+        height = fallback
+    if min_height is not None and height < min_height:
+        height = min_height
+    if max_height is not None and height > max_height:
+        height = max_height
+    return height
+
+
 def is_compact_terminal(threshold: int = 90) -> bool:
     """是否属于紧凑/窄终端视图"""
     return get_terminal_width() < threshold
