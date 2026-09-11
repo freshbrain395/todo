@@ -19,7 +19,7 @@ from prompt_toolkit.layout.processors import BeforeInput
 from prompt_toolkit.styles import Style
 
 from .menu import BottomMenuHost, compute_completion_menu_max_height
-from ..layout import strip_ansi
+from ..app import strip_ansi
 
 
 class CliLogBuffer:
@@ -318,69 +318,122 @@ class NestedPromptAdapter:
         return await self._session.prompt_async(*args, **kwargs)
 
 
-from prompt_toolkit.shortcuts import PromptSession as _OriginalPromptSession
+from .completer import PromptSession as _BasePromptSession
 from prompt_toolkit.formatted_text import AnyFormattedText, HTML
 
 
-class BoxedPromptSession(_OriginalPromptSession):
+class BoxedPromptSession(_BasePromptSession):
     """带边框的现代终端输入框组件，只包住主输入区域，不包裹底部工具栏。"""
 
     def __init__(
         self,
         title: Any = "",
         placeholder: str = "输入命令 (如 /help) 或直接与 AI 对话...",
+        placeholder_once: bool = True,
         prompt_text: str = "❯ ",
         *args,
         **kwargs,
     ):
         self.box_title = title
         self.box_placeholder = placeholder
+        self.placeholder_once = placeholder_once
+        self._placeholder_consumed = False
         self.prompt_text = prompt_text
         self._frame_widget: Optional[Any] = None
         # prompt_toolkit 原生 show_frame 会把 Frame 精确放在 main input
         # 外层，不会把 validation/system/bottom toolbar 一起包进去。
         kwargs["show_frame"] = True
+        kwargs.setdefault("multiline", False)
         super().__init__(*args, **kwargs)
+        self._fix_menu_floats()
+
+    def _get_default_buffer_control_height(self):
+        """当斜线补全菜单不需要显示时，不额外撑开屏幕；仅在有补全项待显示时按需预留高度。"""
+        from prompt_toolkit.shortcuts.prompt import CompleteStyle
+        from prompt_toolkit.layout.dimension import Dimension
+
+        if (
+            self.completer is not None
+            and self.complete_style != CompleteStyle.READLINE_LIKE
+        ):
+            space = self.reserve_space_for_menu
+        else:
+            space = 0
+
+        if space:
+            try:
+                from prompt_toolkit.application.current import get_app
+                if get_app().is_done:
+                    return Dimension()
+            except Exception:
+                pass
+
+            buff = self.default_buffer
+            if buff.complete_state is not None and buff.complete_state.completions:
+                needed = min(space, max(1, len(buff.complete_state.completions)))
+                return Dimension(min=needed)
+
+        return Dimension()
 
     def _create_layout(self):
         layout = super()._create_layout()
 
-        # PromptSession 的原生布局已经把 Frame 限定在 main_input_container。
-        # 这里只修改这个 Frame 的标题，避免重新包裹整个 HSplit。
+        # PromptSession 的原生布局已经把 Frame 限定在 main_input_container (children[0])。
+        # 这里用自定义 Frame 替换并保存引用，保持只框住主输入区并支持动态标题。
         from prompt_toolkit.widgets import Frame
 
-        def apply_title(container: Any) -> bool:
-            if isinstance(container, Frame):
-                container.title = self.box_title or ""
-                self._frame_widget = container
-                return True
-            try:
-                children = container.get_children()
-            except Exception:
-                return False
-            for child in children:
-                if apply_title(child):
-                    return True
-            return False
+        try:
+            cond_container = layout.container.children[0]
+            main_input = getattr(cond_container, "alternative_content", None)
+            if main_input is not None:
+                def _get_title():
+                    if callable(self.box_title):
+                        return self.box_title()
+                    return self.box_title or ""
 
-        apply_title(layout.container)
+                frame = Frame(body=main_input, title=_get_title)
+                self._frame_widget = frame
+                cond_container.content = frame.container
+        except Exception:
+            pass
+
         return layout
 
     @property
     def frame(self):
         return self._frame_widget
 
+    def _get_styled_placeholder(self) -> Any:
+        """为占位符提示应用 class:placeholder 样式（在 CLI_STYLE 中呈现为淡灰色）"""
+        if not self.box_placeholder:
+            return ""
+        if isinstance(self.box_placeholder, str):
+            return [("class:placeholder", self.box_placeholder)]
+        return self.box_placeholder
+
     async def prompt_async(self, message=None, **kwargs):
         if message is None:
             message = HTML(f"<b><green>{self.prompt_text}</green></b> ")
-        if "placeholder" not in kwargs and self.box_placeholder:
-            kwargs["placeholder"] = self.box_placeholder
+        if "placeholder" not in kwargs:
+            if self.box_placeholder:
+                styled_ph = self._get_styled_placeholder()
+                if self.placeholder_once:
+                    if not self._placeholder_consumed:
+                        kwargs["placeholder"] = styled_ph
+                        self._placeholder_consumed = True
+                    else:
+                        kwargs["placeholder"] = ""
+                else:
+                    kwargs["placeholder"] = styled_ph
+            else:
+                kwargs["placeholder"] = ""
         return await super().prompt_async(message=message, **kwargs)
 
 
 def create_boxed_input_session(
     title: Any = "",
     placeholder: str = "输入命令 (如 /help) 或直接与 AI 对话...",
+    placeholder_once: bool = True,
     prompt_text: str = "❯ ",
     **kwargs,
 ) -> BoxedPromptSession:
@@ -388,6 +441,7 @@ def create_boxed_input_session(
     return BoxedPromptSession(
         title=title,
         placeholder=placeholder,
+        placeholder_once=placeholder_once,
         prompt_text=prompt_text,
         **kwargs,
     )

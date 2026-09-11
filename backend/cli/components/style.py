@@ -26,5 +26,5 @@ CLI_STYLE = Style.from_dict({
     "frame": "noinherit bg:default",
     "frame.border": "#5c6370",
     "frame.label": "#61afef bold",
-    "placeholder": "#5c6370 italic",
+    "placeholder": "noinherit fg:#7f848e",
 })

@@ -2,7 +2,6 @@
 
 import os
 from typing import Any, Optional, Dict
-from ..components import print_welcome, print_banner
 
 
 def handle_cls_command(
@@ -19,6 +18,5 @@ def handle_cls_command(
             log_buffer.clear()
         else:
             os.system("cls" if os.name == "nt" else "clear")
-        print_welcome(display_cfg, current_mode, llm_cfg)
         return True
     return False

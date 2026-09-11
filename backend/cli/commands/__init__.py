@@ -33,6 +33,7 @@ from .skill import select_skill_interactive, handle_skill_command
 
 # System commands
 from .help import show_help, handle_help_command, show_command_detail
+from .statusbar import select_status_bar_items_interactive, handle_statusbar_command
 from .clear import handle_clear_command
 from .cls import handle_cls_command
 from .quit import handle_quit_command
@@ -73,6 +74,8 @@ __all__ = [
     "show_help",
     "handle_help_command",
     "show_command_detail",
+    "select_status_bar_items_interactive",
+    "handle_statusbar_command",
     "handle_clear_command",
     "handle_cls_command",
     "handle_quit_command",

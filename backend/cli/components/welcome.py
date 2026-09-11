@@ -5,7 +5,7 @@ from rich.console import Console, Group
 from rich.panel import Panel
 from rich.table import Table
 from rich.text import Text
-from ..layout import get_terminal_width
+from ..app import get_terminal_width
 
 default_console = Console(force_terminal=True, legacy_windows=False)
 
@@ -14,7 +14,7 @@ def build_welcome_panel(
     display_cfg: Any = None,
     current_mode: Optional[Dict[str, Any]] = None,
     llm_cfg: Any = None,
-) -> Panel:
+) -> Group:
     """构建精美的 CLI 启动欢迎面板，包含应用名称、当前状态卡片及常用指令引导。"""
     app_title = getattr(display_cfg, "ai_name", "Todo Agent") if display_cfg else "Todo Agent"
     mode_name = current_mode.get("display_name", "Agent助理") if current_mode else "Agent助理"
@@ -68,15 +68,11 @@ def build_welcome_panel(
         Panel(status_table, title="⚙ 系统状态", title_align="left", border_style="dim"),
         Text(""),
         Panel(guide_table, title="🚀 快捷指令", title_align="left", border_style="dim"),
+        Text(""),
+        Text("输入 /help 获取更多帮助 | /quit 退出", style="dim"),
     )
 
-    return Panel(
-        content_group,
-        border_style="cyan",
-        padding=(1, 2),
-        subtitle="[dim]输入 /help 获取更多帮助 | /quit 退出[/dim]",
-        subtitle_align="right",
-    )
+    return content_group
 
 
 def print_welcome(

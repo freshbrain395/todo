@@ -1,7 +1,7 @@
 """List todos command: /list."""
 
 from rich.table import Table
-from ..layout import get_terminal_width
+from ..app import get_terminal_width
 from backend.repository.db import DbState
 from backend.service.todo import TodoService
 from .base import console

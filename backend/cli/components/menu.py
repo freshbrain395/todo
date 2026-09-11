@@ -13,7 +13,7 @@ from prompt_toolkit.layout.containers import Window
 from prompt_toolkit.layout.controls import FormattedTextControl
 from prompt_toolkit.layout.dimension import Dimension
 
-from ..layout import get_terminal_height, get_terminal_width, truncate_to_width
+from ..app import get_terminal_height, get_terminal_width, truncate_to_width
 
 
 def compute_menu_panel_height(
@@ -116,6 +116,81 @@ def render_selection_menu_tokens(
     return tokens
 
 
+def render_checkbox_menu_tokens(
+    *,
+    title: str,
+    items: List[Dict[str, Any]],
+    selected_index: int,
+    checked_ids: Any,
+    key_fn: Optional[Callable[[Dict[str, Any]], str]] = None,
+    render_item_fn: Optional[Callable[[Dict[str, Any]], str]] = None,
+    help_hint: str = "↑/↓ 移动 | Space 勾选/反选 | Enter 确认 | Esc 取消",
+    max_visible_items: int = 12,
+    terminal_rows: Optional[int] = None,
+) -> StyleAndTextTuples:
+    """Render checkbox multi-select menu tokens with [x] / [ ] indicators."""
+    if not items:
+        return [("", "")]
+
+    _key = key_fn or (lambda it: str(it.get("id", "")))
+    _render = render_item_fn or (lambda it: str(it.get("title") or it.get("name") or it.get("id") or ""))
+
+    term_w = get_terminal_width(fallback=80)
+    max_w = max(20, term_w - 2)
+    total = len(items)
+    selected_index = max(0, min(selected_index, total - 1))
+
+    panel_h = compute_menu_panel_height(total, max_visible_items, terminal_rows)
+    body_rows = max(1, panel_h - 1)
+
+    if total > min(max_visible_items, body_rows):
+        item_window = min(max_visible_items, max(1, body_rows - 2))
+    else:
+        item_window = min(total, max_visible_items, body_rows)
+
+    if total <= item_window:
+        start_i = 0
+        end_i = total
+    else:
+        half = item_window // 2
+        if selected_index < half:
+            start_i = 0
+            end_i = item_window
+        elif selected_index >= total - (item_window - half):
+            start_i = total - item_window
+            end_i = total
+        else:
+            start_i = selected_index - half
+            end_i = start_i + item_window
+
+    all_lines: List[Tuple[str, str]] = []
+
+    if start_i > 0:
+        all_lines.append(("class:menu-dim", truncate_to_width("    ▲ 更多项目...", max_w)))
+
+    chk_set = {str(x).strip().lower() for x in (checked_ids or [])}
+    for idx in range(start_i, end_i):
+        it = items[idx]
+        it_key = str(_key(it)).strip().lower()
+        is_chk = it_key in chk_set
+        is_sel = idx == selected_index
+        pointer = "❯ " if is_sel else "  "
+        chk_box = "[x] " if is_chk else "[ ] "
+        raw_line = f"  {pointer}{chk_box}{_render(it)}"
+        style = "class:menu-selected" if is_sel else "class:menu-item"
+        all_lines.append((style, truncate_to_width(raw_line, max_w)))
+
+    if end_i < total:
+        all_lines.append(("class:menu-dim", truncate_to_width("    ▼ 更多项目...", max_w)))
+
+    all_lines.append(("class:menu-title", truncate_to_width(f"{title} [{help_hint}]", max_w)))
+
+    tokens: StyleAndTextTuples = []
+    for i, (style, text) in enumerate(all_lines):
+        tokens.append((style, text + ("\n" if i < len(all_lines) - 1 else "")))
+    return tokens
+
+
 class BottomMenuHost:
     """
     In-app bottom menu panel hosted by the fixed-input Application.
@@ -124,6 +199,8 @@ class BottomMenuHost:
 
     def __init__(self) -> None:
         self.active: bool = False
+        self.is_checkbox: bool = False
+        self.checked_ids: set = set()
         self.title: str = ""
         self.items: List[Dict[str, Any]] = []
         self.selected_index: int = 0
@@ -178,6 +255,17 @@ class BottomMenuHost:
     def get_tokens(self) -> StyleAndTextTuples:
         if not self.active or not self.items:
             return [("", "")]
+        if self.is_checkbox:
+            return render_checkbox_menu_tokens(
+                title=self.title,
+                items=self.items,
+                selected_index=self.selected_index,
+                checked_ids=self.checked_ids,
+                key_fn=self._key_fn,
+                render_item_fn=self._render_fn,
+                help_hint=self.help_hint,
+                max_visible_items=self.max_visible_items,
+            )
         return render_selection_menu_tokens(
             title=self.title,
             items=self.items,
@@ -240,8 +328,12 @@ class BottomMenuHost:
     def confirm(self) -> None:
         if not self._confirm_allowed():
             return
-        selected = self.items[self.selected_index] if self.items else None
-        self._resolve("confirm", selected)
+        if self.is_checkbox:
+            selected = [it for it in self.items if str(self._key_fn(it)).strip().lower() in self.checked_ids]
+            self._resolve("confirm", selected)
+        else:
+            selected = self.items[self.selected_index] if self.items else None
+            self._resolve("confirm", selected)
 
     def cancel(self) -> None:
         self._resolve("cancel", None)
@@ -313,6 +405,65 @@ class BottomMenuHost:
             return await self._future
         finally:
             self.active = False
+            self.is_checkbox = False
+            self.checked_ids = set()
+            self.items = []
+            self.extra_bindings = {}
+            self._ignore_confirm_until = 0.0
+            self._focus_input()
+            self._invalidate()
+            self._future = None
+
+    async def show_checkbox(
+        self,
+        *,
+        title: str,
+        items: List[Dict[str, Any]],
+        checked_ids: Optional[List[str]] = None,
+        key_fn: Optional[Callable[[Dict[str, Any]], str]] = None,
+        render_item_fn: Optional[Callable[[Dict[str, Any]], str]] = None,
+        help_hint: str = "↑/↓ 移动 | Space 勾选/反选 | a 全选 | Enter 确认 | Esc 取消",
+        max_visible_items: int = 12,
+    ) -> Tuple[Optional[str], Optional[List[Dict[str, Any]]]]:
+        if not items:
+            return (None, None)
+
+        if self._future is not None and not self._future.done():
+            self._future.set_result(("cancel", None))
+            await asyncio.sleep(0)
+
+        self.is_checkbox = True
+        self.title = title
+        self.items = list(items)
+        self.help_hint = help_hint
+        self.max_visible_items = max_visible_items
+        self.extra_bindings = {}
+        self._key_fn = key_fn or (lambda it: str(it.get("id", "")))
+        self._render_fn = render_item_fn or (
+            lambda it: str(it.get("title") or it.get("name") or it.get("id") or "")
+        )
+        self.checked_ids = {str(x).strip().lower() for x in (checked_ids or [])}
+        self.selected_index = 0
+
+        loop = asyncio.get_running_loop()
+        self._future = loop.create_future()
+
+        self._clear_completions()
+        self.active = True
+        self._ignore_confirm_until = time.monotonic() + 0.35
+        self._invalidate()
+        await asyncio.sleep(0)
+        self._invalidate()
+        await asyncio.sleep(0)
+        self._focus_menu()
+        self._invalidate()
+
+        try:
+            return await self._future
+        finally:
+            self.active = False
+            self.is_checkbox = False
+            self.checked_ids = set()
             self.items = []
             self.extra_bindings = {}
             self._ignore_confirm_until = 0.0
@@ -347,6 +498,28 @@ class BottomMenuHost:
         @kb.add("pagedown", filter=active)
         def _(event):
             self.move(max(1, self.preferred_height() - 2))
+
+        @kb.add("space", filter=active)
+        def _(event):
+            if self.is_checkbox and self.items:
+                cur_it = self.items[self.selected_index]
+                k = str(self._key_fn(cur_it)).strip().lower()
+                if k in self.checked_ids:
+                    self.checked_ids.remove(k)
+                else:
+                    self.checked_ids.add(k)
+                self._invalidate()
+
+        @kb.add("a", filter=active)
+        @kb.add("A", filter=active)
+        def _(event):
+            if self.is_checkbox and self.items:
+                all_keys = {str(self._key_fn(it)).strip().lower() for it in self.items}
+                if self.checked_ids >= all_keys:
+                    self.checked_ids.clear()
+                else:
+                    self.checked_ids = set(all_keys)
+                self._invalidate()
 
         @kb.add("enter", filter=active)
         def _(event):

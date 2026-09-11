@@ -5,7 +5,7 @@ from prompt_toolkit import PromptSession as _PromptSession
 from prompt_toolkit.completion import Completer, Completion
 from prompt_toolkit.layout.menus import CompletionsMenuControl, _get_menu_item_fragments
 from prompt_toolkit.application.current import get_app
-from ..layout import get_terminal_width, truncate_to_width
+from ..app import get_terminal_width, truncate_to_width
 
 SLASH_COMMANDS: List[Tuple[str, str]] = [
     ("/help", "显示可用命令帮助"),
@@ -23,6 +23,8 @@ SLASH_COMMANDS: List[Tuple[str, str]] = [
     ("/provider", "管理/切换供应商与配置 API Key (上下箭头选择)"),
     ("/model", "查看/切换当前 LLM 模型 (上下箭头选择)"),
     ("/think", "开关或切换 AI 思考模式 (/think [on|off|toggle])"),
+    ("/statusbar", "配置底部状态栏显示内容 (Checkbox 多选)"),
+    ("/status", "配置底部状态栏显示内容 (alias: /statusbar)"),
     ("/clear", "清空当前对话上下文历史"),
     ("/cls", "清空控制台屏幕"),
     ("/quit", "退出命令行程序"),
@@ -65,6 +67,34 @@ class PromptSession(_PromptSession):
             _walk(self.layout.container)
         except Exception:
             pass
+
+    def _get_default_buffer_control_height(self):
+        """当斜线补全菜单不需要显示时，不额外撑开屏幕；仅在有补全项待显示时按需预留高度。"""
+        from prompt_toolkit.shortcuts.prompt import CompleteStyle
+        from prompt_toolkit.layout.dimension import Dimension
+
+        if (
+            self.completer is not None
+            and self.complete_style != CompleteStyle.READLINE_LIKE
+        ):
+            space = self.reserve_space_for_menu
+        else:
+            space = 0
+
+        if space:
+            try:
+                from prompt_toolkit.application.current import get_app
+                if get_app().is_done:
+                    return Dimension()
+            except Exception:
+                pass
+
+            buff = self.default_buffer
+            if buff.complete_state is not None and buff.complete_state.completions:
+                needed = min(space, max(1, len(buff.complete_state.completions)))
+                return Dimension(min=needed)
+
+        return Dimension()
 
 
 class SlashCommandCompleter(Completer):

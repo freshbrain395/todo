@@ -5,7 +5,7 @@ from rich.console import Console, Group
 from rich.panel import Panel
 from rich.table import Table
 from rich.text import Text
-from ..layout import get_terminal_width
+from ..app import get_terminal_width
 from .completer import SLASH_COMMANDS
 
 # 分类组织所有命令
@@ -47,6 +47,7 @@ COMMAND_CATEGORIES = [
         "color": "magenta",
         "commands": [
             ("/help [命令名]", "显示本命令手册；加命令名可查看其参数详情"),
+            ("/statusbar [reset|list]", "配置底部状态栏显示项 (Checkbox 多选，别名: /status)"),
             ("/clear", "清空当前会话历史对话上下文"),
             ("/cls", "清除屏幕内容并重新展示欢迎卡片"),
             ("/quit", "安全退出 Todo Agent 终端 (别名: /exit)"),
@@ -70,6 +71,8 @@ COMMAND_DETAILS: Dict[str, str] = {
     "/think": "配置深度思考模式 (Thinking)。用法：/think [on | off | toggle | status]",
     "/prompt": "交互式选择预置 Prompt 模板。用法：/prompt",
     "/skill": "交互式切换 AI 技能角色。用法：/skill",
+    "/statusbar": "配置底部状态栏显示内容。用法：/statusbar 或 /status（弹出 Checkbox 多选菜单），/statusbar reset（重置全选），/statusbar list（列出当前状态）",
+    "/status": "/statusbar 命令的快捷别名。用法：/status",
     "/clear": "清空当前会话的历史对话记录。用法：/clear",
     "/cls": "清除屏幕并重绘欢迎横幅。用法：/cls",
     "/quit": "退出 Todo Agent 终端。用法：/quit 或 /exit",

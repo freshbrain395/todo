@@ -5,6 +5,7 @@ from .menu import (
     compute_menu_panel_height,
     compute_completion_menu_max_height,
     render_selection_menu_tokens,
+    render_checkbox_menu_tokens,
 )
 from .input import (
     CliLogBuffer,
@@ -15,9 +16,14 @@ from .input import (
     BoxedPromptSession,
     create_boxed_input_session,
 )
-from .toolbar import (
+from .status_bar import (
     format_status_text,
+    create_status_bar_getter,
     create_bottom_toolbar_getter,
+    STATUS_BAR_OPTIONS,
+    DEFAULT_STATUS_BAR_ITEMS,
+    load_status_bar_items,
+    save_status_bar_items,
 )
 from .completer import (
     SLASH_COMMANDS,
@@ -47,6 +53,7 @@ __all__ = [
     "compute_menu_panel_height",
     "compute_completion_menu_max_height",
     "render_selection_menu_tokens",
+    "render_checkbox_menu_tokens",
     "CliLogBuffer",
     "LogStream",
     "build_log_fragments",
@@ -55,7 +62,12 @@ __all__ = [
     "BoxedPromptSession",
     "create_boxed_input_session",
     "format_status_text",
+    "create_status_bar_getter",
     "create_bottom_toolbar_getter",
+    "STATUS_BAR_OPTIONS",
+    "DEFAULT_STATUS_BAR_ITEMS",
+    "load_status_bar_items",
+    "save_status_bar_items",
     "SLASH_COMMANDS",
     "SlashCommandCompleter",
     "PromptSession",

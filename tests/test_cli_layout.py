@@ -1,5 +1,5 @@
 import unittest
-from backend.cli.layout import (
+from backend.cli.app import (
     get_terminal_width,
     get_terminal_height,
     display_width,
@@ -8,6 +8,8 @@ from backend.cli.layout import (
     build_box_header,
     build_box_footer,
     is_compact_terminal,
+    strip_ansi,
+    fit_box_line,
 )
 
 
@@ -57,6 +59,13 @@ class TestCliLayout(unittest.TestCase):
     def test_terminal_height_bounds(self):
         h = get_terminal_height(fallback=24, min_height=8)
         self.assertGreaterEqual(h, 8)
+
+    def test_strip_ansi_and_fit_box_line(self):
+        colored = "\x1b[31mError\x1b[0m"
+        self.assertEqual(strip_ansi(colored), "Error")
+        line = fit_box_line("测试文本", 20)
+        self.assertTrue(line.startswith("│ "))
+        self.assertTrue(line.endswith(" │\n"))
 
 
 if __name__ == "__main__":
