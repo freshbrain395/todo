@@ -1,447 +1,300 @@
-"""Fixed bottom input shell: scrollable log pane + pinned input + status bar."""
+"""Boxed Input Component for Todo Agent CLI.
+
+Encapsulates the terminal boxed input box with adaptive borders, floating slash command
+completion menu, dynamic status bar, and real-time renderer position synchronization.
+"""
 
 from __future__ import annotations
 
-from typing import Any, Awaitable, Callable, List, Optional, Tuple
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
-from prompt_toolkit.application import Application
-from prompt_toolkit.buffer import Buffer
-from prompt_toolkit.completion import Completer
-from prompt_toolkit.filters import Condition, has_completions
-from prompt_toolkit.formatted_text import ANSI, HTML, StyleAndTextTuples
+from prompt_toolkit import PromptSession
+from prompt_toolkit.application.current import get_app
+from prompt_toolkit.filters import Condition, is_done
+from prompt_toolkit.formatted_text import StyleAndTextTuples
+from prompt_toolkit.history import InMemoryHistory
 from prompt_toolkit.key_binding import KeyBindings
-from prompt_toolkit.key_binding.key_bindings import merge_key_bindings
-from prompt_toolkit.layout.containers import ConditionalContainer, Float, FloatContainer, HSplit, Window
-from prompt_toolkit.layout.controls import BufferControl, FormattedTextControl
-from prompt_toolkit.layout.layout import Layout
-from prompt_toolkit.layout.menus import CompletionsMenu
-from prompt_toolkit.layout.processors import BeforeInput
-from prompt_toolkit.styles import Style
+from prompt_toolkit.layout.containers import ConditionalContainer, Window
+from prompt_toolkit.layout.controls import FormattedTextControl
 
-from .menu import BottomMenuHost, compute_completion_menu_max_height
-from ..app import strip_ansi
+from ..utils import get_border, get_terminal_height, get_terminal_width
+from .slash import SlashMenuState
+from .status_bar import format_status_text
+from .style import CLI_STYLE
 
 
-class CliLogBuffer:
-    """In-memory line buffer that receives Rich/ANSI stdout and feeds the log pane."""
+class _CompactPromptSession(PromptSession):
+    """紧凑盒式会话：将底部边框、浮动菜单与状态栏作为输入行紧随挂载窗口，杜绝沉底到终端最底端"""
 
-    def __init__(self, max_lines: int = 5000):
-        self.max_lines = max(100, max_lines)
-        self.lines: List[str] = []
-        self.scroll_offset: int = 0
-        self._on_change: Optional[Callable[[], None]] = None
-        self._pending: str = ""
-
-    def set_on_change(self, callback: Optional[Callable[[], None]]) -> None:
-        self._on_change = callback
-
-    def _notify(self) -> None:
-        if self._on_change:
-            try:
-                self._on_change()
-            except Exception:
-                pass
-
-    def clear(self) -> None:
-        self.lines.clear()
-        self._pending = ""
-        self.scroll_offset = 0
-        self._notify()
-
-    def append_line(self, line: str) -> None:
-        self.lines.append(line.rstrip("\r"))
-        if len(self.lines) > self.max_lines:
-            overflow = len(self.lines) - self.max_lines
-            del self.lines[:overflow]
-        self._notify()
-
-    def write(self, data: str) -> int:
-        """File-like write for Rich Console(file=...)."""
-        if not data:
-            return 0
-        self._pending += data.replace("\r\n", "\n").replace("\r", "\n")
-        while "\n" in self._pending:
-            line, self._pending = self._pending.split("\n", 1)
-            self.append_line(line)
-        return len(data)
-
-    def flush(self) -> None:
-        if self._pending:
-            self.append_line(self._pending)
-            self._pending = ""
-
-    def writable(self) -> bool:
-        return True
-
-    def isatty(self) -> bool:
-        return True
-
-    def scroll_up(self, n: int = 5) -> None:
-        max_off = max(0, len(self.lines) - 1)
-        self.scroll_offset = min(max_off, self.scroll_offset + max(1, n))
-        self._notify()
-
-    def scroll_down(self, n: int = 5) -> None:
-        self.scroll_offset = max(0, self.scroll_offset - max(1, n))
-        self._notify()
-
-    def scroll_to_bottom(self) -> None:
-        self.scroll_offset = 0
-        self._notify()
-
-    def visible_slice(self, height: int) -> List[str]:
-        """Return lines that should appear in a pane of the given height."""
-        if height <= 0:
-            return []
-        total = len(self.lines)
-        if total == 0:
-            return []
-        end = total - self.scroll_offset
-        if end < 1:
-            end = 1
-            self.scroll_offset = max(0, total - 1)
-        start = max(0, end - height)
-        return self.lines[start:end]
-
-    def plain_text(self) -> str:
-        return "\n".join(strip_ansi(line) for line in self.lines)
-
-
-class LogStream:
-    """Thin file-like wrapper so Rich Console can write into CliLogBuffer."""
-
-    def __init__(self, buffer: CliLogBuffer):
-        self.buffer = buffer
-
-    def write(self, data: str) -> int:
-        return self.buffer.write(data)
-
-    def flush(self) -> None:
-        self.buffer.flush()
-
-    def writable(self) -> bool:
-        return True
-
-    def isatty(self) -> bool:
-        return True
-
-
-def build_log_fragments(buffer: CliLogBuffer, height: int) -> StyleAndTextTuples:
-    lines = buffer.visible_slice(height)
-    if not lines:
-        return [("", "")]
-    return ANSI("\n".join(lines))
-
-
-def create_fixed_input_app(
-    *,
-    log_buffer: CliLogBuffer,
-    completer: Completer,
-    style: Style,
-    toolbar_getter: Callable[[], Any],
-    key_bindings: KeyBindings,
-    on_submit: Callable[[str], Awaitable[bool]],
-    menu_host: Optional[BottomMenuHost] = None,
-    input_prefix: str = "<b><ansicyan>You</ansicyan></b> › ",
-) -> Tuple[Application, BottomMenuHost]:
-    """
-    Build a full-screen Application with:
-      - scrollable log pane (top)
-      - bottom selection / help menu panel (collapsible)
-      - fixed single-line input
-      - status toolbar (bottom)
-      - slash completions floated above the input row
-    """
-    busy = {"value": False}
-    log_height_ref = {"h": 20}
-    host = menu_host or BottomMenuHost()
-    menu_inactive = Condition(lambda: not host.is_active())
-
-    input_buffer = Buffer(
-        completer=completer,
-        complete_while_typing=True,
-        multiline=False,
-        enable_history_search=True,
-    )
-
-    def accept_handler(buff: Buffer) -> bool:
-        if host.is_active():
-            return True
-        text = buff.text
-        buff.complete_state = None
-        buff.reset(append_to_history=bool(text.strip()))
-
-        async def _run() -> None:
-            if busy["value"]:
-                return
-            busy["value"] = True
-            try:
-                should_continue = await on_submit(text)
-                if not should_continue:
-                    app.exit()
-            finally:
-                busy["value"] = False
-                try:
-                    app.invalidate()
-                except Exception:
-                    pass
-
-        app.create_background_task(_run())
-        return True
-
-    input_buffer.accept_handler = accept_handler
-
-    def get_log_text() -> Any:
-        return build_log_fragments(log_buffer, max(1, log_height_ref["h"]))
-
-    class SizedLogWindow(Window):
-        def write_to_screen(self, screen, mouse_handlers, write_position, parent_style, erase_bg, z_index):
-            try:
-                log_height_ref["h"] = max(1, int(write_position.height))
-            except Exception:
-                pass
-            return super().write_to_screen(
-                screen, mouse_handlers, write_position, parent_style, erase_bg, z_index
-            )
-
-    log_window = SizedLogWindow(
-        content=FormattedTextControl(get_log_text, focusable=False),
-        wrap_lines=False,
-    )
-
-    menu_window = host.create_window()
-
-    input_window = Window(
-        BufferControl(
-            buffer=input_buffer,
-            input_processors=[BeforeInput(HTML(input_prefix))],
-            focus_on_click=True,
-        ),
-        height=1,
-        dont_extend_height=True,
-    )
-
-    toolbar_window = Window(
-        content=FormattedTextControl(toolbar_getter),
-        height=1,
-        dont_extend_height=True,
-        style="class:bottom-toolbar",
-    )
-
-    completion_max_h = compute_completion_menu_max_height()
-    root = FloatContainer(
-        content=HSplit([log_window, input_window, menu_window, toolbar_window]),
-        floats=[
-            Float(
-                xcursor=False,
-                ycursor=False,
-                left=0,
-                bottom=2,
-                content=ConditionalContainer(
-                    content=CompletionsMenu(max_height=completion_max_h, scroll_offset=1),
-                    filter=menu_inactive,
-                ),
-            ),
-        ],
-    )
-
-    extra = KeyBindings()
-
-    @extra.add("c-c", filter=menu_inactive)
-    def _(event):
-        event.app.exit()
-
-    @extra.add("c-d", filter=menu_inactive)
-    def _(event):
-        event.app.exit()
-
-    @extra.add("pageup", filter=menu_inactive & ~has_completions)
-    def _(event):
-        log_buffer.scroll_up(8)
-        event.app.invalidate()
-
-    @extra.add("pagedown", filter=menu_inactive & ~has_completions)
-    def _(event):
-        log_buffer.scroll_down(8)
-        event.app.invalidate()
-
-    @extra.add("c-home", filter=menu_inactive)
-    def _(event):
-        log_buffer.scroll_offset = max(0, len(log_buffer.lines) - 1)
-        event.app.invalidate()
-
-    @extra.add("c-end", filter=menu_inactive)
-    def _(event):
-        log_buffer.scroll_to_bottom()
-        event.app.invalidate()
-
-    merged = merge_key_bindings([key_bindings, host.create_key_bindings(), extra])
-
-    try:
-        app = Application(
-            layout=Layout(root, focused_element=input_window),
-            key_bindings=merged,
-            style=style,
-            full_screen=True,
-            mouse_support=True,
-        )
-    except Exception:
-        from prompt_toolkit.output import DummyOutput
-        app = Application(
-            layout=Layout(root, focused_element=input_window),
-            key_bindings=merged,
-            style=style,
-            full_screen=True,
-            mouse_support=False,
-            output=DummyOutput(),
-        )
-
-    def _invalidate() -> None:
-        try:
-            app.invalidate()
-        except Exception:
-            pass
-
-    log_buffer.set_on_change(_invalidate)
-    host.bind_app(app, menu_window, input_window, _invalidate, input_buffer=input_buffer)
-    return app, host
-
-
-class NestedPromptAdapter:
-    """Adapter exposing prompt_async for secondary prompts inside handle_command."""
-
-    def __init__(self):
-        from ..app import PromptSession
-        self._session = PromptSession()
-
-    async def prompt_async(self, *args, **kwargs):
-        return await self._session.prompt_async(*args, **kwargs)
-
-
-from .completer import PromptSession as _BasePromptSession
-from prompt_toolkit.formatted_text import AnyFormattedText, HTML
-
-
-class BoxedPromptSession(_BasePromptSession):
-    """带边框的现代终端输入框组件，只包住主输入区域，不包裹底部工具栏。"""
-
-    def __init__(
-        self,
-        title: Any = "",
-        placeholder: str = "输入命令 (如 /help) 或直接与 AI 对话...",
-        placeholder_once: bool = True,
-        prompt_text: str = "❯ ",
-        *args,
-        **kwargs,
-    ):
-        self.box_title = title
-        self.box_placeholder = placeholder
-        self.placeholder_once = placeholder_once
-        self._placeholder_consumed = False
-        self.prompt_text = prompt_text
-        self._frame_widget: Optional[Any] = None
-        # prompt_toolkit 原生 show_frame 会把 Frame 精确放在 main input
-        # 外层，不会把 validation/system/bottom toolbar 一起包进去。
-        kwargs["show_frame"] = True
-        kwargs.setdefault("multiline", False)
+    def __init__(self, *args, get_compact_bottom: Optional[Callable] = None, **kwargs):
+        self.get_compact_bottom = get_compact_bottom
         super().__init__(*args, **kwargs)
-        self._fix_menu_floats()
-
-    def _get_default_buffer_control_height(self):
-        """当斜线补全菜单不需要显示时，不额外撑开屏幕；仅在有补全项待显示时按需预留高度。"""
-        from prompt_toolkit.shortcuts.prompt import CompleteStyle
-        from prompt_toolkit.layout.dimension import Dimension
-
-        if (
-            self.completer is not None
-            and self.complete_style != CompleteStyle.READLINE_LIKE
-        ):
-            space = self.reserve_space_for_menu
-        else:
-            space = 0
-
-        if space:
-            try:
-                from prompt_toolkit.application.current import get_app
-                if get_app().is_done:
-                    return Dimension()
-            except Exception:
-                pass
-
-            buff = self.default_buffer
-            if buff.complete_state is not None and buff.complete_state.completions:
-                needed = min(space, max(1, len(buff.complete_state.completions)))
-                return Dimension(min=needed)
-
-        return Dimension()
 
     def _create_layout(self):
         layout = super()._create_layout()
+        # 1. 锁死输入文本缓冲区窗口，绝不允许向下扩展拉伸高度，杜绝中间空白行
+        if hasattr(layout, "current_window") and layout.current_window:
+            layout.current_window.dont_extend_height = lambda: True
 
-        # PromptSession 的原生布局已经把 Frame 限定在 main_input_container (children[0])。
-        # 这里用自定义 Frame 替换并保存引用，保持只框住主输入区并支持动态标题。
-        from prompt_toolkit.widgets import Frame
+        # 2. 挂载紧凑底部容器（下边框、菜单、状态栏）
+        if self.get_compact_bottom:
+            root_hsplit = layout.container
+            old_children = list(root_hsplit.children)
+            # 替换原本用于沉底展示的 bottom_toolbar 容器，将其改为不向下扩展高度的紧凑行内容器
+            compact_bottom = ConditionalContainer(
+                Window(
+                    FormattedTextControl(self.get_compact_bottom),
+                    dont_extend_height=True,
+                ),
+                filter=~is_done,
+            )
+            old_children[-1] = compact_bottom
+            root_hsplit.children = old_children
+        return layout
 
+
+class BoxedInputSession:
+    """
+    自适应边框终端输入框组件会话：
+    - 上边框与 ❯ 提示符一体化
+    - 智能斜线命令补全菜单浮层与快捷键联动
+    - 下边框与自适应状态栏一体化
+    - 原生支持清屏与长输出后的光标与边框位置精准复位
+    """
+
+    def __init__(
+        self,
+        app: Any,
+        *,
+        max_menu_visible: int = 10,
+        history: Optional[Any] = None,
+    ):
+        self.app = app
+        self.slash_menu = SlashMenuState(max_visible=max_menu_visible)
+
+        # 键盘与菜单状态条件
+        @Condition
+        def is_slash_menu_active() -> bool:
+            try:
+                current_app = get_app()
+                if current_app and current_app.current_buffer:
+                    txt = current_app.current_buffer.text
+                    self.slash_menu.update(txt)
+                    return bool(self.slash_menu.get_matched(txt))
+            except Exception:
+                pass
+            return False
+
+        self.is_slash_menu_active = is_slash_menu_active
+
+        # 按键绑定：在有斜线补全菜单时，上下箭头与 Tab 在候选项中切换选择，Enter 确认
+        kb = KeyBindings()
+
+        @kb.add("down", filter=self.is_slash_menu_active)
+        def _(event):
+            matched = self.slash_menu.get_matched(event.current_buffer.text)
+            self.slash_menu.move(1, len(matched))
+            event.app.invalidate()
+
+        @kb.add("up", filter=self.is_slash_menu_active)
+        def _(event):
+            matched = self.slash_menu.get_matched(event.current_buffer.text)
+            self.slash_menu.move(-1, len(matched))
+            event.app.invalidate()
+
+        @kb.add("tab", filter=self.is_slash_menu_active)
+        def _(event):
+            matched = self.slash_menu.get_matched(event.current_buffer.text)
+            self.slash_menu.move(1, len(matched))
+            event.app.invalidate()
+
+        @kb.add("s-tab", filter=self.is_slash_menu_active)
+        def _(event):
+            matched = self.slash_menu.get_matched(event.current_buffer.text)
+            self.slash_menu.move(-1, len(matched))
+            event.app.invalidate()
+
+        @kb.add("escape", filter=self.is_slash_menu_active)
+        def _(event):
+            event.current_buffer.text = ""
+            self.slash_menu.close()
+            try:
+                event.app.renderer.erase()
+            except Exception:
+                pass
+            event.app.invalidate()
+
+        @kb.add("enter", filter=self.is_slash_menu_active)
+        def _(event):
+            b = event.current_buffer
+            matched = self.slash_menu.get_matched(b.text)
+            if not matched:
+                self.slash_menu.close()
+                b.validate_and_handle()
+                return
+
+            idx = self.slash_menu.selected_index
+            if idx >= len(matched):
+                idx = 0
+            cmd, _ = matched[idx]
+            self.slash_menu.close()
+
+            # 区分需要追加参数的命令与可以直接提交执行的命令（由命令自身规范声明）
+            try:
+                from ..commands import command_needs_args
+                needs_args = command_needs_args(cmd)
+            except Exception:
+                needs_args = False
+            if needs_args:
+                b.text = cmd + " "
+                b.cursor_position = len(b.text)
+                try:
+                    event.app.renderer.erase()
+                except Exception:
+                    pass
+                event.app.invalidate()
+            else:
+                b.text = cmd
+                b.cursor_position = len(b.text)
+                try:
+                    event.app.renderer.erase()
+                except Exception:
+                    pass
+                b.validate_and_handle()
+
+        self.key_bindings = kb
+
+        # 紧凑盒式会话 _CompactPromptSession：
+        # 1. erase_when_done=True: 回车提交后清除当前输入框区域，光标停留在原地
+        # 2. multiline=False: 强制单行模式，禁用换行键，回车直接提交
+        # 3. wrap_lines=False: 超长文本水平横向滚动，禁止向下折行撑破输入框高度
+        # 4. get_compact_bottom: 将下边框、候选菜单、状态栏紧随输入行挂载，杜绝沉底至终端底部
+        self.session: PromptSession = _CompactPromptSession(
+            history=history or InMemoryHistory(),
+            style=CLI_STYLE,
+            erase_when_done=True,
+            multiline=False,
+            wrap_lines=False,
+            key_bindings=self.key_bindings,
+            get_compact_bottom=self.get_bottom_toolbar,
+        )
+
+        # 核心监听：当斜线菜单选项缩水或收起（如退格删除 '/'）时，主动通知 renderer 清除多余行并重置高度，彻底根除中间留白
+        def on_buffer_text_changed(buf):
+            txt = buf.text
+            matched = self.slash_menu.get_matched(txt)
+            current_lines = (1 + min(len(matched), self.slash_menu.max_visible)) if matched else 0
+            active_lines = getattr(self.slash_menu, "active_menu_lines", 0)
+            if active_lines > current_lines:
+                try:
+                    current_app = get_app()
+                    if current_app and current_app.renderer:
+                        current_app.renderer.erase()
+                except Exception:
+                    pass
+            self.slash_menu.active_menu_lines = current_lines
+
+        self.session.default_buffer.on_text_changed += on_buffer_text_changed
+        self._apply_compact_patch()
+
+    def _apply_compact_patch(self) -> None:
+        """彻底解除 prompt_toolkit 与终端物理屏幕底部的绑定"""
+        if not hasattr(self.session, "app") or not self.session.app:
+            return
+        app = self.session.app
+
+        # 1. 禁用 Win32 控制台与 CPR 查询光标到底部剩余行数的行为，禁止将高度扩展为全屏剩余行
+        if hasattr(app, "output") and hasattr(app.output, "get_rows_below_cursor_position"):
+            app.output.get_rows_below_cursor_position = lambda: 0
+
+        # 2. 拦截 application 在启动和 resize 时向底层终端请求屏幕底部光标
+        app._request_absolute_cursor_position = lambda: None
+
+        # 3. 拦截 renderer 请求与上报光标行
+        if hasattr(app, "renderer") and app.renderer:
+            r = app.renderer
+            r.request_absolute_cursor_position = lambda: None
+            r.report_absolute_cursor_row = lambda row: None
+            r._min_available_height = 0
+
+    def get_prompt_message(self) -> StyleAndTextTuples:
+        """生成输入框顶部边框与提示符 ❯"""
+        cols = get_terminal_width(80)
+        return self.slash_menu.build_prompt_fragments("", cols=cols)
+
+    def get_bottom_toolbar(self) -> StyleAndTextTuples:
+        """生成输入框下边框、浮动菜单与底部状态栏"""
+        cols = get_terminal_width(80)
+        border_line = get_border(cols)
+
+        current_text = ""
         try:
-            cond_container = layout.container.children[0]
-            main_input = getattr(cond_container, "alternative_content", None)
-            if main_input is not None:
-                def _get_title():
-                    if callable(self.box_title):
-                        return self.box_title()
-                    return self.box_title or ""
-
-                frame = Frame(body=main_input, title=_get_title)
-                self._frame_widget = frame
-                cond_container.content = frame.container
+            current_app = get_app()
+            if current_app and current_app.current_buffer:
+                current_text = current_app.current_buffer.text
         except Exception:
             pass
 
-        return layout
+        # 1. 输入框下边框横线
+        tokens: StyleAndTextTuples = [
+            ("class:border", border_line + "\n"),
+        ]
 
-    @property
-    def frame(self):
-        return self._frame_widget
+        # 2. 斜线命令菜单（显示在输入框下边框和底部状态栏中间）
+        menu_tokens = self.slash_menu.render_menu_tokens(current_text, cols=cols)
+        if menu_tokens:
+            tokens.extend(menu_tokens)
 
-    def _get_styled_placeholder(self) -> Any:
-        """为占位符提示应用 class:placeholder 样式（在 CLI_STYLE 中呈现为淡灰色）"""
-        if not self.box_placeholder:
-            return ""
-        if isinstance(self.box_placeholder, str):
-            return [("class:placeholder", self.box_placeholder)]
-        return self.box_placeholder
+        # 3. 底部状态栏
+        status_text = format_status_text(
+            db=self.app.db,
+            llm_cfg=self.app.llm_cfg,
+            current_mode=self.app.current_mode,
+            enabled_items=self.app.status_bar_state.get("items"),
+            cols=cols,
+        )
 
-    async def prompt_async(self, message=None, **kwargs):
-        if message is None:
-            message = HTML(f"<b><green>{self.prompt_text}</green></b> ")
-        if "placeholder" not in kwargs:
-            if self.box_placeholder:
-                styled_ph = self._get_styled_placeholder()
-                if self.placeholder_once:
-                    if not self._placeholder_consumed:
-                        kwargs["placeholder"] = styled_ph
-                        self._placeholder_consumed = True
-                    else:
-                        kwargs["placeholder"] = ""
-                else:
-                    kwargs["placeholder"] = styled_ph
-            else:
-                kwargs["placeholder"] = ""
-        return await super().prompt_async(message=message, **kwargs)
+        if status_text:
+            tokens.append(("class:statusbar", status_text))
 
+        # 确保整个 toolbar 最后一个 token 结尾绝不带多余换行符，杜绝底部多余留白
+        if tokens and tokens[-1][1].endswith("\n"):
+            last_style, last_text = tokens[-1]
+            tokens[-1] = (last_style, last_text[:-1])
 
-def create_boxed_input_session(
-    title: Any = "",
-    placeholder: str = "输入命令 (如 /help) 或直接与 AI 对话...",
-    placeholder_once: bool = True,
-    prompt_text: str = "❯ ",
-    **kwargs,
-) -> BoxedPromptSession:
-    """创建并返回配置完成的终端输入框会话组件"""
-    return BoxedPromptSession(
-        title=title,
-        placeholder=placeholder,
-        placeholder_once=placeholder_once,
-        prompt_text=prompt_text,
-        **kwargs,
-    )
+        return tokens
+
+    def reset_renderer(self) -> None:
+        """重置渲染器状态，保证新一轮绘制紧随当前终端物理光标行"""
+        self.slash_menu.reset()
+        if hasattr(self.session, "app") and self.session.app and self.session.app.renderer:
+            try:
+                r = self.session.app.renderer
+                r.reset()
+                # 紧凑模式：不再预留全屏剩余高度，下边框与状态栏紧随输入行
+                r._min_available_height = 0
+            except Exception:
+                pass
+        self._apply_compact_patch()
+
+    async def prompt_async(self, rprompt_text: Optional[str] = None) -> str:
+        """
+        弹出输入框并等待用户输入。
+        自动完成边框对齐、首帧紧凑渲染与状态栏联动。
+        """
+        self.reset_renderer()
+
+        rprompt_tokens = [("class:rprompt", f"[{rprompt_text}]")] if rprompt_text else None
+
+        def pre_run_hook():
+            self.reset_renderer()
+            self._apply_compact_patch()
+
+        user_input = await self.session.prompt_async(
+            self.get_prompt_message,
+            rprompt=rprompt_tokens,
+            pre_run=pre_run_hook,
+        )
+
+        self.slash_menu.reset()
+        return user_input.strip()

@@ -1,66 +1,108 @@
-"""CLI UI components (menu, fixed input, log buffer, toolbar, completer, banner)."""
+"""CLI UI components (completer, style, radio, checkbox, slash_menu, status_bar, input)."""
 
-from .menu import (
-    BottomMenuHost,
-    compute_menu_panel_height,
-    compute_completion_menu_max_height,
-    render_selection_menu_tokens,
-    render_checkbox_menu_tokens,
-)
-from .input import (
-    CliLogBuffer,
-    LogStream,
-    build_log_fragments,
-    create_fixed_input_app,
-    NestedPromptAdapter,
-    BoxedPromptSession,
-    create_boxed_input_session,
-)
-from .status_bar import (
-    format_status_text,
-    create_status_bar_getter,
-    create_bottom_toolbar_getter,
-    STATUS_BAR_OPTIONS,
-    DEFAULT_STATUS_BAR_ITEMS,
-    load_status_bar_items,
-    save_status_bar_items,
+from .checkbox import (
+    CheckboxItem,
+    CheckboxMenu,
+    run_checkbox_menu,
 )
 from .completer import (
     SLASH_COMMANDS,
-    SlashCommandCompleter,
     PromptSession,
+    SlashCommandCompleter,
+    get_current_slash_commands,
+    match_slash_commands,
 )
-from .banner import (
-    print_banner,
+from .input import (
+    BoxedInputSession,
 )
-from .welcome import (
-    build_welcome_panel,
-    print_welcome,
+from .slash import (
+    NumberItem,
+    NumberMenu,
+    RadioItem,
+    RadioMenu,
+    SlashCommandItem,
+    SlashCommandsComponent,
+    SlashCommandsContainer,
+    SlashMenuState,
+    SlashResultContainer,
+    get_slash_commands_component,
+    get_slash_commands_container,
+    render_slash_commands,
+    run_number_menu,
+    run_radio_menu,
+    run_slash_commands_menu,
+    show_help_result,
+    show_slash_commands,
+    show_slash_container,
+    show_slash_result,
 )
-from .help_view import (
-    build_help_panel,
-    build_command_detail_panel,
-    print_help_view,
-    COMMAND_DETAILS,
-    COMMAND_CATEGORIES,
+from .status_bar import (
+    DEFAULT_STATUS_BAR_ITEMS,
+    STATUS_BAR_OPTIONS,
+    create_bottom_toolbar_getter,
+    create_status_bar_getter,
+    format_status_text,
+    load_status_bar_items,
+    save_status_bar_items,
 )
 from .style import (
+    CHECKBOX_STYLE,
     CLI_STYLE,
+    MENU_STYLE,
+    RADIO_STYLE,
+)
+from .welcome import (
+    DEFAULT_LOGO,
+    DEFAULT_WELCOME_MESSAGE,
+    DEFAULT_WELCOME_TEXT,
+    WelcomeComponent,
+    get_welcome_renderable,
+    reset_welcome_state,
+    show_welcome,
 )
 
 __all__ = [
-    "BottomMenuHost",
-    "compute_menu_panel_height",
-    "compute_completion_menu_max_height",
-    "render_selection_menu_tokens",
-    "render_checkbox_menu_tokens",
-    "CliLogBuffer",
-    "LogStream",
-    "build_log_fragments",
-    "create_fixed_input_app",
-    "NestedPromptAdapter",
-    "BoxedPromptSession",
-    "create_boxed_input_session",
+    # Style
+    "CLI_STYLE",
+    "RADIO_STYLE",
+    "CHECKBOX_STYLE",
+    "MENU_STYLE",
+    # Number List Single-select
+    "NumberItem",
+    "NumberMenu",
+    "run_number_menu",
+    # Radio Single-select (backward-compatible)
+    "RadioItem",
+    "RadioMenu",
+    "run_radio_menu",
+    # Checkbox Multi-select
+    "CheckboxItem",
+    "CheckboxMenu",
+    "run_checkbox_menu",
+    # Boxed Input Component
+    "BoxedInputSession",
+    # Slash Commands Component
+    "SlashCommandItem",
+    "SlashCommandsComponent",
+    "get_slash_commands_component",
+    "show_slash_commands",
+    "render_slash_commands",
+    "run_slash_commands_menu",
+    # Slash Container Component
+    "SlashCommandsContainer",
+    "SlashResultContainer",
+    "get_slash_commands_container",
+    "show_slash_container",
+    "show_slash_result",
+    "show_help_result",
+    # Slash Menu & Completer
+    "SlashMenuState",
+    "SlashCommandCompleter",
+    "SLASH_COMMANDS",
+    "PromptSession",
+    "get_current_slash_commands",
+    "match_slash_commands",
+    # Status bar
     "format_status_text",
     "create_status_bar_getter",
     "create_bottom_toolbar_getter",
@@ -68,16 +110,12 @@ __all__ = [
     "DEFAULT_STATUS_BAR_ITEMS",
     "load_status_bar_items",
     "save_status_bar_items",
-    "SLASH_COMMANDS",
-    "SlashCommandCompleter",
-    "PromptSession",
-    "print_banner",
-    "build_welcome_panel",
-    "print_welcome",
-    "build_help_panel",
-    "build_command_detail_panel",
-    "print_help_view",
-    "COMMAND_DETAILS",
-    "COMMAND_CATEGORIES",
-    "CLI_STYLE",
+    # Welcome Component
+    "DEFAULT_LOGO",
+    "DEFAULT_WELCOME_TEXT",
+    "DEFAULT_WELCOME_MESSAGE",
+    "WelcomeComponent",
+    "show_welcome",
+    "get_welcome_renderable",
+    "reset_welcome_state",
 ]

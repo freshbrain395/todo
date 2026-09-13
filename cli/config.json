@@ -1,0 +1,71 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Todo Agent CLI Configuration",
+  "welcome": {
+    "enabled": true
+  },
+  "default_mode": "agent",
+  "prompt_text": "❯ ",
+  "max_history_turns": 30,
+  "slash_menu": {
+    "max_visible": 10
+  },
+  "status_bar": {
+    "enabled": true,
+    "items": [
+      "status",
+      "mode",
+      "model",
+      "think",
+      "key",
+      "todo",
+      "help"
+    ]
+  },
+  "theme": {
+    "prompt": "#ansicyan bold",
+    "input": "#ffffff",
+    "rprompt": "#ansigreen italic",
+    "border": "#ansibrightblack",
+    "bottom-toolbar": "noreverse bg:default",
+    "statusbar": "#7f848e"
+  },
+  "providers": [
+    {
+      "id": "siliconflow",
+      "provider": "siliconflow",
+      "name": "硅基流动 (SiliconFlow)",
+      "base_url": "https://api.siliconflow.cn/v1",
+      "models": [
+        "deepseek-ai/DeepSeek-V4-Flash",
+        "deepseek-ai/DeepSeek-R1"
+      ],
+      "model": "deepseek-ai/DeepSeek-V4-Flash",
+      "api_key": ""
+    },
+    {
+      "id": "deepseek",
+      "provider": "deepseek",
+      "name": "DeepSeek 官方",
+      "base_url": "https://api.deepseek.com/v1",
+      "models": [
+        "deepseek-chat",
+        "deepseek-reasoner"
+      ],
+      "model": "deepseek-chat",
+      "api_key": ""
+    },
+    {
+      "id": "ollama",
+      "provider": "ollama",
+      "name": "Ollama (本地免Key)",
+      "base_url": "http://localhost:11434/v1",
+      "models": [
+        "qwen2.5:7b",
+        "deepseek-r1:8b"
+      ],
+      "model": "qwen2.5:7b",
+      "api_key": ""
+    }
+  ]
+}
